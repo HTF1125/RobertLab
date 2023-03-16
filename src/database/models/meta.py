@@ -19,4 +19,17 @@ class Source(StaticBase):
     """ticker mappings"""
     __tablename__ = "tbsource"
     meta_id = sa.Column(sa.ForeignKey("tbmeta.id"))
-    
+    source = sa.Column(sa.VARCHAR(255), nullable=False, default="NOTSET")
+    bloomberg = sa.Column(sa.VARCHAR(255), nullable=True, default=None)
+    yahoo = sa.Column(sa.VARCHAR(255), nullable=True, default=None)
+    naver = sa.Column(sa.VARCHAR(255), nullable=True, default=None)
+    reuter = sa.Column(sa.VARCHAR(255), nullable=True, default=None)
+    morningstar = sa.Column(sa.VARCHAR(255), nullable=True, default=None)
+
+
+class Strategy(StaticBase):
+    """strategy"""
+    __tablename__ = "tbstrategy"
+    meta_id = sa.Column(sa.ForeignKey("tbmeta.id"), primary_key=True)
+    name = sa.Column(sa.VARCHAR(255), nullable=False)
+    frequency = sa.Column(sa.VARCHAR(255), nullable=False, default="NOTSET")
