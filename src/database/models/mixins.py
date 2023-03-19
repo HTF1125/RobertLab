@@ -31,6 +31,14 @@ class Mixins(Base):
     __abstract__ = True
 
     @classmethod
+    def add(cls, **kwargs) -> None:
+        """add an object"""
+        with SessionContext() as session:
+            session.add(cls(**kwargs))
+            session.commit()
+        
+    
+    @classmethod
     def insert(cls, records: Union[List[Dict], pd.Series, pd.DataFrame]) -> None:
         """insert bulk"""
 
@@ -48,7 +56,7 @@ class Mixins(Base):
         """construct cls object from dict"""
         return cls(**data)
 
-    def to_dict(self) -> Dict:
+    def dict(self) -> Dict:
         """converty database table row to dict"""
         return {
             c.key: getattr(self, c.key).isoformat()
