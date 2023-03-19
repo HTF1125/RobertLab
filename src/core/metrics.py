@@ -1,10 +1,11 @@
+from typing import Optional
 from datetime import datetime
 from dateutil import parser
 import numpy as np
 import pandas as pd
 
 
-def to_pri_return(prices: pd.DataFrame) -> pd.DataFrame:
+def to_pri_returns(prices: pd.DataFrame) -> pd.DataFrame:
     """_summary_
 
     Args:
@@ -25,7 +26,7 @@ def to_log_return(prices: pd.DataFrame) -> pd.DataFrame:
     Returns:
         pd.DataFrame: _description_
     """
-    return to_pri_return(prices=prices).apply(np.log1p)
+    return to_pri_returns(prices=prices).apply(np.log1p)
 
 
 def get_startdate(prices: pd.DataFrame) -> datetime:
@@ -37,7 +38,7 @@ def get_startdate(prices: pd.DataFrame) -> datetime:
     Returns:
         datetime: _description_
     """
-    return parser.parse(prices.index[0])
+    return parser.parse(str(prices.index[0]))
 
 
 def get_enddate(prices: pd.DataFrame) -> datetime:
@@ -49,10 +50,10 @@ def get_enddate(prices: pd.DataFrame) -> datetime:
     Returns:
         datetime: _description_
     """
-    return parser.parse(prices.index[0])
+    return parser.parse(str(prices.index[-1]))
 
 
-def n_years(prices: pd.DataFrame) -> float:
+def to_num_year(prices: pd.DataFrame) -> float:
     """_summary_
 
     Args:
@@ -66,7 +67,7 @@ def n_years(prices: pd.DataFrame) -> float:
     return (end - start).days / 365.0
 
 
-def ann_factors(prices: pd.DataFrame) -> pd.Series:
+def to_ann_factor(prices: pd.DataFrame) -> float:
     """_summary_
 
     Args:
@@ -75,10 +76,10 @@ def ann_factors(prices: pd.DataFrame) -> pd.Series:
     Returns:
         pd.Series: _description_
     """
-    return len(prices) / n_years(prices=prices)
+    return len(prices) / to_num_year(prices=prices)
 
 
-def cum_returns(prices: pd.DataFrame) -> pd.Series:
+def to_cum_returns(prices: pd.DataFrame) -> pd.Series:
     """_summary_
 
     Args:
@@ -87,10 +88,10 @@ def cum_returns(prices: pd.DataFrame) -> pd.Series:
     Returns:
         pd.Series: _description_
     """
-    return to_pri_return(prices=prices).add(1).prod() - 1
+    return to_pri_returns(prices=prices).add(1).prod() - 1
 
 
-def ann_returns(prices: pd.DataFrame) -> pd.Series:
+def to_ann_returns(prices: pd.DataFrame) -> pd.Series:
     """_summary_
 
     Args:
@@ -100,11 +101,12 @@ def ann_returns(prices: pd.DataFrame) -> pd.Series:
         pd.Series: _description_
     """
     return (
-        to_pri_return(prices=prices).add(1).prod() ** (1 / n_years(prices=prices)) - 1
+        to_pri_returns(prices=prices).add(1).prod() ** (1 / to_num_year(prices=prices))
+        - 1
     )
 
 
-def ann_variances(prices: pd.DataFrame) -> pd.Series:
+def to_ann_variances(prices: pd.DataFrame) -> pd.Series:
     """_summary_
 
     Args:
@@ -113,10 +115,10 @@ def ann_variances(prices: pd.DataFrame) -> pd.Series:
     Returns:
         pd.Series: _description_
     """
-    return to_pri_return(prices=prices).var() * ann_factors(prices=prices)
+    return to_pri_returns(prices=prices).var() * to_ann_factor(prices=prices)
 
 
-def ann_volatilites(prices: pd.DataFrame) -> pd.Series:
+def to_ann_volatilites(prices: pd.DataFrame) -> pd.Series:
     """_summary_
 
     Args:
@@ -125,4 +127,76 @@ def ann_volatilites(prices: pd.DataFrame) -> pd.Series:
     Returns:
         pd.Series: _description_
     """
-    return ann_variances(prices=prices).apply(np.sqrt)
+    return to_ann_variances(prices=prices).apply(np.sqrt)
+
+
+def to_ann_semi_variances(
+    prices: pd.DataFrame, ann_factor: Optional[float] = None
+) -> pd.Series:
+    """_summary_
+
+    Args:
+        prices (pd.DataFrame): _description_
+
+    Returns:
+        pd.Series: _description_
+    """
+    pri_returns = to_pri_returns(prices=prices)
+    positive_pri_returns = pri_returns[pri_returns >= 0]
+    if not ann_factor:
+        ann_factor = to_ann_factor(prices=prices)
+    return positive_pri_returns.var() * ann_factor
+
+
+def to_ann_semi_volatilities(
+    prices: pd.DataFrame, ann_factor: Optional[float] = None
+) -> pd.Series:
+    """_summary_
+
+    Args:
+        prices (pd.DataFrame): _description_
+        ann_factors (Optional[float], optional): _description_. Defaults to None.
+
+    Returns:
+        pd.Series: _description_
+    """
+    return to_ann_semi_variances(prices=prices, ann_factor=ann_factor) ** 0.5
+
+
+def to_drawdown(
+    prices: pd.DataFrame,
+    window: Optional[int] = None,
+    min_periods: Optional[int] = None,
+) -> pd.DataFrame:
+    """_summary_
+
+    Args:
+        prices (pd.DataFrame): _description_
+        window (Optional[int], optional): _description_. Defaults to None.
+
+    Returns:
+        pd.Series: _description_
+    """
+    if window:
+        return prices / prices.rolling(window=window, min_periods=min_periods).max() - 1
+    return prices / prices.expanding(min_periods=min_periods or 1).max() - 1
+
+
+def to_max_drawdown(
+    prices: pd.DataFrame,
+    window: Optional[int] = None,
+    min_periods: Optional[int] = None,
+) -> pd.Series:
+    """_summary_
+
+    Args:
+        prices (pd.DataFrame): _description_
+        window (Optional[int], optional): _description_. Defaults to None.
+        min_periods (Optional[int], optional): _description_. Defaults to None.
+
+    Returns:
+        pd.Series: _description_
+    """
+    return to_drawdown(prices=prices, window=window, min_periods=min_periods).min()
+
+
