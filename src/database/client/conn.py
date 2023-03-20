@@ -5,7 +5,8 @@ from sqlalchemy.ext.declarative import declarative_base
 from src.config import DATABASE_URL
 Base = declarative_base()
 
-
+print("*"*100)
+print(DATABASE_URL)
 if DATABASE_URL.startswith("sqlite"):
     engine = create_engine(url=DATABASE_URL, connect_args={"check_same_thread": False})
 else:
