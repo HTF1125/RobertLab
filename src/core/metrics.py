@@ -20,7 +20,7 @@ def to_pri_returns(prices: pd.DataFrame) -> pd.DataFrame:
     return prices.apply(to_pri_return)
 
 
-def to_log_return(prices: pd.DataFrame) -> pd.DataFrame:
+def to_log_returns(prices: pd.DataFrame) -> pd.DataFrame:
     """_summary_
 
     Args:
