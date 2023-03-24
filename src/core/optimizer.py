@@ -1,9 +1,12 @@
 import warnings
-from typing import Optional, Dict
+from typing import Optional, Callable, Tuple, Dict, List
+from functools import partial
 from scipy.optimize import minimize
+from scipy.cluster.hierarchy import linkage, to_tree
+from scipy.spatial.distance import squareform
 import numpy as np
 import pandas as pd
-
+from src.core.metrics import cov_to_corr, recursive_bisection
 
 class OptMetrics:
     """portfolio optimizer metrics"""
@@ -40,21 +43,31 @@ class OptMetrics:
         Returns:
             float: portfolio expected variance.
         """
-        return np.dot(np.dot(weights, covariance_matrix), weights)
+        return np.linalg.multi_dot((weights, covariance_matrix, weights))
 
     def expected_volatility(
-        self, weights: np.ndarray, covariance_matrix: np.ndarray
+        self,
+        weights: np.ndarray,
+        covariance_matrix: np.ndarray,
+        sub_covariance_matrix_idx: Optional[List] = None,
     ) -> float:
-        """
-        Portfolio expected volatility.
+        """risk contributions"""
 
-        Args:
-            weight (np.ndarray): weight of assets.
-            covariance_matrix (np.ndarray): covariance matrix of assets.
+        if sub_covariance_matrix_idx:
+            sub_covariance_matrix = covariance_matrix.copy()
+            for i, row in enumerate(covariance_matrix):
+                for j, val in enumerate(row):
+                    if (
+                        i not in sub_covariance_matrix_idx
+                        and j not in sub_covariance_matrix_idx
+                    ):
+                        sub_covariance_matrix[i, j] = 0
+            return np.sqrt(
+                self.expected_variance(
+                    weights=weights, covariance_matrix=sub_covariance_matrix
+                )
+            )
 
-        Returns:
-            float: portfolio expected volatility.
-        """
         return np.sqrt(
             self.expected_variance(weights=weights, covariance_matrix=covariance_matrix)
         )
@@ -84,22 +97,20 @@ class OptMetrics:
         return (ret - risk_free) / std
 
     @staticmethod
-    def l1_norm(weights: np.ndarray, gamma: float = 1) -> float:
-        """
-        L1 regularization.
+    def l1_norm(vals: np.ndarray, gamma: float = 1) -> float:
+        """_summary_
 
         Args:
-            weight (np.ndarray): asset weight in the portfolio.
-            gamma (float, optional): L2 regularisation parameter. Defaults to 1.
-                Increase if you want more non-negligible weight.
+            vals (np.ndarray): _description_
+            gamma (float, optional): _description_. Defaults to 1.
 
         Returns:
-            float: L2 regularization.
+            float: _description_
         """
-        return np.abs(weights).sum() * gamma
+        return np.abs(vals).sum() * gamma
 
     @staticmethod
-    def l2_norm(weights: np.ndarray, gamma: float = 1) -> float:
+    def l2_norm(vals: np.ndarray, gamma: float = 1) -> float:
         """
         L2 regularization.
 
@@ -111,7 +122,7 @@ class OptMetrics:
         Returns:
             float: L2 regularization.
         """
-        return np.sum(np.square(weights)) * gamma
+        return np.sum(np.square(vals)) * gamma
 
     @staticmethod
     def exante_tracking_error(
@@ -156,6 +167,29 @@ class OptMetrics:
         mean = np.sum(rel_return) / len(rel_return)
         return np.sum(np.square(rel_return - mean))
 
+    def risk_contributions(
+        self,
+        weights: np.ndarray,
+        covariance_matrix: np.ndarray,
+        sub_covariance_matrix_idx: Optional[List] = None,
+    ) -> np.ndarray:
+        """risk contributions"""
+        volatility = self.expected_volatility(
+            weights=weights, covariance_matrix=covariance_matrix
+        )
+        if sub_covariance_matrix_idx:
+            sub_covariance_matrix = covariance_matrix.copy()
+            for i, row in enumerate(covariance_matrix):
+                for j, val in enumerate(row):
+                    if (
+                        i not in sub_covariance_matrix_idx
+                        and j not in sub_covariance_matrix_idx
+                    ):
+                        sub_covariance_matrix[i, j] = 0
+            return np.dot(sub_covariance_matrix, weights) * weights / volatility
+
+        return np.dot(covariance_matrix, weights) * weights / volatility
+
 
 class Optimizer:
     """portfolio optimizer"""
@@ -168,65 +202,144 @@ class Optimizer:
         prices_assets: Optional[pd.DataFrame] = None,
         prices_bm: Optional[pd.Series] = None,
         weights_bm: Optional[pd.Series] = None,
+        min_weight: float = 0.0,
+        max_weight: float = 1.0,
+        sum_weight: float = 1.0,
+        min_return: Optional[float] = None,
+        max_return: Optional[float] = None,
+        min_volatility: Optional[float] = None,
+        max_volatility: Optional[float] = None,
+        active_weight: Optional[float] = None,
+        exante_tracking_error: Optional[float] = None,
+        expost_tracking_error: Optional[float] = None,
     ) -> None:
         """initialization"""
-        
+
         if expected_returns is not None:
             self.expected_returns = expected_returns
             self.assets = self.expected_returns.index
-        
+
         if covariance_matrix is not None:
             self.covariance_matrix = covariance_matrix
-            
-        
-        
+
         self.expected_returns = expected_returns
         self.covariance_matrix = covariance_matrix
         self.prices_assets = prices_assets
         self.risk_free = risk_free
         self.prices_bm = prices_bm
         self.weights_bm = weights_bm
-        self.num_assets = len(self.covariance_matrix)
-        self.constraints: Dict = {}
+        self.constraints: List = []
         self.metrics: OptMetrics = OptMetrics()
 
-        
+        self.set_min_weight(min_weight=min_weight)
+        self.set_max_weight(max_weight=max_weight)
+        self.set_sum_weight(sum_weight=sum_weight)
 
+        if min_return:
+            self.set_min_return(min_return=min_return)
 
+        if max_return:
+            self.set_max_return(max_return=max_return)
 
+        if min_volatility:
+            self.set_min_volatility(min_volatility=min_volatility)
 
+        if max_volatility:
+            self.set_max_volatility(max_volatility=max_volatility)
 
+        if active_weight:
+            self.set_max_active_weight(active_weight=active_weight)
+
+        if exante_tracking_error:
+            self.set_exante_tracking_error(exante_tracking_error=exante_tracking_error)
+
+        if expost_tracking_error:
+            self.set_max_expost_tracking_error(
+                expost_tracking_error=expost_tracking_error
+            )
+
+    @property
+    def expected_returns(self) -> pd.Series:
+        """expected_returns"""
+        return self._expected_returns
+
+    @expected_returns.setter
+    def expected_returns(self, expected_returns: Optional[pd.Series] = None) -> None:
+        self._expected_returns = expected_returns
+        if expected_returns is not None:
+            self.assets = self.expected_returns.index
+
+    @property
+    def covariance_matrix(self) -> pd.DataFrame:
+        """covariance_matrix"""
+        return self._covariance_matrix
+
+    @covariance_matrix.setter
+    def covariance_matrix(
+        self, covariance_matrix: Optional[pd.DataFrame] = None
+    ) -> None:
+        self._covariance_matrix = covariance_matrix
+        if covariance_matrix is not None:
+            self.assets = self.covariance_matrix.index
+            self.assets = self.covariance_matrix.columns
+
+    @property
+    def prices_assets(self) -> pd.DataFrame:
+        """prices_assets"""
+        return self._prices_assets
+
+    @prices_assets.setter
+    def prices_assets(self, prices_assets: Optional[pd.DataFrame] = None) -> None:
+        self._prices_assets = prices_assets
+        if prices_assets is not None:
+            self.assets = self.prices_assets.columns
+
+    @property
+    def assets(self) -> pd.Index:
+        """assets"""
+        try:
+            return self._assets
+        except AttributeError:
+            return None
+
+    @assets.setter
+    def assets(self, assets: pd.Index) -> None:
+        """assets setter"""
+
+        if self.assets is not None:
+            assert self.assets.equals(assets)
+            return
+        self._assets = assets
+
+    @property
+    def num_asset(self) -> int:
+        """return number of asset"""
+        return len(self.assets)
 
     def set_min_weight(self, min_weight: float = 0.0) -> None:
         """set minimum weights constraint"""
-        self.constraints.update(
+        self.constraints.append(
             {
-                "min_weight": {
-                    "type": "ineq",
-                    "fun": lambda w: w - min_weight,
-                }
+                "type": "ineq",
+                "fun": lambda w: w - min_weight,
             }
         )
 
     def set_max_weight(self, max_weight: float = 1.0) -> None:
         """set maximum weights constraint"""
-        self.constraints.update(
+        self.constraints.append(
             {
-                "max_weight": {
-                    "type": "ineq",
-                    "fun": lambda w: max_weight - w,
-                }
+                "type": "ineq",
+                "fun": lambda w: max_weight - w,
             }
         )
 
     def set_sum_weight(self, sum_weight: float = 1.0) -> None:
         """set summation weights constriant"""
-        self.constraints.update(
+        self.constraints.append(
             {
-                "sum_weight": {
-                    "type": "eq",
-                    "fun": lambda w: np.sum(w) - sum_weight,
-                }
+                "type": "eq",
+                "fun": lambda w: np.sum(w) - sum_weight,
             }
         )
 
@@ -235,15 +348,13 @@ class Optimizer:
         if self.expected_returns is None:
             warnings.warn("unable to set minimum return constraint.")
             warnings.warn("expected returns is null.")
-        self.constraints.update(
+        self.constraints.append(
             {
-                "min_return": {
-                    "type": "ineq",
-                    "fun": lambda w: self.metrics.expected_return(
-                        weights=w, expected_returns=self.expected_returns.values
-                    )
-                    - min_return,
-                }
+                "type": "ineq",
+                "fun": lambda w: self.metrics.expected_return(
+                    weights=w, expected_returns=self.expected_returns.values
+                )
+                - min_return,
             }
         )
 
@@ -252,15 +363,13 @@ class Optimizer:
         if self.expected_returns is None:
             warnings.warn("unable to set maximum return constraint.")
             warnings.warn("expected returns is null.")
-        self.constraints.update(
+        self.constraints.append(
             {
-                "max_return": {
-                    "type": "ineq",
-                    "fun": lambda w: max_return
-                    - self.metrics.expected_return(
-                        weights=w, expected_returns=self.expected_returns.values
-                    ),
-                }
+                "type": "ineq",
+                "fun": lambda w: max_return
+                - self.metrics.expected_return(
+                    weights=w, expected_returns=self.expected_returns.values
+                ),
             }
         )
 
@@ -269,15 +378,13 @@ class Optimizer:
         if self.expected_returns is None:
             warnings.warn("unable to set minimum volatility constraint.")
             warnings.warn("expected returns is null.")
-        self.constraints.update(
+        self.constraints.append(
             {
-                "min_volatility": {
-                    "type": "ineq",
-                    "fun": lambda w: self.metrics.expected_volatility(
-                        weights=w, covariance_matrix=self.covariance_matrix.values
-                    )
-                    - min_volatility,
-                }
+                "type": "ineq",
+                "fun": lambda w: self.metrics.expected_volatility(
+                    weights=w, covariance_matrix=self.covariance_matrix.values
+                )
+                - min_volatility,
             }
         )
 
@@ -286,30 +393,26 @@ class Optimizer:
         if self.expected_returns is None:
             warnings.warn("unable to set maximum volatility constraint.")
             warnings.warn("expected returns is null.")
-        self.constraints.update(
+        self.constraints.append(
             {
-                "max_volatility": {
-                    "type": "ineq",
-                    "fun": lambda w: max_volatility
-                    - self.metrics.expected_volatility(
-                        weights=w, covariance_matrix=self.covariance_matrix.values
-                    ),
-                }
+                "type": "ineq",
+                "fun": lambda w: max_volatility
+                - self.metrics.expected_volatility(
+                    weights=w, covariance_matrix=self.covariance_matrix.values
+                ),
             }
         )
 
-    def set_max_active_weight(self, max_active_weight: float = 0.10) -> None:
+    def set_max_active_weight(self, active_weight: float = 0.10) -> None:
         """set maximum active weight against benchmark"""
         if self.weights_bm is None:
             warnings.warn("unable to set maximum active weight constraint.")
             warnings.warn("benchmark weights is null.")
-        self.constraints.update(
+        self.constraints.append(
             {
-                "max_active_weight": {
-                    "type": "ineq",
-                    "fun": lambda w: max_active_weight
-                    - np.sum(np.abs(w - self.weights_bm.values)),
-                }
+                "type": "ineq",
+                "fun": lambda w: active_weight
+                - np.sum(np.abs(w - self.weights_bm.values)),
             }
         )
 
@@ -318,17 +421,15 @@ class Optimizer:
     ) -> None:
         """set maximum exante tracking error constraint"""
 
-        self.constraints.update(
+        self.constraints.append(
             {
-                "max_exante_tracking_error": {
-                    "type": "ineq",
-                    "fun": lambda w: max_exante_tracking_error
-                    - self.metrics.exante_tracking_error(
-                        weights=w,
-                        weights_bm=self.weights_bm.values,
-                        covariance_matrix=self.covariance_matrix.values,
-                    ),
-                }
+                "type": "ineq",
+                "fun": lambda w: max_exante_tracking_error
+                - self.metrics.exante_tracking_error(
+                    weights=w,
+                    weights_bm=self.weights_bm.values,
+                    covariance_matrix=self.covariance_matrix.values,
+                ),
             }
         )
 
@@ -344,18 +445,165 @@ class Optimizer:
         pri_returns_assets = self.prices_assets.loc[itx].pct_change().fillna(0)
         pri_returns_bm = self.prices_bm.loc[itx].pct_change().fillna(0)
 
-        self.constraints.update(
+        self.constraints.append(
             {
-                "max_expost_tracking_error": {
-                    "type": "ineq",
-                    "fun": lambda w: max_expost_tracking_error
-                    - self.metrics.expost_tracking_error(
-                        weights=w,
-                        pri_returns_assets=pri_returns_assets.values,
-                        pri_returns_bm=pri_returns_bm.values,
-                    ),
-                }
+                "type": "ineq",
+                "fun": lambda w: max_expost_tracking_error
+                - self.metrics.expost_tracking_error(
+                    weights=w,
+                    pri_returns_assets=pri_returns_assets.values,
+                    pri_returns_bm=pri_returns_bm.values,
+                ),
             }
         )
+
+    def solve(
+        self, objective: Callable, extra_constraints: Optional[List[Dict]] = None
+    ) -> Optional[pd.Series]:
+        constraints = self.constraints.copy()
+        if extra_constraints:
+            constraints.extend(extra_constraints)
+        problem = minimize(
+            fun=objective,
+            method="SLSQP",
+            constraints=constraints,
+            x0=np.ones(shape=self.num_asset) / self.num_asset,
+        )
+
+        if problem.success:
+            return pd.Series(data=problem.x, index=self.assets, name="weights").round(6)
+        return None
+
+    def maximized_return(self) -> Optional[pd.Series]:
+        """calculate max return weights"""
+        return self.solve(
+            objective=partial(
+                self.metrics.expected_return,
+                expected_returns=self.expected_returns.values * -1,
+            )
+        )
+
+    def minimized_volatility(self) -> Optional[pd.Series]:
+        """_summary_
+
+        Returns:
+            Optional[pd.Series]: _description_
+        """
+        return self.solve(
+            objective=partial(
+                self.metrics.expected_volatility,
+                covariance_matrix=self.covariance_matrix.values,
+            )
+        )
+
+    def maximized_sharpe_ratio(self) -> Optional[pd.Series]:
+        """_summary_
+
+        Returns:
+            Optional[pd.Series]: _description_
+        """
+        return self.solve(
+            objective=partial(
+                self.metrics.expected_sharpe,
+                expected_returns=self.expected_returns.values,
+                covariance_matrix=self.covariance_matrix.values,
+                risk_free=self.risk_free,
+            )
+        )
+
+    def hierarchical_equal_risk_contribution(self) -> Optional[pd.Series]:
+        """calculate herc weights"""
+        corr = cov_to_corr(self.covariance_matrix.values)
+        dist = np.sqrt((1 - corr).round(5) / 2)
+        clusters = linkage(squareform(dist), method="single")
+        sorted_tree = list(to_tree(clusters, rd=False).pre_order())
+        cluster_sets = recursive_bisection(sorted_tree)
+        return self.solve(
+            objective=lambda w: self.metrics.l2_norm(
+                np.array(
+                    [
+                        np.sum(
+                            self.metrics.risk_contributions(
+                                weights=w,
+                                covariance_matrix=covariance_matrix.values,
+                                sub_covariance_matrix_idx=left_idx,
+                            )
+                        )
+                        - np.sum(
+                            self.metrics.risk_contributions(
+                                weights=w,
+                                covariance_matrix=covariance_matrix.values,
+                                sub_covariance_matrix_idx=right_idx,
+                            )
+                        )
+                        for left_idx, right_idx in cluster_sets
+                    ]
+                )
+            )
+        )
+
+    def hierarchical_risk_parity(self) -> Optional[pd.Series]:
+        """calculate herc weights"""
+        corr = cov_to_corr(self.covariance_matrix.values)
+        dist = np.sqrt((1 - corr).round(5) / 2)
+        clusters = linkage(squareform(dist), method="single")
+        sorted_tree = list(to_tree(clusters, rd=False).pre_order())
+        cluster_sets = recursive_bisection(sorted_tree)
+        return self.solve(
+            objective=lambda w: self.metrics.l2_norm(
+                np.array(
+                    [
+                        self.metrics.expected_volatility(
+                            weights=w,
+                            covariance_matrix=covariance_matrix.values,
+                            sub_covariance_matrix_idx=left_idx,
+                        )
+                        - self.metrics.expected_volatility(
+                            weights=w,
+                            covariance_matrix=covariance_matrix.values,
+                            sub_covariance_matrix_idx=right_idx,
+                        )
+                        for left_idx, right_idx in cluster_sets
+                    ]
+                )
+            )
+        )
+
+    def risk_parity(self, budgets: Optional[np.ndarray] = None) -> Optional[pd.Series]:
+        """_summary_
+
+        Returns:
+            Optional[pd.Series]: _description_
+        """
+        if budgets is None:
+            budgets = np.ones(self.num_asset) / self.num_asset
+        return self.solve(
+            objective=lambda w: self.metrics.l2_norm(
+                np.subtract(
+                    self.metrics.risk_contributions(
+                        weights=w, covariance_matrix=self.covariance_matrix.values
+                    ),
+                    np.multiply(
+                        budgets,
+                        self.metrics.expected_volatility(
+                            weights=w, covariance_matrix=self.covariance_matrix.values
+                        ),
+                    ),
+                )
+            )
+        )
+
+    def inverse_variance(self) -> Optional[pd.Series]:
+        """_summary_
+
+        Returns:
+            Optional[pd.Series]: _description_
+        """
+        inv_var_weights = 1 / np.diag(covariance_matrix)
+        inv_var_weights /= inv_var_weights.sum()
+        return self.solve(
+            objective=lambda w: self.metrics.l2_norm(np.subtract(w, inv_var_weights))
+        )
+
 
 
