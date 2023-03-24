@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, Tuple, List
 from dateutil import parser
 import numpy as np
 import pandas as pd
@@ -245,3 +245,140 @@ def to_sortino_ratios(
 
     return ann_returns / ann_semi_volatilities
 
+
+def to_tail_ratios(prices: pd.DataFrame, alpha: float = 0.05) -> pd.Series:
+    """_summary_
+
+    Args:
+        prices (pd.DataFrame): _description_
+        alpha (float, optional): _description_. Defaults to 0.05.
+
+    Returns:
+        pd.Series: _description_
+    """
+
+    def to_tail_ratio(pri_return: pd.Series, alpha: float) -> float:
+
+        r = pri_return.dropna()
+        return -r.quantile(q=alpha) / r.quantile(q=1 - alpha)
+
+    return to_pri_returns(prices=prices).apply(to_tail_ratio, alpha=alpha)
+
+
+def to_skewnesses(prices: pd.DataFrame) -> pd.Series:
+    """_summary_
+
+    Args:
+        prices (pd.DataFrame): _description_
+
+    Returns:
+        pd.Series: _description_
+    """
+
+    def to_skewness(pri_return: pd.Series) -> float:
+
+        return pri_return.dropna().skew()
+
+    return to_pri_returns(prices=prices).apply(to_skewness)
+
+
+def to_kurtosises(prices: pd.DataFrame) -> pd.Series:
+    """_summary_
+
+    Args:
+        prices (pd.DataFrame): _description_
+
+    Returns:
+        pd.Series: _description_
+    """
+
+    def to_kurtosis(pri_return: pd.Series) -> float:
+
+        return pri_return.dropna().kurt()
+
+    return to_pri_returns(prices=prices).apply(to_kurtosis)
+
+
+def to_value_at_risks(prices: pd.DataFrame, alpha: float = 0.05) -> pd.Series:
+    """_summary_
+
+    Args:
+        prices (pd.DataFrame): _description_
+        alpha (float, optional): _description_. Defaults to 0.05.
+
+    Returns:
+        pd.Series: _description_
+    """
+
+    def to_value_at_risk(pri_return: pd.Series, alpha: float) -> float:
+
+        r = pri_return.dropna()
+        return r.quantile(q=alpha)
+
+    return to_pri_returns(prices=prices).apply(to_value_at_risk, alpha=alpha)
+
+
+def to_expected_shortfalls(prices: pd.DataFrame, alpha: float = 0.05) -> pd.Series:
+    def to_expected_shortfall(pri_return: pd.Series, alpha: float) -> float:
+
+        r = pri_return.dropna()
+        var = r.quantile(q=alpha)
+        return r[r <= var].mean()
+
+    return to_pri_returns(prices=prices).apply(to_expected_shortfall, alpha=alpha)
+
+
+def cov_to_corr(covariance_matrix: pd.DataFrame) -> pd.DataFrame:
+    """_summary_
+
+    Args:
+        covariance_matrix (pd.DataFrame): _description_
+
+    Returns:
+        pd.DataFrame: _description_
+    """
+    vol = np.sqrt(np.diag(covariance_matrix))
+    corr = covariance_matrix / np.outer(vol, vol)
+    corr[corr < -1], corr[corr > 1] = -1, 1
+    return corr
+
+
+def recursive_bisection(sorted_tree) -> List[Tuple[List[int], List[int]]]:
+    """_summary_
+
+    Args:
+        sorted_tree (_type_): _description_
+
+    Returns:
+        List[Tuple[List[int], List[int]]]: _description_
+    """
+
+    if len(sorted_tree) < 3:
+        return
+
+    num = len(sorted_tree)
+    bis = int(num / 2)
+    left = sorted_tree[0:bis]
+    right = sorted_tree[bis:]
+    if len(left) > 2 and len(right) > 2:
+        return [(left, right), recursive_bisection(left), recursive_bisection(right)]
+    return (left, right)
+
+
+def get_cluster_assets(clusters, node, num_assets) -> List:
+    """_summary_
+
+    Args:
+        clusters (_type_): _description_
+        node (_type_): _description_
+        num_assets (_type_): _description_
+
+    Returns:
+        List: _description_
+    """
+    if node < num_assets:
+        return [int(node)]
+    row = clusters[int(node - num_assets)]
+    return get_cluster_assets(clusters, row[0], num_assets) + get_cluster_assets(
+        clusters, row[1], num_assets
+    )
