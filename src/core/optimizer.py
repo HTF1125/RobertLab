@@ -1,5 +1,5 @@
 import warnings
-from typing import Optional, Callable, Tuple, Dict, List
+from typing import Optional, Callable, Dict, List
 from functools import partial
 from scipy.optimize import minimize
 from scipy.cluster.hierarchy import linkage, to_tree
@@ -7,6 +7,7 @@ from scipy.spatial.distance import squareform
 import numpy as np
 import pandas as pd
 from src.core.metrics import cov_to_corr, recursive_bisection
+
 
 class OptMetrics:
     """portfolio optimizer metrics"""
@@ -251,7 +252,9 @@ class Optimizer:
             self.set_max_active_weight(active_weight=active_weight)
 
         if exante_tracking_error:
-            self.set_exante_tracking_error(exante_tracking_error=exante_tracking_error)
+            self.set_max_exante_tracking_error(
+                exante_tracking_error=exante_tracking_error
+            )
 
         if expost_tracking_error:
             self.set_max_expost_tracking_error(
@@ -417,14 +420,14 @@ class Optimizer:
         )
 
     def set_max_exante_tracking_error(
-        self, max_exante_tracking_error: float = 0.02
+        self, exante_tracking_error: float = 0.02
     ) -> None:
         """set maximum exante tracking error constraint"""
 
         self.constraints.append(
             {
                 "type": "ineq",
-                "fun": lambda w: max_exante_tracking_error
+                "fun": lambda w: exante_tracking_error
                 - self.metrics.exante_tracking_error(
                     weights=w,
                     weights_bm=self.weights_bm.values,
@@ -434,7 +437,7 @@ class Optimizer:
         )
 
     def set_max_expost_tracking_error(
-        self, max_expost_tracking_error: float = 0.02
+        self, expost_tracking_error: float = 0.02
     ) -> None:
         """set maximum expost tracking error constraint"""
 
@@ -448,7 +451,7 @@ class Optimizer:
         self.constraints.append(
             {
                 "type": "ineq",
-                "fun": lambda w: max_expost_tracking_error
+                "fun": lambda w: expost_tracking_error
                 - self.metrics.expost_tracking_error(
                     weights=w,
                     pri_returns_assets=pri_returns_assets.values,
@@ -525,14 +528,14 @@ class Optimizer:
                         np.sum(
                             self.metrics.risk_contributions(
                                 weights=w,
-                                covariance_matrix=covariance_matrix.values,
+                                covariance_matrix=self.covariance_matrix.values,
                                 sub_covariance_matrix_idx=left_idx,
                             )
                         )
                         - np.sum(
                             self.metrics.risk_contributions(
                                 weights=w,
-                                covariance_matrix=covariance_matrix.values,
+                                covariance_matrix=self.covariance_matrix.values,
                                 sub_covariance_matrix_idx=right_idx,
                             )
                         )
@@ -544,6 +547,7 @@ class Optimizer:
 
     def hierarchical_risk_parity(self) -> Optional[pd.Series]:
         """calculate herc weights"""
+
         corr = cov_to_corr(self.covariance_matrix.values)
         dist = np.sqrt((1 - corr).round(5) / 2)
         clusters = linkage(squareform(dist), method="single")
@@ -555,12 +559,12 @@ class Optimizer:
                     [
                         self.metrics.expected_volatility(
                             weights=w,
-                            covariance_matrix=covariance_matrix.values,
+                            covariance_matrix=self.covariance_matrix.values,
                             sub_covariance_matrix_idx=left_idx,
                         )
                         - self.metrics.expected_volatility(
                             weights=w,
-                            covariance_matrix=covariance_matrix.values,
+                            covariance_matrix=self.covariance_matrix.values,
                             sub_covariance_matrix_idx=right_idx,
                         )
                         for left_idx, right_idx in cluster_sets
@@ -599,11 +603,8 @@ class Optimizer:
         Returns:
             Optional[pd.Series]: _description_
         """
-        inv_var_weights = 1 / np.diag(covariance_matrix)
+        inv_var_weights = 1 / np.diag(self.covariance_matrix.values)
         inv_var_weights /= inv_var_weights.sum()
         return self.solve(
             objective=lambda w: self.metrics.l2_norm(np.subtract(w, inv_var_weights))
         )
-
-
-
