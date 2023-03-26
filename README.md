@@ -3,3 +3,7 @@
 🌈 - feature
 🦠 - virus / bug
 🔮 - future
+⚙️ - config
+🪅 - 
+🔊
+💤
