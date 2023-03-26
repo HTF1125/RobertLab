@@ -11,6 +11,4 @@ APISRC_FOLDER: str = os.path.join(PROJECT_FOLDER, "src/api")
 DOTENV_PATH: str = os.path.join(PROJECT_FOLDER, ".env")
 # Load environment variables from .env file
 load_dotenv(dotenv_path=DOTENV_PATH)
-
-print(DOTENV_PATH)
 DATABASE_URL:str = os.getenv("DATABASE_URL") or ""
