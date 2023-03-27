@@ -50,6 +50,19 @@ class Mixins(Base):
         with SessionContext() as session:
             session.bulk_insert_mappings(cls, records)
             session.commit()
+            
+    @classmethod
+    def update(cls, records: Union[List[Dict], pd.Series, pd.DataFrame]) -> None:
+        """insert bulk"""
+
+        if isinstance(records, pd.DataFrame):
+            records = records.replace({np.NaN: None}).to_dict("records")
+        elif isinstance(records, pd.Series):
+            records = [records.replace({np.NaN: None}).to_dict()]
+
+        with SessionContext() as session:
+            session.bulk_update_mappings(cls, records)
+            session.commit()
 
     @classmethod
     def from_dict(cls, data: Dict):

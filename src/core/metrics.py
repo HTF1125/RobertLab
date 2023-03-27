@@ -401,9 +401,12 @@ def to_covariance_matrix(
     if alpha is None:
         return pri_returns.cov() * ann_factors
 
-    exp_covariance_matrix = pri_returns.ewm(alpha=alpha).cov().unstack().iloc[-1].unstack() * ann_factors
+    exp_covariance_matrix = (
+        pri_returns.ewm(alpha=alpha).cov().unstack().iloc[-1].unstack() * ann_factors
+    )
 
     return exp_covariance_matrix.loc[prices.columns, prices.columns]
+
 
 def exponential_alpha(
     com: Optional[float] = None,

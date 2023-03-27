@@ -1,7 +1,6 @@
 import sqlalchemy as sa
 from .mixins import StaticBase, TimeSeriesBase
 
-
 class Meta(StaticBase):
     """table meta"""
 

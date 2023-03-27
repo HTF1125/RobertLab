@@ -211,8 +211,6 @@ class Optimizer:
         self.expected_returns = expected_returns
         self.covariance_matrix = covariance_matrix
 
-        self.expected_returns = expected_returns
-        self.covariance_matrix = covariance_matrix
         self.prices = prices
         self.risk_free = risk_free
         self.prices_bm = prices_bm
@@ -223,13 +221,20 @@ class Optimizer:
         self.set_max_weight(max_weight=max_weight)
         self.set_sum_weight(sum_weight=sum_weight)
 
-        if min_return: self.set_min_return(min_return)
-        if max_return: self.set_max_return(max_return)
-        if min_volatility: self.set_min_volatility(min_volatility)
-        if max_volatility: self.set_max_volatility(max_volatility)
-        if max_active_weight: self.set_max_active_weight(max_active_weight)
-        if max_exante_tracking_error: self.set_max_exante_tracking_error(max_exante_tracking_error)
-        if max_expost_tracking_error: self.set_max_expost_tracking_error(max_expost_tracking_error)
+        if min_return:
+            self.set_min_return(min_return)
+        if max_return:
+            self.set_max_return(max_return)
+        if min_volatility:
+            self.set_min_volatility(min_volatility)
+        if max_volatility:
+            self.set_max_volatility(max_volatility)
+        if max_active_weight:
+            self.set_max_active_weight(max_active_weight)
+        if max_exante_tracking_error:
+            self.set_max_exante_tracking_error(max_exante_tracking_error)
+        if max_expost_tracking_error:
+            self.set_max_expost_tracking_error(max_expost_tracking_error)
 
     @property
     def expected_returns(self) -> pd.Series:
@@ -410,9 +415,7 @@ class Optimizer:
     ) -> None:
         """set maximum expost tracking error constraint"""
 
-        itx = self.prices.dropna().index.intersection(
-            self.prices_bm.dropna().index
-        )
+        itx = self.prices.dropna().index.intersection(self.prices_bm.dropna().index)
 
         pri_returns_assets = self.prices.loc[itx].pct_change().fillna(0)
         pri_returns_bm = self.prices_bm.loc[itx].pct_change().fillna(0)
@@ -590,5 +593,6 @@ class Optimizer:
             Optional[pd.Series]: _description_
         """
         target_allocations = np.ones(shape=self.num_asset) / self.num_asset
-        return self.solve(objective=lambda w: l1_norm(np.subtract(w, target_allocations)))
-        
+        return self.solve(
+            objective=lambda w: l1_norm(np.subtract(w, target_allocations))
+        )
