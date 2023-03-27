@@ -6,7 +6,7 @@ from scipy.cluster.hierarchy import linkage, to_tree
 from scipy.spatial.distance import squareform
 import numpy as np
 import pandas as pd
-from src.core.metrics import cov_to_corr, recursive_bisection
+from src.core.analytics.metrics import cov_to_corr, recursive_bisection
 
 
 def expected_return(
