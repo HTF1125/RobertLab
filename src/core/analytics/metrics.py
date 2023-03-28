@@ -4,6 +4,26 @@ import numpy as np
 import pandas as pd
 
 
+
+def to_starts(prices: pd.DataFrame) -> pd.Series:
+    
+    def to_start(price: pd.Series) -> pd.Timestamp:
+        
+        return price.dropna().index[0]
+    
+    return prices.apply(to_start)
+        
+
+def to_ends(prices: pd.DataFrame) -> pd.Series:
+    
+    def to_end(price: pd.Series) -> pd.Timestamp:
+        
+        return price.dropna().index[-1]
+    
+    return prices.apply(to_end)
+
+
+
 def to_pri_returns(prices: pd.DataFrame) -> pd.DataFrame:
     """_summary_
 

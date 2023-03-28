@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 from .account import VirtualAccount
 from ..analytics import metrics
-from ..optimizer import Optimizer
+from ..portfolio.optimizer import Optimizer
 
 
 class Strategy:
@@ -260,7 +260,6 @@ class RiskParity(Strategy):
 
 class MaxSharpe(Strategy):
     def rebalance(self, **kwargs):
-        from ..optimizer import Optimizer
 
         prices = self.prices.loc[: self.date].iloc[-252:]
         cov = prices.pct_change().fillna(0).cov() * (252**0.5)

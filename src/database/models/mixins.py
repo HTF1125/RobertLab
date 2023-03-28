@@ -1,4 +1,3 @@
-
 from datetime import date, datetime
 from typing import Union, Dict, List
 from sqlalchemy.orm import Query
@@ -9,13 +8,13 @@ from ..client import Base, SessionContext
 
 
 def read_sql_query(query: Query, **kwargs) -> pd.DataFrame:
-    """_summary_
+    """Read sql query
 
     Args:
-        query (Query): _description_
+        query (Query): sqlalchemy.Query
 
     Returns:
-        pd.DataFrame: _description_
+        pd.DataFrame: read the query into dataframe.
     """
     return pd.read_sql_query(
         sql=query.statement,
@@ -36,8 +35,7 @@ class Mixins(Base):
         with SessionContext() as session:
             session.add(cls(**kwargs))
             session.commit()
-        
-    
+
     @classmethod
     def insert(cls, records: Union[List[Dict], pd.Series, pd.DataFrame]) -> None:
         """insert bulk"""
@@ -46,11 +44,16 @@ class Mixins(Base):
             records = records.replace({np.NaN: None}).to_dict("records")
         elif isinstance(records, pd.Series):
             records = [records.replace({np.NaN: None}).to_dict()]
+        else:
+            raise TypeError(
+                "insert only takes pd.Series or pd.DataFrame,"
+                + " but {type(records)} was given."
+            )
 
         with SessionContext() as session:
             session.bulk_insert_mappings(cls, records)
             session.commit()
-            
+
     @classmethod
     def update(cls, records: Union[List[Dict], pd.Series, pd.DataFrame]) -> None:
         """insert bulk"""
@@ -59,14 +62,18 @@ class Mixins(Base):
             records = records.replace({np.NaN: None}).to_dict("records")
         elif isinstance(records, pd.Series):
             records = [records.replace({np.NaN: None}).to_dict()]
-
+        else:
+            raise TypeError(
+                "insert only takes pd.Series or pd.DataFrame,"
+                + " but {type(records)} was given."
+            )
         with SessionContext() as session:
             session.bulk_update_mappings(cls, records)
             session.commit()
 
     @classmethod
     def from_dict(cls, data: Dict):
-        """construct cls object from dict"""
+        """instance construct from dict"""
         return cls(**data)
 
     def dict(self) -> Dict:
@@ -102,15 +109,20 @@ class Mixins(Base):
 
 
 class StaticBase(Mixins):
-    """timestamp mixins"""
+    """abstract static mixins"""
+
     __abstract__ = True
-    created_date = sa.Column(
-        sa.DateTime, server_default=sa.func.now(), nullable=False)
+    created_date = sa.Column(sa.DateTime, server_default=sa.func.now(), nullable=False)
     last_modified_date = sa.Column(
-        sa.DateTime, server_default=sa.func.now(), nullable=False)
+        sa.DateTime, server_default=sa.func.now(), nullable=False
+    )
 
 
 class TimeSeriesBase(Mixins):
-    """abstract TimeSeries class"""
+    """abstract timeseries mixins"""
 
     __abstract__ = True
+    created_date = sa.Column(sa.DateTime, server_default=sa.func.now(), nullable=False)
+    last_modified_date = sa.Column(
+        sa.DateTime, server_default=sa.func.now(), nullable=False
+    )
