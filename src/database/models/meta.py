@@ -56,7 +56,7 @@ class Universe(StaticBase):
     meta_id = sa.Column(sa.ForeignKey("tb_equity.meta_id"), primary_key=True)
 
 
-class EquityDailyBar(StaticBase):
+class EquityDailyBar(TimeSeriesBase):
     
     __tablename__ = "tb_equity_daly_bar"
     meta_id = sa.Column(sa.ForeignKey("tb_equity.meta_id"), primary_key=True)

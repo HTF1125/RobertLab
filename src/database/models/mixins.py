@@ -1,3 +1,4 @@
+import logging
 from datetime import date, datetime
 from typing import Union, Dict, List
 from sqlalchemy.orm import Query
@@ -6,6 +7,7 @@ import numpy as np
 import pandas as pd
 from ..client import Base, SessionContext
 
+logger = logging.getLogger(__name__)
 
 def read_sql_query(query: Query, **kwargs) -> pd.DataFrame:
     """Read sql query
@@ -32,12 +34,16 @@ class Mixins(Base):
     @classmethod
     def add(cls, **kwargs) -> None:
         """add an object"""
-        with SessionContext() as session:
-            session.add(cls(**kwargs))
-            session.commit()
+        session = kwargs.pop("session", None)
+        if session is None:
+            with SessionContext() as session:
+                session.add(cls(**kwargs))
+                session.commit()
+                return
+        session.add(cls(**kwargs))
 
     @classmethod
-    def insert(cls, records: Union[List[Dict], pd.Series, pd.DataFrame]) -> None:
+    def insert(cls, records: Union[List[Dict], pd.Series, pd.DataFrame], **kwargs) -> None:
         """insert bulk"""
 
         if isinstance(records, pd.DataFrame):
@@ -49,13 +55,16 @@ class Mixins(Base):
                 "insert only takes pd.Series or pd.DataFrame,"
                 + " but {type(records)} was given."
             )
-
-        with SessionContext() as session:
-            session.bulk_insert_mappings(cls, records)
-            session.commit()
+        session = kwargs.pop("session", None)
+        if session is None:
+            with SessionContext() as session:
+                session.bulk_insert_mappings(cls, records)
+                session.commit()
+                return
+        session.bulk_insert_mappings(cls, records)
 
     @classmethod
-    def update(cls, records: Union[List[Dict], pd.Series, pd.DataFrame]) -> None:
+    def update(cls, records: Union[List[Dict], pd.Series, pd.DataFrame], **kwargs) -> None:
         """insert bulk"""
 
         if isinstance(records, pd.DataFrame):
@@ -67,9 +76,13 @@ class Mixins(Base):
                 "insert only takes pd.Series or pd.DataFrame,"
                 + " but {type(records)} was given."
             )
-        with SessionContext() as session:
-            session.bulk_update_mappings(cls, records)
-            session.commit()
+        session = kwargs.pop("session", None)
+        if session is None:
+            with SessionContext() as session:
+                session.bulk_update_mappings(cls, records)
+                session.commit()
+                return
+        session.bulk_update_mappings(cls, records)
 
     @classmethod
     def from_dict(cls, data: Dict):
@@ -88,8 +101,11 @@ class Mixins(Base):
     @classmethod
     def query(cls, **kwargs) -> Query:
         """make a query"""
-        with SessionContext() as session:
-            return session.query(cls).filter_by(**kwargs)
+        session = kwargs.pop("session", None)
+        if session is None:
+            with SessionContext() as session:
+                return session.query(cls).filter_by(**kwargs)
+        return session.query(cls).filter_by(**kwargs)
 
     @classmethod
     def query_df(cls, **kwargs) -> pd.DataFrame:
@@ -118,7 +134,7 @@ class StaticBase(Mixins):
     )
 
 
-class TimeSeriesBase(Mixins):
+class TimeSeriesBase(StaticBase):
     """abstract timeseries mixins"""
 
     __abstract__ = True

@@ -11,4 +11,9 @@ APISRC_FOLDER: str = os.path.join(PROJECT_FOLDER, "src/api")
 DOTENV_PATH: str = os.path.join(PROJECT_FOLDER, ".env")
 # Load environment variables from .env file
 load_dotenv(dotenv_path=DOTENV_PATH)
-DATABASE_URL:str = os.getenv("DATABASE_URL") or ""
+DATABASE_URL: str = (
+    os.getenv("DATABASE_URL")
+    or f"sqlite:///{os.path.join(PROJECT_FOLDER, 'src/database/database.db')}"
+)
+DATABASE_EXC: str = os.path.join(PROJECT_FOLDER, "src/database/database.xlsx")
+LOG_LEVEL: str = os.getenv("LOG_LEVEL") or "INFO"
