@@ -1,3 +1,3 @@
 
-from .analytics import f_metrics
+from .analytics import metrics
 from . import strategy

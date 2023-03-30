@@ -3,7 +3,7 @@ from typing import Optional
 import numpy as np
 import pandas as pd
 from .account import VirtualAccount
-from ..analytics import f_metrics
+from ..analytics import metrics
 from ..portfolio.optimizer import Optimizer
 
 
@@ -180,9 +180,9 @@ class Strategy:
     def analytics(self) -> pd.Series:
         return pd.concat(
             [
-                f_metrics.to_ann_returns(self.value.to_frame()),
-                f_metrics.to_ann_volatilites(self.value.to_frame()),
-                f_metrics.to_sharpe_ratios(self.value.to_frame()),
+                metrics.to_ann_return(self.value.to_frame()),
+                metrics.to_ann_volatility(self.value.to_frame()),
+                metrics.to_sharpe_ratio(self.value.to_frame()),
             ]
         )
 
@@ -226,7 +226,7 @@ class Strategy:
 class HierarchicalEqualRiskContribution(Strategy):
     def rebalance(self, **kwargs):
 
-        covariance_matrix = f_metrics.to_covariance_matrix(
+        covariance_matrix = metrics.to_covariance_matrix(
             prices=self.prices.loc[: self.date], halflife=63
         )
 
@@ -238,7 +238,7 @@ class HierarchicalEqualRiskContribution(Strategy):
 class HierarchicalRiskParity(Strategy):
     def rebalance(self, **kwargs):
 
-        covariance_matrix = f_metrics.to_covariance_matrix(
+        covariance_matrix = metrics.to_covariance_matrix(
             prices=self.prices.loc[: self.date].iloc[-252:]
         )
 
@@ -249,7 +249,7 @@ class HierarchicalRiskParity(Strategy):
 class RiskParity(Strategy):
     def rebalance(self, **kwargs):
 
-        covariance_matrix = f_metrics.to_covariance_matrix(
+        covariance_matrix = metrics.to_covariance_matrix(
             prices=self.prices.loc[: self.date],
             halflife=21,
         )
@@ -271,7 +271,7 @@ class MaxSharpe(Strategy):
 class InverseVariance(Strategy):
     def rebalance(self, **kwargs):
 
-        covariance_matrix = f_metrics.to_covariance_matrix(
+        covariance_matrix = metrics.to_covariance_matrix(
             prices=self.prices.loc[: self.date].iloc[-252:]
         )
         opt = Optimizer(covariance_matrix=covariance_matrix, **kwargs)
@@ -281,7 +281,7 @@ class InverseVariance(Strategy):
 class TargetVol(Strategy):
     def rebalance(self, **kwargs):
 
-        covariance_matrix = f_metrics.to_covariance_matrix(
+        covariance_matrix = metrics.to_covariance_matrix(
             prices=self.prices.loc[: self.date].iloc[-252:]
         )
         opt = Optimizer(covariance_matrix=covariance_matrix, **kwargs)
@@ -297,7 +297,7 @@ class Momentum(Strategy):
         momentum_1y = momentum_1y.dropna().nsmallest(6)
 
         prices = prices[momentum_1y.index]
-        covariance_matrix = f_metrics.to_covariance_matrix(prices=prices, halflife=21)
+        covariance_matrix = metrics.to_covariance_matrix(prices=prices, halflife=21)
         opt = Optimizer(covariance_matrix=covariance_matrix, **kwargs)
         return opt.hierarchical_equal_risk_contribution()
 
