@@ -6,7 +6,7 @@ from scipy.cluster.hierarchy import linkage, to_tree
 from scipy.spatial.distance import squareform
 import numpy as np
 import pandas as pd
-from src.core.analytics.metrics import cov_to_corr, recursive_bisection
+from src.core.analytics.f_metrics import cov_to_corr, recursive_bisection
 
 
 def expected_return(
@@ -486,11 +486,13 @@ class Optimizer:
             )
         )
 
-    def hierarchical_equal_risk_contribution(self) -> Optional[pd.Series]:
+    def hierarchical_equal_risk_contribution(
+        self, linkage_method: str = "single"
+    ) -> Optional[pd.Series]:
         """calculate herc weights"""
         corr = cov_to_corr(self.covariance_matrix.values)
         dist = np.sqrt((1 - corr).round(5) / 2)
-        clusters = linkage(squareform(dist), method="single")
+        clusters = linkage(squareform(dist), method=linkage_method)
         sorted_tree = list(to_tree(clusters, rd=False).pre_order())
         cluster_sets = recursive_bisection(sorted_tree)
         if not isinstance(cluster_sets, List):
@@ -521,12 +523,14 @@ class Optimizer:
 
         return weights
 
-    def hierarchical_risk_parity(self) -> Optional[pd.Series]:
+    def hierarchical_risk_parity(
+        self, linkage_method: str = "single"
+    ) -> Optional[pd.Series]:
         """calculate herc weights"""
 
         corr = cov_to_corr(self.covariance_matrix.values)
         dist = np.sqrt((1 - corr).round(5) / 2)
-        clusters = linkage(squareform(dist), method="single")
+        clusters = linkage(squareform(dist), method=linkage_method)
         sorted_tree = list(to_tree(clusters, rd=False).pre_order())
         cluster_sets = recursive_bisection(sorted_tree)
         if not isinstance(cluster_sets, List):

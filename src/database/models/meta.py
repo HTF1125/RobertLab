@@ -1,6 +1,7 @@
 import sqlalchemy as sa
 from .mixins import StaticBase, TimeSeriesBase
 
+
 class Meta(StaticBase):
     """table meta"""
 
@@ -11,6 +12,7 @@ class Meta(StaticBase):
     name = sa.Column(sa.VARCHAR(255), nullable=False)
     description = sa.Column(sa.VARCHAR(1000), nullable=True)
     deactive = sa.Column(sa.Boolean, default=False, nullable=False)
+
 
 class Source(StaticBase):
     """ticker mappings"""
@@ -57,10 +59,12 @@ class Universe(StaticBase):
 
 
 class EquityDailyBar(TimeSeriesBase):
-    
+    """equity daily bar"""
     __tablename__ = "tb_equity_daly_bar"
-    meta_id = sa.Column(sa.ForeignKey("tb_equity.meta_id"), primary_key=True)
-    date = sa.Column(sa.Date, primary_key=True, nullable=False, index=True)
+    meta_id = sa.Column(
+        sa.ForeignKey("tb_equity.meta_id"), primary_key=True, index=True
+    )
+    asofdate = sa.Column(sa.Date, primary_key=True, nullable=False, index=True)
     open = sa.Column(sa.Numeric(20, 5), nullable=True)
     high = sa.Column(sa.Numeric(20, 5), nullable=True)
     low = sa.Column(sa.Numeric(20, 5), nullable=True)
@@ -69,5 +73,3 @@ class EquityDailyBar(TimeSeriesBase):
     dvds = sa.Column(sa.Numeric(20, 5), nullable=True)
     splits = sa.Column(sa.Numeric(20, 5), nullable=True)
     tot_return = sa.Column(sa.Numeric(20, 10), nullable=True)
-    
-    

@@ -3,11 +3,17 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.ext.declarative import declarative_base
 from src.config import DATABASE_URL
+from sqlalchemy.pool import StaticPool
+
 Base = declarative_base()
 
 
 if DATABASE_URL.startswith("sqlite"):
-    engine = create_engine(url=DATABASE_URL, connect_args={"check_same_thread": False})
+    engine = create_engine(
+        url=DATABASE_URL,
+        connect_args={"check_same_thread": False},
+        # poolclass=StaticPool,
+    )
 else:
     engine = create_engine(
         url=DATABASE_URL,
@@ -33,8 +39,9 @@ def SessionContext():
     finally:
         session.close()
 
+
 def create_all():
-    """"create all database tables"""
+    """ "create all database tables"""
     Base.metadata.create_all(engine)
 
 
