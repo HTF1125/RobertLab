@@ -4,7 +4,8 @@ import numpy as np
 import pandas as pd
 from .account import VirtualAccount
 from ..analytics import metrics
-from ..portfolio.optimizer import Optimizer
+from ..analytics import utils
+from ..portfolio import optimizer
 
 
 class Strategy:
@@ -46,7 +47,7 @@ class Strategy:
             self.update_book()
 
     @staticmethod
-    def clean_weights(weights: pd.Series, num_decimal: int = 4) -> pd.Series:
+    def clean_weights(weights: pd.Series, num_decimal: int = 4, num_rebase: int = 100) -> pd.Series:
         """Clean weights based on the number decimals and maintain the total of weights.
 
         Args:
@@ -60,7 +61,7 @@ class Strategy:
         tot_weight = weights.sum().round(num_decimal)
         weights = weights.round(decimals=num_decimal)
         # repeat round and weight calculation.
-        for _ in range(10):
+        for _ in range(num_rebase):
             weights = weights / weights.sum() * tot_weight
             weights = weights.round(decimals=num_decimal)
             if weights.sum() == tot_weight:
@@ -71,6 +72,12 @@ class Strategy:
         # !!! Error may occur when there are two max weights???
         weights[np.argmax(weights)] += np.round(residual, decimals=num_decimal)
         return weights
+
+    def sell(self, asset: str, share: int) -> None:
+        
+        pass
+
+
 
     @staticmethod
     def _update_book(
@@ -132,7 +139,7 @@ class Strategy:
 
     @property
     def value(self) -> pd.Series:
-        val = pd.Series(self.account.records.value)
+        val = pd.Series(self.account.records.value).sort_index()
         val.name = "value"
         return val
 
@@ -226,11 +233,11 @@ class Strategy:
 class HierarchicalEqualRiskContribution(Strategy):
     def rebalance(self, **kwargs):
 
-        covariance_matrix = metrics.to_covariance_matrix(
+        covariance_matrix = utils.to_covariance_matrix(
             prices=self.prices.loc[: self.date], halflife=63
         )
 
-        opt = Optimizer(covariance_matrix=covariance_matrix, **kwargs)
+        opt = optimizer.Optimizer(covariance_matrix=covariance_matrix, **kwargs)
         weights = opt.hierarchical_equal_risk_contribution()
         return weights
 
@@ -238,23 +245,23 @@ class HierarchicalEqualRiskContribution(Strategy):
 class HierarchicalRiskParity(Strategy):
     def rebalance(self, **kwargs):
 
-        covariance_matrix = metrics.to_covariance_matrix(
+        covariance_matrix = utils.to_covariance_matrix(
             prices=self.prices.loc[: self.date].iloc[-252:]
         )
 
-        opt = Optimizer(covariance_matrix=covariance_matrix, **kwargs)
+        opt = optimizer.Optimizer(covariance_matrix=covariance_matrix, **kwargs)
         return opt.hierarchical_risk_parity()
 
 
 class RiskParity(Strategy):
     def rebalance(self, **kwargs):
 
-        covariance_matrix = metrics.to_covariance_matrix(
+        covariance_matrix = utils.to_covariance_matrix(
             prices=self.prices.loc[: self.date],
             halflife=21,
         )
 
-        opt = Optimizer(covariance_matrix=covariance_matrix, **kwargs)
+        opt = optimizer.Optimizer(covariance_matrix=covariance_matrix, **kwargs)
         return opt.risk_parity()
 
 
@@ -264,27 +271,27 @@ class MaxSharpe(Strategy):
         prices = self.prices.loc[: self.date].iloc[-252:]
         cov = prices.pct_change().fillna(0).cov() * (252**0.5)
         er = prices.pct_change().fillna(0).mean() * (252)
-        opt = Optimizer(expected_returns=er, covariance_matrix=cov, **kwargs)
+        opt = optimizer.Optimizer(expected_returns=er, covariance_matrix=cov, **kwargs)
         return opt.maximized_sharpe_ratio()
 
 
 class InverseVariance(Strategy):
     def rebalance(self, **kwargs):
 
-        covariance_matrix = metrics.to_covariance_matrix(
+        covariance_matrix = utils.to_covariance_matrix(
             prices=self.prices.loc[: self.date].iloc[-252:]
         )
-        opt = Optimizer(covariance_matrix=covariance_matrix, **kwargs)
+        opt = optimizer.Optimizer(covariance_matrix=covariance_matrix, **kwargs)
         return opt.inverse_variance()
 
 
 class TargetVol(Strategy):
     def rebalance(self, **kwargs):
 
-        covariance_matrix = metrics.to_covariance_matrix(
+        covariance_matrix = utils.to_covariance_matrix(
             prices=self.prices.loc[: self.date].iloc[-252:]
         )
-        opt = Optimizer(covariance_matrix=covariance_matrix, **kwargs)
+        opt = optimizer.Optimizer(covariance_matrix=covariance_matrix, **kwargs)
         return opt.minimized_volatility()
 
 
@@ -297,8 +304,8 @@ class Momentum(Strategy):
         momentum_1y = momentum_1y.dropna().nsmallest(6)
 
         prices = prices[momentum_1y.index]
-        covariance_matrix = metrics.to_covariance_matrix(prices=prices, halflife=21)
-        opt = Optimizer(covariance_matrix=covariance_matrix, **kwargs)
+        covariance_matrix = utils.to_covariance_matrix(prices=prices, halflife=21)
+        opt = optimizer.Optimizer(covariance_matrix=covariance_matrix, **kwargs)
         return opt.hierarchical_equal_risk_contribution()
 
 

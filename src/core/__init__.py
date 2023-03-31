@@ -1,3 +1,4 @@
 
 from .analytics import metrics
-from . import strategy
+from .portfolio import Optimizer
+from .strategy import Strategy

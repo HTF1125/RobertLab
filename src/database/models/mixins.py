@@ -56,6 +56,7 @@ class Mixins(Base):
                 + " but {type(records)} was given."
             )
         session = kwargs.pop("session", None)
+        print(f"insert into {cls.__tablename__}: {len(records)} records.")
         if session is None:
             with SessionContext() as session:
                 session.bulk_insert_mappings(cls, records)
