@@ -1,6 +1,7 @@
 from typing import Optional
 import numpy as np
 import pandas as pd
+from ...ext.periods import AnnFactor
 
 
 def vectorize(func):
@@ -14,11 +15,14 @@ def vectorize(func):
             prices = kwargs.get("prices")
             del kwargs["prices"]
         if isinstance(prices, pd.DataFrame):
-            return prices.apply(func, *args, **kwargs)
+            out = prices.apply(func, *args, **kwargs)
+            out.name = func.__name__.replace("to_", "")
+            return out
         elif isinstance(prices, pd.Series):
             return func(*args, prices=prices, **kwargs)
         else:
             raise TypeError("prices must be pd.Series or pd.DataFrame.")
+
     return wrapper
 
 
@@ -71,32 +75,30 @@ def to_cum_return(prices: pd.Series) -> float:
 
 
 @vectorize
-def to_ann_return(prices: pd.Series) -> float:
+def to_ann_return(prices: pd.Series, ann_factor: float = AnnFactor.daily) -> float:
     """calculate annualized return"""
-    return (1 + to_cum_return(prices=prices)) ** (1 / to_num_year(prices=prices)) - 1
+    return np.exp(to_log_return(prices=prices).mean() * ann_factor) - 1
 
 
 @vectorize
-def to_ann_variance(prices: pd.Series, ann_factor: Optional[float] = None) -> float:
+def to_ann_variance(prices: pd.Series, ann_factor: float = AnnFactor.daily) -> float:
     """calculate annualized variance"""
-    if not ann_factor:
-        ann_factor = to_ann_factor(prices=prices)
     return to_pri_return(prices=prices).var() * ann_factor
 
 
 @vectorize
-def to_ann_volatility(prices: pd.Series, ann_factor: Optional[float] = None) -> float:
+def to_ann_volatility(prices: pd.Series, ann_factor: float = AnnFactor.daily) -> float:
     """calculate annualized volatility"""
-    if not ann_factor:
-        ann_factor = to_ann_factor(prices=prices)
+
     return to_ann_variance(prices=prices, ann_factor=ann_factor) ** 0.5
 
 
 @vectorize
-def to_ann_semi_variance(prices: pd.Series, ann_factor: Optional[float] = None) -> float:
+def to_ann_semi_variance(
+    prices: pd.Series, ann_factor: float = AnnFactor.daily
+) -> float:
     """calculate annualized semi volatility"""
-    if not ann_factor:
-        ann_factor = to_ann_factor(prices=prices)
+
     pri_return = to_pri_return(prices=prices)
     semi_pri_return = pri_return[pri_return >= 0]
     return semi_pri_return.var() * ann_factor
@@ -104,11 +106,10 @@ def to_ann_semi_variance(prices: pd.Series, ann_factor: Optional[float] = None) 
 
 @vectorize
 def to_ann_semi_volatility(
-    prices: pd.Series, ann_factor: Optional[float] = None
+    prices: pd.Series, ann_factor: float = AnnFactor.daily
 ) -> float:
     """calculate annualized semi volatility"""
-    if not ann_factor:
-        ann_factor = to_ann_factor(prices=prices)
+
     return to_ann_semi_variance(prices=prices, ann_factor=ann_factor) ** 0.5
 
 
@@ -126,21 +127,21 @@ def to_max_drawdown(prices: pd.Series, min_periods: Optional[int] = None) -> flo
 
 @vectorize
 def to_sharpe_ratio(
-    prices: pd.Series, risk_free: float = 0.0, ann_factor: Optional[float] = None
+    prices: pd.Series, risk_free: float = 0.0, ann_factor: float = AnnFactor.daily
 ) -> float:
     """calculate sharpe ratio"""
-    if not ann_factor:
-        ann_factor = to_ann_factor(prices=prices)
+
     excess_return = to_ann_return(prices=prices) - risk_free
     return excess_return / to_ann_volatility(prices=prices, ann_factor=ann_factor)
 
 
 @vectorize
-def to_sortino_ratio(prices: pd.Series, ann_factor: Optional[float] = None) -> float:
+def to_sortino_ratio(prices: pd.Series, ann_factor: float = AnnFactor.daily) -> float:
     """calculate sortino ratio"""
-    if not ann_factor:
-        ann_factor = to_ann_factor(prices=prices)
-    return to_ann_return(prices=prices) / to_ann_semi_volatility(prices=prices)
+
+    return to_ann_return(prices=prices, ann_factor=ann_factor) / to_ann_semi_volatility(
+        prices=prices, ann_factor=ann_factor
+    )
 
 
 @vectorize
@@ -150,14 +151,18 @@ def to_tail_ratio(prices: pd.Series, alpha: float = 0.05) -> float:
 
 
 @vectorize
-def to_skewness(prices: pd.Series) -> float:
+def to_skewness(prices: pd.Series, log_return: bool = False) -> float:
     """calculate skewness"""
+    if log_return:
+        return to_log_return(prices=prices).skew()
     return to_pri_return(prices=prices).skew()
 
 
 @vectorize
-def to_kurtosis(prices: pd.Series) -> float:
+def to_kurtosis(prices: pd.Series, log_return: bool = False) -> float:
     """calculate kurtosis"""
+    if log_return:
+        return to_log_return(prices=prices).kurt()
     return to_pri_return(prices=prices).kurt()
 
 
@@ -173,5 +178,3 @@ def to_conditional_value_at_risk(prices: pd.Series, alpha: float = 0.05) -> floa
     pri_return = to_pri_return(prices=prices)
     var = pri_return.quantile(q=alpha)
     return pri_return[pri_return < var].mean()
-
-

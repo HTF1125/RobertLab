@@ -4,8 +4,9 @@ import numpy as np
 import pandas as pd
 from .account import VirtualAccount
 from ..analytics import metrics
-from ..analytics import utils
+from ..analytics import estimators
 from ..portfolio import optimizer
+from ..ext.progress import terminal_progress
 
 
 class Strategy:
@@ -19,15 +20,20 @@ class Strategy:
         initial_investment: float = 1000.0,
         min_num_asset: int = 2,
         min_num_period: int = 252,
+        weights_bm: Optional[pd.Series] = None,
     ) -> None:
         self.account = VirtualAccount(initial_investment=initial_investment)
 
         self.prices = prices.ffill()
-        self.date = prices.index[0]
         self.reb_frequency = reb_frequency
         self.bar_frequency = bar_frequency
         self.min_num_asset = min_num_asset
         self.min_num_period = min_num_period
+
+    @property
+    def current_bar(self) -> pd.Series:
+        """get the current bar"""
+        return self.prices.loc[self.account.date]
 
     @property
     def reb_prices(self) -> pd.DataFrame:
@@ -43,11 +49,37 @@ class Strategy:
     def date(self, date: pd.Timestamp) -> None:
         """date property"""
         self.account.date = date
-        if date in self.prices.index:
-            self.update_book()
+
+    ################################################################################
+
+    @property
+    def value(self) -> pd.Series:
+        val = pd.Series(self.account.records.value).sort_index()
+        val.name = "value"
+        return val
+
+    @property
+    def weights(self) -> pd.Series:
+        return pd.DataFrame(self.account.records.weights).T.sort_index()
+
+    @property
+    def capitals(self) -> pd.Series:
+        return pd.DataFrame(self.account.records.capitals).T.sort_index()
+
+    @property
+    def profits(self) -> pd.Series:
+        return pd.DataFrame(self.account.records.profits).T.sort_index()
+
+    @property
+    def allocations(self) -> pd.Series:
+        return pd.DataFrame(self.account.records.allocations).T.sort_index()
+
+    ################################################################################
 
     @staticmethod
-    def clean_weights(weights: pd.Series, num_decimal: int = 4, num_rebase: int = 100) -> pd.Series:
+    def clean_weights(
+        weights: pd.Series, num_decimal: int = 4, num_rebase: int = 100
+    ) -> pd.Series:
         """Clean weights based on the number decimals and maintain the total of weights.
 
         Args:
@@ -72,76 +104,6 @@ class Strategy:
         # !!! Error may occur when there are two max weights???
         weights[np.argmax(weights)] += np.round(residual, decimals=num_decimal)
         return weights
-
-    def sell(self, asset: str, share: int) -> None:
-        
-        pass
-
-
-
-    @staticmethod
-    def _update_book(
-        value: float,
-        shares: Optional[pd.Series],
-        capitals: Optional[pd.Series],
-        prices: Optional[pd.Series],
-        allocations: Optional[pd.Series],
-    ):
-        if shares is not None:
-            new_capitals = shares.multiply(prices)
-            if capitals is not None:
-                profits = new_capitals.subtract(capitals)
-                new_value = value + profits.sum()
-            else:
-                new_value = value
-            new_weights = new_capitals.multiply(1 / new_value)
-        else:
-            new_value = value
-        new_shares = shares
-        if allocations is not None:
-            if new_weights is not None:
-                trades = allocations.subtract(new_weights, fill_value=0).abs()
-            else:
-                trades = allocations.abs()
-            new_weights = allocations
-            new_capitals = new_weights.multiply(new_value)
-            new_shares = capitals.divide(prices)
-        new_allocations = None
-        return {
-            "value": new_value,
-            "shares": new_shares,
-            "capitals": new_capitals,
-            "weights": new_weights,
-            "allocations": new_allocations,
-            "trades": trades,
-            "profits": profits,
-        }
-
-    def update_book(self) -> None:
-        if self.account.shares is not None:
-            capitals = self.account.shares * self.prices.loc[self.date].dropna()
-            if self.account.capitals is not None:
-                self.account.profits = capitals.dropna() - self.account.capitals
-                self.account.value += self.account.profits.sum()
-            self.account.capitals = capitals
-            self.account.weights = self.account.capitals.divide(self.account.value)
-        if self.account.allocations is not None:
-            if self.account.weights is not None:
-                self.account.trades = self.account.allocations.subtract(
-                    self.account.weights, fill_value=0
-                ).abs()
-            else:
-                self.account.trades = self.account.allocations
-            self.account.weights = self.account.allocations
-            self.account.capitals = self.account.value * self.account.weights
-            self.account.shares = self.account.capitals.divide(self.prices.loc[self.date].dropna())
-            self.account.allocations = None
-
-    @property
-    def value(self) -> pd.Series:
-        val = pd.Series(self.account.records.value).sort_index()
-        val.name = "value"
-        return val
 
     def rebalance(self, **kwargs) -> pd.Series:
         """Default rebalancing method"""
@@ -168,9 +130,24 @@ class Strategy:
         num_bar_dates = len(bar_dates)
         make_rebalance = True
         for idx, self.date in enumerate(bar_dates, 1):
-            self.terminal_progress(
-                idx, num_bar_dates, "simulate", f"{self.account.value:.2f}"
+            terminal_progress(
+                current_bar=idx,
+                total_bar=num_bar_dates,
+                prefix="simulate",
+                suffix=f"{self.account.value:.2f}",
             )
+            if self.date in self.prices.index:
+                self.account.prices = self.current_bar
+                if not self.account.allocations.empty:
+                    self.account.trades = self.account.allocations.subtract(
+                        self.account.weights, fill_value=0
+                    ).abs()
+                    self.account.weights = self.account.allocations
+                    self.account.capitals = self.account.value * self.account.weights
+                    self.account.shares = self.account.capitals.divide(
+                        self.prices.loc[self.date].dropna()
+                    )
+                    self.account.allocations = None
             if self.date in reb_dates:
                 make_rebalance = True
             if make_rebalance:
@@ -233,11 +210,18 @@ class Strategy:
 class HierarchicalEqualRiskContribution(Strategy):
     def rebalance(self, **kwargs):
 
-        covariance_matrix = utils.to_covariance_matrix(
-            prices=self.prices.loc[: self.date], halflife=63
+        covariance_matrix = estimators.to_covariance_matrix(
+            prices=self.reb_prices, halflife=63
+        )
+        correlation_matrix = estimators.to_correlation_matrix(
+            prices=self.reb_prices, halflife=63
         )
 
-        opt = optimizer.Optimizer(covariance_matrix=covariance_matrix, **kwargs)
+        opt = optimizer.Optimizer(
+            covariance_matrix=covariance_matrix,
+            correlation_matrix=correlation_matrix,
+            **kwargs,
+        )
         weights = opt.hierarchical_equal_risk_contribution()
         return weights
 
@@ -245,23 +229,36 @@ class HierarchicalEqualRiskContribution(Strategy):
 class HierarchicalRiskParity(Strategy):
     def rebalance(self, **kwargs):
 
-        covariance_matrix = utils.to_covariance_matrix(
-            prices=self.prices.loc[: self.date].iloc[-252:]
+        covariance_matrix = estimators.to_covariance_matrix(
+            prices=self.reb_prices, halflife=63
+        )
+        correlation_matrix = estimators.to_correlation_matrix(
+            prices=self.reb_prices, halflife=63
         )
 
-        opt = optimizer.Optimizer(covariance_matrix=covariance_matrix, **kwargs)
+        opt = optimizer.Optimizer(
+            covariance_matrix=covariance_matrix,
+            correlation_matrix=correlation_matrix,
+            **kwargs,
+        )
         return opt.hierarchical_risk_parity()
 
 
 class RiskParity(Strategy):
     def rebalance(self, **kwargs):
 
-        covariance_matrix = utils.to_covariance_matrix(
-            prices=self.prices.loc[: self.date],
-            halflife=21,
+        covariance_matrix = estimators.to_covariance_matrix(
+            prices=self.reb_prices, halflife=63
+        )
+        correlation_matrix = estimators.to_correlation_matrix(
+            prices=self.reb_prices, halflife=63
         )
 
-        opt = optimizer.Optimizer(covariance_matrix=covariance_matrix, **kwargs)
+        opt = optimizer.Optimizer(
+            covariance_matrix=covariance_matrix,
+            correlation_matrix=correlation_matrix,
+            **kwargs,
+        )
         return opt.risk_parity()
 
 
@@ -278,7 +275,7 @@ class MaxSharpe(Strategy):
 class InverseVariance(Strategy):
     def rebalance(self, **kwargs):
 
-        covariance_matrix = utils.to_covariance_matrix(
+        covariance_matrix = estimators.to_covariance_matrix(
             prices=self.prices.loc[: self.date].iloc[-252:]
         )
         opt = optimizer.Optimizer(covariance_matrix=covariance_matrix, **kwargs)
@@ -288,7 +285,7 @@ class InverseVariance(Strategy):
 class TargetVol(Strategy):
     def rebalance(self, **kwargs):
 
-        covariance_matrix = utils.to_covariance_matrix(
+        covariance_matrix = estimators.to_covariance_matrix(
             prices=self.prices.loc[: self.date].iloc[-252:]
         )
         opt = optimizer.Optimizer(covariance_matrix=covariance_matrix, **kwargs)
@@ -304,7 +301,7 @@ class Momentum(Strategy):
         momentum_1y = momentum_1y.dropna().nsmallest(6)
 
         prices = prices[momentum_1y.index]
-        covariance_matrix = utils.to_covariance_matrix(prices=prices, halflife=21)
+        covariance_matrix = estimators.to_covariance_matrix(prices=prices, halflife=21)
         opt = optimizer.Optimizer(covariance_matrix=covariance_matrix, **kwargs)
         return opt.hierarchical_equal_risk_contribution()
 

@@ -1,3 +1,31 @@
 {
-    "python.formatting.provider": "black"
+    // Window Editor
+    "editor.rulers": [80],
+    "editor.cursorStyle": "line-thin",
+    "editor.fontFamily":"JetBrains Mono",
+    "editor.fontSize":15,
+    "editor.fontLigatures":true,
+    "editor.codeLensFontFamily": "JetBrains Mono",
+
+    // Git
+    "git.autofetch": true,
+    "diffEditor.ignoreTrimWhitespace": true,
+
+    // Python
+    "autoDocstring.docstringFormat": "google",
+    "autoDocstring.guessTypes": true,
+    "autoDocstring.generateDocstringOnEnter": true,
+    "python.linting.enabled": true,
+    "python.linting.flake8Enabled": false,
+    "python.formatting.provider": "black",
+    "python.analysis.typeCheckingMode": "basic",
+
+    // Terminal
+    "terminal.integrated.fontFamily":"JetBrains Mono",
+    "terminal.integrated.fontSize":15,
+    "editor.minimap.enabled":true,
+
+    // Files
+    "files.autoSave":"afterDelay",
+    "files.trimTrailingWhitespace": true,
 }

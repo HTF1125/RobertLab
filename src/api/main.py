@@ -17,7 +17,7 @@ app = FastAPI(
     title="RoboAdvisor",
     description="Robo-Advisor for Wealth Management",
     version="0.0.1",
-    contact={"name": "robert", "email": "roberthan1125@gmail.com"},
+    contact={"name": "robert", "email": "hantianfeng@outlook.com"},
     openapi_url="/api/v1/openapi.json",
 )
 

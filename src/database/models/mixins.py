@@ -2,9 +2,9 @@ import logging
 from datetime import date, datetime
 from typing import Union, Dict, List
 from sqlalchemy.orm import Query
-import sqlalchemy as sa
 import numpy as np
 import pandas as pd
+import sqlalchemy as sa
 from ..client import Base, SessionContext
 
 logger = logging.getLogger(__name__)
@@ -90,14 +90,16 @@ class Mixins(Base):
         """instance construct from dict"""
         return cls(**data)
 
-    def dict(self) -> Dict:
-        """converty database table row to dict"""
+    def to_dict(self) -> Dict:
+        """Convert database table row to dictionary."""
+        mapper = sa.inspect(self.__class__)
         return {
-            c.key: getattr(self, c.key).isoformat()
-            if isinstance(getattr(self, c.key), (date, datetime))
-            else getattr(self, c.key)
-            for c in sa.inspect(self).mapper.sa.column_attrs
+            column.key: getattr(self, column.key).isoformat()
+            if isinstance(getattr(self, column.key), (date, datetime))
+            else getattr(self, column.key)
+            for column in mapper.columns
         }
+
 
     @classmethod
     def query(cls, **kwargs) -> Query:

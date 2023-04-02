@@ -42,20 +42,24 @@ def expected_volatility(
     sub_covariance_matrix_idx: Optional[List] = None,
 ) -> float:
     """risk contributions"""
-
     if sub_covariance_matrix_idx:
         sub_covariance_matrix = covariance_matrix.copy()
-        for i, row in enumerate(covariance_matrix):
-            for j, _ in enumerate(row):
+        for i, row in enumerate(sub_covariance_matrix, start=0):
+            for j, _ in enumerate(row, start=0):
                 if (
                     i not in sub_covariance_matrix_idx
                     and j not in sub_covariance_matrix_idx
                 ):
                     sub_covariance_matrix[i, j] = 0
-        return np.sqrt(
-            expected_variance(weights=weights, covariance_matrix=sub_covariance_matrix)
+        var = expected_variance(
+            weights=weights, covariance_matrix=sub_covariance_matrix
         )
-
+        if var < 0:
+            var = 0
+        std = np.sqrt(var)
+        if std == np.nan:
+            return 0
+        return std
     return np.sqrt(
         expected_variance(weights=weights, covariance_matrix=covariance_matrix)
     )

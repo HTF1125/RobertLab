@@ -7,16 +7,28 @@ from scipy.spatial.distance import squareform
 import numpy as np
 import pandas as pd
 from . import objectives
+from ..analytics import estimators
 from ..analytics.utils import cov_to_corr, recursive_bisection
 
 
 class Optimizer:
     """portfolio optimizer"""
 
+    @classmethod
+    def from_prices(cls, prices: pd.DataFrame, **kwargs):
+
+        return cls(
+            expected_returns=estimators.to_expected_returns(prices=prices),
+            covariance_matrix=estimators.to_covariance_matrix(prices=prices),
+            correlation_matrix=estimators.to_correlation_matrix(prices=prices),
+            **kwargs,
+        )
+
     def __init__(
         self,
         expected_returns: Optional[pd.Series] = None,
         covariance_matrix: Optional[pd.DataFrame] = None,
+        correlation_matrix: Optional[pd.DataFrame] = None,
         risk_free: float = 0.0,
         prices: Optional[pd.DataFrame] = None,
         prices_bm: Optional[pd.Series] = None,
@@ -36,7 +48,7 @@ class Optimizer:
 
         self.expected_returns = expected_returns
         self.covariance_matrix = covariance_matrix
-
+        self.correlation_matrix = correlation_matrix
         self.prices = prices
         self.risk_free = risk_free
         self.prices_bm = prices_bm
@@ -86,6 +98,20 @@ class Optimizer:
         if covariance_matrix is not None:
             self.assets = self.covariance_matrix.index
             self.assets = self.covariance_matrix.columns
+
+    @property
+    def correlation_matrix(self) -> pd.DataFrame:
+        """covariance_matrix"""
+        return self._correlation_matrix
+
+    @correlation_matrix.setter
+    def correlation_matrix(
+        self, correlation_matrix: Optional[pd.DataFrame] = None
+    ) -> None:
+        self._correlation_matrix = correlation_matrix
+        if correlation_matrix is not None:
+            self.assets = self.correlation_matrix.index
+            self.assets = self.correlation_matrix.columns
 
     @property
     def prices(self) -> pd.DataFrame:
@@ -353,9 +379,7 @@ class Optimizer:
         self, linkage_method: str = "single"
     ) -> Optional[pd.Series]:
         """calculate herc weights"""
-
-        corr = cov_to_corr(self.covariance_matrix.values)
-        dist = np.sqrt((1 - corr).round(5) / 2)
+        dist = np.sqrt((1 - self.correlation_matrix.values).round(5) / 2)
         clusters = linkage(squareform(dist), method=linkage_method)
         sorted_tree = list(to_tree(clusters, rd=False).pre_order())
         cluster_sets = recursive_bisection(sorted_tree)

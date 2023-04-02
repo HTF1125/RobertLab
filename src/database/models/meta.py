@@ -1,8 +1,5 @@
 import sqlalchemy as sa
-from sqlalchemy.sql import select
-from sqlalchemy.ext.hybrid import hybrid_property
 from .mixins import StaticBase, TimeSeriesBase
-from ..client import SessionContext
 
 class Meta(StaticBase):
     """table meta"""
@@ -75,14 +72,3 @@ class EquityDailyBar(TimeSeriesBase):
     dvds = sa.Column(sa.Numeric(20, 5), nullable=True)
     splits = sa.Column(sa.Numeric(20, 5), nullable=True)
     tot_return = sa.Column(sa.Numeric(20, 10), nullable=True)
-
-    @classmethod
-    def latest(cls, ticker: str) -> "EquityDailyBar":
-        
-        with SessionContext() as session:
-            
-            query = session.query(
-                sa.func.max(cls.date)
-            ).select_from(cls).join(Meta, Meta.id == cls.meta_id).filter(Meta.ticker==ticker)
-            
-            return query.scalar()
