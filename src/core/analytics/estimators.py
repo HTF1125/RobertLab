@@ -6,10 +6,15 @@ from ..ext.periods import AnnFactor
 
 
 def to_expected_returns(prices: pd.DataFrame) -> pd.Series:
-    """
+    """Calculates the expected returns from a DataFrame of prices.
+
+    Args:
+        prices (pd.DataFrame): A DataFrame of asset prices.
+
+    Returns:
+        pd.Series: A Series of expected returns.
     """
     return to_ann_return(prices=prices)
-
 
 def exponential_alpha(
     com: Optional[float] = None,

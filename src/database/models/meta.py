@@ -1,13 +1,28 @@
+from uuid import uuid4
 import sqlalchemy as sa
 from .mixins import StaticBase, TimeSeriesBase
+
 
 class Meta(StaticBase):
     """table meta"""
 
     __tablename__ = "tb_meta"
 
-    id = sa.Column(sa.Integer, primary_key=True, autoincrement=True)
-    ticker = sa.Column(sa.VARCHAR(255), nullable=False)
+    id = sa.Column(
+        sa.Integer,
+        sa.Identity(start=1),
+        primary_key=True,
+        comment="Internal Meta Id",
+        docs="The ID is used universally in the database.",
+    )
+    ticker = sa.Column(sa.VARCHAR(255), unique=True, nullable=False)
+    isin = sa.Column(
+        sa.CHAR(12),
+        unique=True,
+        nullable=False,
+        comment="ISIN Code: with CountryCode(2); SecuritySpecificCode(9); CheckingNo(1)",
+        doc="International Securities Identification Number (ISIN)",
+    )
     name = sa.Column(sa.VARCHAR(255), nullable=False)
     description = sa.Column(sa.VARCHAR(1000), nullable=True)
     deactive = sa.Column(sa.Boolean, default=False, nullable=False)
@@ -59,6 +74,7 @@ class Universe(StaticBase):
 
 class EquityDailyBar(TimeSeriesBase):
     """equity daily bar"""
+
     __tablename__ = "tb_equity_daly_bar"
     meta_id = sa.Column(
         sa.ForeignKey("tb_equity.meta_id"), primary_key=True, index=True

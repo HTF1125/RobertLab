@@ -1,31 +1,20 @@
 
-
-
-import urllib.request
-
-def access_to_internet(host='http://google.com'):
-    try:
-        urllib.request.urlopen(host) #Python 3.x
-        return True
-    except:
-        return False
-
-
-
-
-from src import db
+import requests
 import pandas as pd
 import sqlalchemy as sa
-import yfinance as yf
-import pandas_datareader as pdr
-
-db.client.conn.create_all()
-
 from datetime import date, timedelta
 from dateutil import parser
-
+from src import db
+import yfinance as yf
+import pandas_datareader as pdr
 today = date.today()
 last_working_day = today - timedelta(days=today.weekday() % 7 or 1)
+
+
+
+
+
+
 
 with db.SessionContext() as session:
     for meta in db.models.Meta.query(session=session).all():
@@ -94,3 +83,30 @@ with db.SessionContext() as session:
         print(hist)
         db.models.EquityDailyBar.insert(hist, session=session)
         session.commit()
+
+
+
+def has_internet_connection(url="http://www.google.com/", timeout=5):
+    """_summary_
+
+    Args:
+        url (str, optional): _description_. Defaults to 'http://www.google.com/'.
+        timeout (int, optional): _description_. Defaults to 5.
+
+    Returns:
+        _type_: _description_
+    """
+    try:
+        response = requests.get(url, timeout=timeout)
+        response.raise_for_status()
+        return True
+    except requests.HTTPError as error:
+        print("HTTP error: ", error)
+    except requests.ConnectionError as error:
+        print("Connection error: ", error)
+    except requests.Timeout as error:
+        print("Timeout error: ", error)
+    except requests.RequestException as error:
+        print("Request exception: ", error)
+    print("Internet connection is inactive")
+    return False

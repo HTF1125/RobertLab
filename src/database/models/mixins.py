@@ -9,6 +9,7 @@ from ..client import Base, SessionContext
 
 logger = logging.getLogger(__name__)
 
+
 def read_sql_query(query: Query, **kwargs) -> pd.DataFrame:
     """Read sql query
 
@@ -43,13 +44,19 @@ class Mixins(Base):
         session.add(cls(**kwargs))
 
     @classmethod
-    def insert(cls, records: Union[List[Dict], pd.Series, pd.DataFrame], **kwargs) -> None:
+    def insert(
+        cls, records: Union[List[Dict], pd.Series, pd.DataFrame], **kwargs
+    ) -> None:
         """insert bulk"""
 
         if isinstance(records, pd.DataFrame):
             records = records.replace({np.NaN: None}).to_dict("records")
         elif isinstance(records, pd.Series):
             records = [records.replace({np.NaN: None}).to_dict()]
+        elif isinstance(records, list):
+            ...
+        elif isinstance(records, dict):
+            records = [records]
         else:
             raise TypeError(
                 "insert only takes pd.Series or pd.DataFrame,"
@@ -65,7 +72,9 @@ class Mixins(Base):
         session.bulk_insert_mappings(cls, records)
 
     @classmethod
-    def update(cls, records: Union[List[Dict], pd.Series, pd.DataFrame], **kwargs) -> None:
+    def update(
+        cls, records: Union[Dict, List[Dict], pd.Series, pd.DataFrame], **kwargs
+    ) -> None:
         """insert bulk"""
 
         if isinstance(records, pd.DataFrame):
@@ -100,7 +109,6 @@ class Mixins(Base):
             for column in mapper.columns
         }
 
-
     @classmethod
     def query(cls, **kwargs) -> Query:
         """make a query"""
@@ -133,7 +141,10 @@ class StaticBase(Mixins):
     __abstract__ = True
     created_date = sa.Column(sa.DateTime, server_default=sa.func.now(), nullable=False)
     last_modified_date = sa.Column(
-        sa.DateTime, server_default=sa.func.now(), nullable=False
+        sa.DateTime,
+        server_default=sa.func.now(),
+        server_onupdate=sa.func.now(),
+        nullable=False,
     )
 
 
@@ -143,5 +154,8 @@ class TimeSeriesBase(StaticBase):
     __abstract__ = True
     created_date = sa.Column(sa.DateTime, server_default=sa.func.now(), nullable=False)
     last_modified_date = sa.Column(
-        sa.DateTime, server_default=sa.func.now(), nullable=False
+        sa.DateTime,
+        server_default=sa.func.now(),
+        server_onupdate=sa.func.now(),
+        nullable=False,
     )
