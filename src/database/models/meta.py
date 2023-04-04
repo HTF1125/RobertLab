@@ -1,4 +1,3 @@
-from uuid import uuid4
 import sqlalchemy as sa
 from .mixins import StaticBase, TimeSeriesBase
 

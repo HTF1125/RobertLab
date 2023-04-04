@@ -19,3 +19,4 @@ DATABASE_URL: str = (
 )
 DATABASE_EXC: str = os.path.join(DATABASE_FOLDER, "database.xlsx")
 LOG_LEVEL: str = os.getenv("LOG_LEVEL") or "INFO"
+EDGAR_API: str = os.getenv("EDGAR_API") or None
