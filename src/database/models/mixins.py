@@ -139,23 +139,46 @@ class StaticBase(Mixins):
     """abstract static mixins"""
 
     __abstract__ = True
-    created_date = sa.Column(sa.DateTime, server_default=sa.func.now(), nullable=False)
+    created_date = sa.Column(
+        sa.DateTime,
+        server_default=sa.func.now(),
+        nullable=False,
+        comment="Last Modified Datetime.",
+        doc="Last Modified Datetime.",
+    )
     last_modified_date = sa.Column(
         sa.DateTime,
         server_default=sa.func.now(),
         server_onupdate=sa.func.now(),
         nullable=False,
+        comment="Last Modified Datetime.",
+        doc="Last Modified Datetime.",
+    )
+    memo = sa.Column(
+        sa.VARCHAR(1000),
+        unique=False,
+        nullable=True,
+        comment="Additional Comments.",
+        doc="Additional Comments.",
     )
 
 
-class TimeSeriesBase(StaticBase):
+class TimeSeriesBase(Mixins):
     """abstract timeseries mixins"""
 
     __abstract__ = True
-    created_date = sa.Column(sa.DateTime, server_default=sa.func.now(), nullable=False)
+    created_date = sa.Column(
+        sa.DateTime,
+        server_default=sa.func.now(),
+        nullable=False,
+        comment="Last Modified Datetime.",
+        doc="Last Modified Datetime.",
+    )
     last_modified_date = sa.Column(
         sa.DateTime,
         server_default=sa.func.now(),
         server_onupdate=sa.func.now(),
         nullable=False,
+        comment="Last Modified Datetime.",
+        doc="Last Modified Datetime.",
     )

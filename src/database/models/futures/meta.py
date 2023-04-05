@@ -1,6 +1,7 @@
 import enum
 import sqlalchemy as sa
 from ..mixins import StaticBase
+from ...client import SessionContext
 
 
 class MetaCategory(enum.Enum):
@@ -11,7 +12,6 @@ class MetaCategory(enum.Enum):
     STOCK = "STOCK"
     INDEX = "INDEX"
     NOTSET = "NOTSET"
-
 
 
 class Meta(StaticBase):
@@ -59,13 +59,6 @@ class Meta(StaticBase):
         comment="Description for the Meta",
         docs="Description for the Meta",
     )
-    memo = sa.Column(
-        sa.VARCHAR(1000),
-        unique=False,
-        nullable=True,
-        comment="Additional Comments.",
-        docs="Additional Comments.",
-    )
     deactive = sa.Column(
         sa.Boolean,
         nullable=False,
@@ -75,6 +68,3 @@ class Meta(StaticBase):
 
     def __str__(self) -> str:
         return f"<Meta id={self.meta_id} code={self.code} name={self.name}>"
-
-
-
