@@ -6,7 +6,6 @@ import uvicorn
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.abspath(__file__), "../..")))
 
-from src import app
 
 
 ####################################################################################################
@@ -18,4 +17,4 @@ args = parse.parse_args()
 
 
 if not args.script:
-    uvicorn.run(app=app)
+    uvicorn.run(app="src.api.main:app", reload=True)

@@ -5,7 +5,9 @@ from sqlalchemy.orm import Query
 import numpy as np
 import pandas as pd
 import sqlalchemy as sa
-from ..client import Base, SessionContext
+from ..client import SessionContext, Base
+
+
 
 logger = logging.getLogger(__name__)
 

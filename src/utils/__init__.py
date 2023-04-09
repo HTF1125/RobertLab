@@ -4,7 +4,7 @@ import pandas as pd
 import sqlalchemy as sa
 from datetime import date, timedelta
 from dateutil import parser
-from src import db
+from src import database
 import yfinance as yf
 import pandas_datareader as pdr
 today = date.today()
@@ -16,15 +16,15 @@ last_working_day = today - timedelta(days=today.weekday() % 7 or 1)
 
 
 
-with db.SessionContext() as session:
-    for meta in db.models.Meta.query(session=session).all():
+with database.SessionContext() as session:
+    for meta in database.models.Meta.query(session=session).all():
         print(meta.id)
 
         latest_record = (
-            session.query(sa.func.max(db.models.EquityDailyBar.date))
-            .select_from(db.models.EquityDailyBar)
-            .join(db.models.Meta, db.models.Meta.id == db.models.EquityDailyBar.meta_id)
-            .filter(db.models.Meta.ticker == meta.ticker)
+            session.query(sa.func.max(database.models.EquityDailyBar.date))
+            .select_from(database.models.EquityDailyBar)
+            .join(database.models.Meta, database.models.Meta.id == database.models.EquityDailyBar.meta_id)
+            .filter(database.models.Meta.ticker == meta.ticker)
             .scalar()
         )
 
@@ -32,7 +32,7 @@ with db.SessionContext() as session:
             if latest_record >= last_working_day:
                 continue
 
-        source = db.models.Source.query(meta_id=meta.id).one_or_none()
+        source = database.models.Source.query(meta_id=meta.id).one_or_none()
 
         if not source or source.source == "NOTSET":
             continue
@@ -81,7 +81,7 @@ with db.SessionContext() as session:
         if latest_record:
             hist = hist.loc[hist.date > parser.parse(str(latest_record))]
         print(hist)
-        db.models.EquityDailyBar.insert(hist, session=session)
+        database.models.EquityDailyBar.insert(hist, session=session)
         session.commit()
 
 

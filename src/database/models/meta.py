@@ -3,7 +3,7 @@ import sqlalchemy as sa
 from .mixins import StaticBase
 
 
-class MetaCategory(enum.Enum):
+class MetaType(enum.Enum):
     """metadata categories"""
 
     MACRO = "MACRO"
@@ -28,6 +28,14 @@ class Meta(StaticBase):
         comment="Internal ID",
         doc="Internal ID (UNIVERSAL)",
     )
+    meta_type = sa.Column(
+        sa.Enum(MetaType),
+        nullable=False,
+        unique=False,
+        comment="Category of the Metadata",
+        doc="Category of the Metadata",
+        default=MetaType.NOTSET,
+    )
     code = sa.Column(
         sa.VARCHAR(100),
         unique=True,
@@ -36,13 +44,17 @@ class Meta(StaticBase):
         comment="Code that could be recognized by Users.",
         doc="Code for user interface",
     )
-    categ = sa.Column(
-        sa.Enum(MetaCategory),
-        nullable=False,
-        unique=False,
-        comment="Category of the Metadata",
-        doc="Category of the Metadata",
-        default=MetaCategory.NOTSET,
+    isin = sa.Column(
+        sa.CHAR(12),
+        nullable=True,
+        comment="International Securities Identification Code (12)",
+        doc="International Securities Identification Code (12)",
+    )
+    inception_date = sa.Column(
+        sa.Date,
+        nullable=True,
+        comment="Inception Date",
+        doc="Inception Date"
     )
     name = sa.Column(
         sa.VARCHAR(255),
@@ -65,9 +77,33 @@ class Meta(StaticBase):
         default=sa.text("false"),
         server_default=sa.text("false"),
     )
-
-    def __str__(self) -> str:
-        return f"<Meta id={self.meta_id} code={self.code} name={self.name}>"
-
-
-
+    yahoo = sa.Column(
+        sa.VARCHAR(100),
+        nullable=True,
+        comment="Code that could be recognized by Yahoo.",
+        doc="Code for Yahoo",
+    )
+    naver = sa.Column(
+        sa.VARCHAR(100),
+        nullable=True,
+        comment="Code that could be recognized by Naver.",
+        doc="Code for Naver.",
+    )
+    bloomberg = sa.Column(
+        sa.VARCHAR(100),
+        nullable=True,
+        comment="Code that could be recognized by Naver.",
+        doc="Code for Naver.",
+    )
+    morningstar = sa.Column(
+        sa.VARCHAR(100),
+        nullable=True,
+        comment="Code that could be recognized by Morningstar.",
+        doc="Code for Morningstar.",
+    )
+    reuters = sa.Column(
+        sa.VARCHAR(100),
+        nullable=True,
+        comment="Code that could be recognized by Reuters.",
+        doc="Code for Reuters.",
+    )

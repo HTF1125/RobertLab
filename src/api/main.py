@@ -8,8 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 from src.config import APISRC_FOLDER
-from src.database import client
-
+from src import database
 
 ####################################################################################################
 # create fastapi instance.
@@ -27,7 +26,7 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -47,3 +46,13 @@ if os.path.exists("../sphinx"):
         app=StaticFiles(directory="../sphinx/docs/build/html", html=True),
         name="sphinx",
     )
+
+
+
+@app.get("/")
+def home():
+    database.create_all()
+
+    return {
+        "message" : "hello world."
+    }
