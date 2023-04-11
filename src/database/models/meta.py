@@ -1,6 +1,6 @@
 import enum
 import sqlalchemy as sa
-from .mixins import StaticBase
+from .mixins import StaticBase, TimeSeriesBase
 
 
 class MetaType(enum.Enum):
@@ -20,13 +20,22 @@ class Meta(StaticBase):
 
     __tablename__ = "tb_meta"
     __table_args__ = (sa.UniqueConstraint("code", "name", name="uc_code_name"),)
-
     meta_id = sa.Column(
         sa.Integer,
-        sa.Identity(start=100_000),
-        primary_key=True,
+        unique=True,
+        index=True,
+        nullable=False,
         comment="Internal ID",
         doc="Internal ID (UNIVERSAL)",
+    )
+    code = sa.Column(
+        sa.VARCHAR(100),
+        primary_key=True,
+        unique=True,
+        nullable=False,
+        index=True,
+        comment="Code that could be recognized by Users.",
+        doc="Code for user interface",
     )
     meta_type = sa.Column(
         sa.Enum(MetaType),
@@ -36,14 +45,6 @@ class Meta(StaticBase):
         doc="Category of the Metadata",
         default=MetaType.NOTSET,
     )
-    code = sa.Column(
-        sa.VARCHAR(100),
-        unique=True,
-        nullable=False,
-        index=True,
-        comment="Code that could be recognized by Users.",
-        doc="Code for user interface",
-    )
     isin = sa.Column(
         sa.CHAR(12),
         nullable=True,
@@ -51,10 +52,7 @@ class Meta(StaticBase):
         doc="International Securities Identification Code (12)",
     )
     inception_date = sa.Column(
-        sa.Date,
-        nullable=True,
-        comment="Inception Date",
-        doc="Inception Date"
+        sa.Date, nullable=True, comment="Inception Date", doc="Inception Date"
     )
     name = sa.Column(
         sa.VARCHAR(255),
@@ -107,3 +105,22 @@ class Meta(StaticBase):
         comment="Code that could be recognized by Reuters.",
         doc="Code for Reuters.",
     )
+
+
+class DailyBar(TimeSeriesBase):
+    """daily bar series"""
+
+    __tablename__ = "tb_dailybar"
+    meta_id = sa.Column(
+        sa.ForeignKey("tb_meta.meta_id"),
+        primary_key=True,
+        comment="Internal ID (FK from tb_meta)",
+        doc="Internal ID (UNIVERSAL) (FK from tb_meta)",
+    )
+    date = sa.Column(sa.Date, primary_key=True, nullable=False)
+    open = sa.Column(sa.Numeric(20, 5), nullable=False)
+    high = sa.Column(sa.Numeric(20, 5), nullable=False)
+    low = sa.Column(sa.Numeric(20, 5), nullable=False)
+    close = sa.Column(sa.Numeric(20, 5), nullable=False)
+    dvds = sa.Column(sa.Numeric(20, 5), nullable=False)
+    volume = sa.Column(sa.Numeric(20, 5), nullable=False)

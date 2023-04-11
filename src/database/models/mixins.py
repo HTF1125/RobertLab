@@ -1,12 +1,12 @@
 import logging
 from datetime import date, datetime
+from dateutil import parser
 from typing import Union, Dict, List
 from sqlalchemy.orm import Query
 import numpy as np
 import pandas as pd
 import sqlalchemy as sa
 from ..client import SessionContext, Base
-
 
 
 logger = logging.getLogger(__name__)
@@ -33,6 +33,24 @@ class Mixins(Base):
     """mixins for models"""
 
     __abstract__ = True
+
+    @staticmethod
+    def parse_datetime(table: sa.Table, records: List[Dict]) -> List[Dict]:
+        out = []
+
+        mapper = sa.inspect(table).columns
+
+        for record in records:
+            parsed = record.copy()
+            for column in mapper:
+                if isinstance(getattr(table, column.key), date):
+                    parsed[column.key] = parser.parse(str(record[column.key])).date()
+                elif isinstance(getattr(table, column.key), datetime):
+                    parsed[column.key] = parser.parse(str(record[column.key]))
+
+                out.append(parsed)
+
+        return out
 
     @classmethod
     def add(cls, **kwargs) -> None:
@@ -64,14 +82,16 @@ class Mixins(Base):
                 "insert only takes pd.Series or pd.DataFrame,"
                 + " but {type(records)} was given."
             )
+
+        records = cls.parse_datetime(cls, records)
         session = kwargs.pop("session", None)
-        print(f"insert into {cls.__tablename__}: {len(records)} records.")
         if session is None:
             with SessionContext() as session:
                 session.bulk_insert_mappings(cls, records)
                 session.commit()
                 return
         session.bulk_insert_mappings(cls, records)
+        print(f"insert into {cls.__tablename__}: {len(records)} records complete.")
 
     @classmethod
     def update(
@@ -88,6 +108,8 @@ class Mixins(Base):
                 "insert only takes pd.Series or pd.DataFrame,"
                 + " but {type(records)} was given."
             )
+        records = cls.parse_datetime(cls, records)
+
         session = kwargs.pop("session", None)
         if session is None:
             with SessionContext() as session:
@@ -103,12 +125,11 @@ class Mixins(Base):
 
     def to_dict(self) -> Dict:
         """Convert database table row to dictionary."""
-        mapper = sa.inspect(self.__class__)
         return {
             column.key: getattr(self, column.key).isoformat()
             if isinstance(getattr(self, column.key), (date, datetime))
             else getattr(self, column.key)
-            for column in mapper.columns
+            for column in sa.inspect(self.__class__).columns
         }
 
     @classmethod
