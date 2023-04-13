@@ -1,7 +1,7 @@
 import logging
+from typing import Union, Dict, List
 from datetime import date, datetime
 from dateutil import parser
-from typing import Union, Dict, List
 from sqlalchemy.orm import Query
 import numpy as np
 import pandas as pd
@@ -83,7 +83,6 @@ class Mixins(Base):
                 + " but {type(records)} was given."
             )
 
-        records = cls.parse_datetime(cls, records)
         session = kwargs.pop("session", None)
         if session is None:
             with SessionContext() as session:
@@ -108,7 +107,6 @@ class Mixins(Base):
                 "insert only takes pd.Series or pd.DataFrame,"
                 + " but {type(records)} was given."
             )
-        records = cls.parse_datetime(cls, records)
 
         session = kwargs.pop("session", None)
         if session is None:
@@ -190,18 +188,3 @@ class TimeSeriesBase(Mixins):
     """abstract timeseries mixins"""
 
     __abstract__ = True
-    created_date = sa.Column(
-        sa.DateTime,
-        server_default=sa.func.now(),
-        nullable=False,
-        comment="Last Modified Datetime.",
-        doc="Last Modified Datetime.",
-    )
-    last_modified_date = sa.Column(
-        sa.DateTime,
-        server_default=sa.func.now(),
-        server_onupdate=sa.func.now(),
-        nullable=False,
-        comment="Last Modified Datetime.",
-        doc="Last Modified Datetime.",
-    )
