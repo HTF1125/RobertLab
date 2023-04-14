@@ -4,6 +4,6 @@
 🦠 - virus / bug
 🔮 - future
 ⚙️ - config
-🪅 - 
-🔊
-💤
+🪅 - interesting
+🔊 - attention
+💤 - deprecated

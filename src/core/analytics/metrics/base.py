@@ -1,10 +1,10 @@
-from typing import Optional
+from typing import Optional, Callable
 import numpy as np
 import pandas as pd
 from ...ext.periods import AnnFactor
 
 
-def vectorize(func):
+def vectorize(func) -> Callable:
     """apply vectorized prices"""
 
     def wrapper(*args, **kwargs):
@@ -29,13 +29,20 @@ def vectorize(func):
 @vectorize
 def to_start(prices: pd.Series) -> pd.Timestamp:
     """calculate start date of the prices"""
-    return prices.dropna().index[0]
+
+    start = prices.dropna().index[0]
+    if isinstance(start, pd.Timestamp):
+        return start
+    return pd.to_datetime(str(start))
 
 
 @vectorize
 def to_end(prices: pd.Series) -> pd.Timestamp:
     """calculate end date of the prices"""
-    return prices.dropna().index[-1]
+    end = prices.dropna().index[-1]
+    if isinstance(end, pd.Timestamp):
+        return end
+    return pd.to_datetime(str(end))
 
 
 @vectorize
@@ -51,13 +58,13 @@ def to_log_return(prices: pd.Series) -> pd.Series:
 
 
 @vectorize
-def to_num_year(prices: pd.Series) -> pd.Series:
+def to_num_year(prices: pd.Series) -> float:
     """calculate num of year for prices series"""
     return (to_end(prices=prices) - to_start(prices=prices)).days / 365.0
 
 
 @vectorize
-def to_num_bar(prices: pd.Series) -> pd.Series:
+def to_num_bar(prices: pd.Series) -> int:
     """calculate num of bar of prices series"""
     return len(prices.dropna())
 

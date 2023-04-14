@@ -34,24 +34,6 @@ class Mixins(Base):
 
     __abstract__ = True
 
-    @staticmethod
-    def parse_datetime(table: sa.Table, records: List[Dict]) -> List[Dict]:
-        out = []
-
-        mapper = sa.inspect(table).columns
-
-        for record in records:
-            parsed = record.copy()
-            for column in mapper:
-                if isinstance(getattr(table, column.key), date):
-                    parsed[column.key] = parser.parse(str(record[column.key])).date()
-                elif isinstance(getattr(table, column.key), datetime):
-                    parsed[column.key] = parser.parse(str(record[column.key]))
-
-                out.append(parsed)
-
-        return out
-
     @classmethod
     def add(cls, **kwargs) -> None:
         """add an object"""
@@ -63,12 +45,30 @@ class Mixins(Base):
                 return
         session.add(cls(**kwargs))
 
+    @staticmethod
+    def parse_datetime(table: sa.Table, records: List[Dict]) -> List[Dict]:
+        mapped = {"datetime": [], "date": []}
+
+        for column in table.__table__.columns:
+            if isinstance(column.type, sa.Date):
+                mapped["date"].append(column.name)
+            elif isinstance(column.type, sa.DateTime):
+                mapped["datetime"].append(column.name)
+        for record in records:
+            for dt in mapped["datetime"]:
+                if dt in record:
+                    record[dt] = parser.parse(str(record[dt]))
+            for d in mapped["date"]:
+                if d in record:
+                    record[d] = parser.parse(str(record[d])).date()
+        return records
+
     @classmethod
     def insert(
         cls, records: Union[List[Dict], pd.Series, pd.DataFrame], **kwargs
     ) -> None:
         """insert bulk"""
-
+        print("start insert.")
         if isinstance(records, pd.DataFrame):
             records = records.replace({np.NaN: None}).to_dict("records")
         elif isinstance(records, pd.Series):
@@ -82,14 +82,18 @@ class Mixins(Base):
                 "insert only takes pd.Series or pd.DataFrame,"
                 + " but {type(records)} was given."
             )
-
+        # records = cls.parse_datetime(cls, records)
         session = kwargs.pop("session", None)
         if session is None:
             with SessionContext() as session:
                 session.bulk_insert_mappings(cls, records)
                 session.commit()
+                print(
+                    f"insert into {cls.__tablename__}: {len(records)} records complete."
+                )
                 return
         session.bulk_insert_mappings(cls, records)
+        session.flush()
         print(f"insert into {cls.__tablename__}: {len(records)} records complete.")
 
     @classmethod
@@ -107,14 +111,20 @@ class Mixins(Base):
                 "insert only takes pd.Series or pd.DataFrame,"
                 + " but {type(records)} was given."
             )
+        records = cls.parse_datetime(cls, records)
 
         session = kwargs.pop("session", None)
         if session is None:
             with SessionContext() as session:
                 session.bulk_update_mappings(cls, records)
                 session.commit()
+                print(
+                    f"update into {cls.__tablename__}: {len(records)} records complete."
+                )
                 return
         session.bulk_update_mappings(cls, records)
+        session.flush()
+        print(f"update into {cls.__tablename__}: {len(records)} records complete.")
 
     @classmethod
     def from_dict(cls, data: Dict):
@@ -123,11 +133,12 @@ class Mixins(Base):
 
     def to_dict(self) -> Dict:
         """Convert database table row to dictionary."""
+        mapper = sa.inspect(self.__class__)
         return {
             column.key: getattr(self, column.key).isoformat()
             if isinstance(getattr(self, column.key), (date, datetime))
             else getattr(self, column.key)
-            for column in sa.inspect(self.__class__).columns
+            for column in mapper.columns
         }
 
     @classmethod
@@ -162,6 +173,7 @@ class StaticBase(Mixins):
     __abstract__ = True
     created_date = sa.Column(
         sa.DateTime,
+        default=sa.func.now(),
         server_default=sa.func.now(),
         nullable=False,
         comment="Last Modified Datetime.",
@@ -169,6 +181,8 @@ class StaticBase(Mixins):
     )
     last_modified_date = sa.Column(
         sa.DateTime,
+        default=sa.func.now(),
+        onupdate=sa.func.now(),
         server_default=sa.func.now(),
         server_onupdate=sa.func.now(),
         nullable=False,

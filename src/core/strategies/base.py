@@ -5,7 +5,7 @@ import pandas as pd
 from .account import VirtualAccount
 from ..analytics import metrics
 from ..analytics import estimators
-from ..portfolio import optimizer
+from ..portfolios import optimizer
 from ..ext.progress import terminal_progress
 
 
