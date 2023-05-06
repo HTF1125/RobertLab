@@ -32,6 +32,7 @@ def SessionContext():
     session = SessionMaker()
     try:
         yield session
+        session.commit()
     except:
         session.rollback()
         raise

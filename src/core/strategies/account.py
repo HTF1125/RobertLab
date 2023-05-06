@@ -1,6 +1,7 @@
 """"""
 
-
+from typing import Optional
+from datetime import datetime
 import pandas as pd
 
 
@@ -22,15 +23,15 @@ class AccountMetrics:
     """virtual account metrics to store account metrics"""
 
     def __init__(self, initial_investment: float = 1000.0) -> None:
-        self.date = None
-        self.value = initial_investment
-        self.shares = None
-        self.prices = None
-        self.capitals = None
-        self.weights = None
-        self.profits = None
-        self.trades = None
-        self.allocations = None
+        self.value: float = initial_investment
+        self.date: Optional[pd.Timestamp] = None
+        self.shares: pd.Series = pd.Series(dtype=float)
+        self.prices: pd.Series = pd.Series(dtype=float)
+        self.capitals: pd.Series = pd.Series(dtype=float)
+        self.weights: pd.Series = pd.Series(dtype=float)
+        self.profits: pd.Series = pd.Series(dtype=float)
+        self.trades: pd.Series = pd.Series(dtype=float)
+        self.allocations: pd.Series = pd.Series(dtype=float)
 
 
 class VirtualAccount:
@@ -42,7 +43,7 @@ class VirtualAccount:
 
     ################################################################################
     @property
-    def date(self) -> float:
+    def date(self) -> Optional[pd.Timestamp]:
         """account date property"""
         return self.metrics.date
 
@@ -67,12 +68,10 @@ class VirtualAccount:
     @property
     def prices(self) -> pd.Series:
         """account value property"""
-        if self.metrics.prices is None:
-            return pd.Series(dtype=float)
         return self.metrics.prices
 
     @prices.setter
-    def prices(self, prices: float) -> None:
+    def prices(self, prices: pd.Series) -> None:
         """account value property"""
         self.metrics.prices = prices
         self.records.prices.update({self.metrics.date: self.prices})
@@ -85,8 +84,6 @@ class VirtualAccount:
     @property
     def shares(self) -> pd.Series:
         """account shares property"""
-        if self.metrics.shares is None:
-            return pd.Series(dtype=float)
         return self.metrics.shares
 
     @shares.setter
@@ -99,8 +96,6 @@ class VirtualAccount:
     @property
     def capitals(self) -> pd.Series:
         """account capitals property"""
-        if self.metrics.capitals is None:
-            return pd.Series(dtype=float)
         return self.metrics.capitals
 
     @capitals.setter
@@ -115,8 +110,6 @@ class VirtualAccount:
     @property
     def weights(self) -> pd.Series:
         """account weights property"""
-        if self.metrics.weights is None:
-            return pd.Series(dtype=float)
         return self.metrics.weights
 
     @weights.setter
@@ -129,8 +122,6 @@ class VirtualAccount:
     @property
     def allocations(self) -> pd.Series:
         """account allocations property"""
-        if self.metrics.allocations is None:
-            return pd.Series(dtype=float)
         return self.metrics.allocations
 
     @allocations.setter
@@ -144,8 +135,6 @@ class VirtualAccount:
     @property
     def trades(self) -> pd.Series:
         """account trades property"""
-        if self.metrics.trades is None:
-            return pd.Series(dtype=float)
         return self.metrics.trades
 
     @trades.setter
@@ -158,8 +147,6 @@ class VirtualAccount:
     @property
     def profits(self) -> pd.Series:
         """account profits property"""
-        if self.metrics.profits is None:
-            return pd.Series(dtype=float)
         return self.metrics.profits
 
     @profits.setter
@@ -167,3 +154,7 @@ class VirtualAccount:
         """account profits property"""
         self.metrics.profits = profits
         self.records.profits.update({self.metrics.date: self.profits})
+
+    @property
+    def has_allocations(self) -> bool:
+        return not self.allocations.empty

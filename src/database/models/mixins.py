@@ -1,8 +1,8 @@
 import logging
-from typing import Union, Dict, List
+from typing import Union, Optional, Dict, List
 from datetime import date, datetime
 from dateutil import parser
-from sqlalchemy.orm import Query
+from sqlalchemy.orm import Query, Session
 import numpy as np
 import pandas as pd
 import sqlalchemy as sa
@@ -13,20 +13,8 @@ logger = logging.getLogger(__name__)
 
 
 def read_sql_query(query: Query, **kwargs) -> pd.DataFrame:
-    """Read sql query
-
-    Args:
-        query (Query): sqlalchemy.Query
-
-    Returns:
-        pd.DataFrame: read the query into dataframe.
-    """
-    return pd.read_sql_query(
-        sql=query.statement,
-        con=query.session.bind,
-        index_col=kwargs.get("index_col", None),
-        parse_dates=kwargs.get("parse_dates", None),
-    )
+    """This is pass through function to read query into dataframe."""
+    return pd.read_sql_query(sql=query.statement, con=query.session.bind, **kwargs)
 
 
 class Mixins(Base):
@@ -41,15 +29,13 @@ class Mixins(Base):
         if session is None:
             with SessionContext() as session:
                 session.add(cls(**kwargs))
-                session.commit()
                 return
         session.add(cls(**kwargs))
 
     @staticmethod
     def parse_datetime(table: sa.Table, records: List[Dict]) -> List[Dict]:
         mapped = {"datetime": [], "date": []}
-
-        for column in table.__table__.columns:
+        for column in table.columns:
             if isinstance(column.type, sa.Date):
                 mapped["date"].append(column.name)
             elif isinstance(column.type, sa.DateTime):
@@ -65,10 +51,12 @@ class Mixins(Base):
 
     @classmethod
     def insert(
-        cls, records: Union[List[Dict], pd.Series, pd.DataFrame], **kwargs
+        cls,
+        records: Union[List[Dict], pd.Series, pd.DataFrame],
+        session: Optional[Session] = None,
     ) -> None:
         """insert bulk"""
-        print("start insert.")
+        logger.debug(f"{cls.__tablename__} insert called.")
         if isinstance(records, pd.DataFrame):
             records = records.replace({np.NaN: None}).to_dict("records")
         elif isinstance(records, pd.Series):
@@ -80,17 +68,13 @@ class Mixins(Base):
         else:
             raise TypeError(
                 "insert only takes pd.Series or pd.DataFrame,"
-                + " but {type(records)} was given."
+                + f" but {type(records)} was given."
             )
+        logger.debug(f"records length {len(records)}")
         # records = cls.parse_datetime(cls, records)
-        session = kwargs.pop("session", None)
         if session is None:
             with SessionContext() as session:
                 session.bulk_insert_mappings(cls, records)
-                session.commit()
-                print(
-                    f"insert into {cls.__tablename__}: {len(records)} records complete."
-                )
                 return
         session.bulk_insert_mappings(cls, records)
         session.flush()
@@ -164,7 +148,6 @@ class Mixins(Base):
         """delete recrods"""
         with SessionContext() as session:
             session.query(cls).filter_by(**kwargs).delete()
-            session.commit()
 
 
 class StaticBase(Mixins):

@@ -3,15 +3,6 @@ import sqlalchemy as sa
 from .mixins import StaticBase, TimeSeriesBase
 
 
-class MetaType(enum.Enum):
-    """metadata categories"""
-
-    MACRO = "MACRO"
-    ETF = "ETF"
-    STOCK = "STOCK"
-    INDEX = "INDEX"
-    NOTSET = "NOTSET"
-
 
 class Meta(StaticBase):
     """
@@ -22,15 +13,14 @@ class Meta(StaticBase):
     __table_args__ = (sa.UniqueConstraint("code", "name", name="uc_code_name"),)
     meta_id = sa.Column(
         sa.Integer,
+        primary_key=True,
         unique=True,
-        index=True,
         nullable=False,
         comment="Internal ID",
         doc="Internal ID (UNIVERSAL)",
     )
     code = sa.Column(
         sa.VARCHAR(100),
-        primary_key=True,
         unique=True,
         nullable=False,
         index=True,
@@ -38,12 +28,18 @@ class Meta(StaticBase):
         doc="Code for user interface",
     )
     meta_type = sa.Column(
-        sa.Enum(MetaType),
-        nullable=False,
+        sa.VARCHAR(20),
+        nullable=True,
         unique=False,
-        comment="Category of the Metadata",
-        doc="Category of the Metadata",
-        default=MetaType.NOTSET,
+        comment="Metadata Type",
+        doc="Metadata Type",
+    )
+    meta_instrument = sa.Column(
+        sa.VARCHAR(20),
+        nullable=True,
+        unique=False,
+        comment="Metadata Instrument",
+        doc="Metadata Instrument",
     )
     isin = sa.Column(
         sa.CHAR(12),
@@ -118,9 +114,10 @@ class DailyBar(TimeSeriesBase):
         doc="Internal ID (UNIVERSAL) (FK from tb_meta)",
     )
     date = sa.Column(sa.Date, primary_key=True, nullable=False)
-    open = sa.Column(sa.Numeric(20, 5), nullable=False)
-    high = sa.Column(sa.Numeric(20, 5), nullable=False)
-    low = sa.Column(sa.Numeric(20, 5), nullable=False)
-    close = sa.Column(sa.Numeric(20, 5), nullable=False)
-    dvds = sa.Column(sa.Numeric(20, 5), nullable=False)
-    volume = sa.Column(sa.Numeric(20, 5), nullable=False)
+    open = sa.Column(sa.Numeric(30, 5), nullable=False)
+    high = sa.Column(sa.Numeric(30, 5), nullable=False)
+    low = sa.Column(sa.Numeric(30, 5), nullable=False)
+    close = sa.Column(sa.Numeric(30, 5), nullable=False)
+    dvds = sa.Column(sa.Numeric(30, 5), nullable=False)
+    volume = sa.Column(sa.Numeric(30, 5), nullable=False)
+    gross_rtn = sa.Column(sa.Numeric(30, 5), nullable=False)
