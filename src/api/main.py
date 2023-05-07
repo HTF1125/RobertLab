@@ -48,11 +48,19 @@ if os.path.exists("../sphinx"):
     )
 
 
-
 @app.get("/")
 def home():
     database.create_all()
 
-    return {
-        "message" : "hello world."
-    }
+    return {"message": "hello world."}
+
+
+@app.get("/test")
+def test():
+
+    import yfinance as yf
+    from ..core.portfolios import Optimizer
+
+    prices = yf.download("SPY, AGG, GSG, TLT")["Adj Close"]
+    opt = Optimizer.from_prices(prices=prices)
+    return opt.hierarchical_equal_risk_contribution().to_dict()

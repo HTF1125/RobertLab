@@ -97,10 +97,9 @@ class Optimizer:
 
     @expected_returns.setter
     def expected_returns(self, expected_returns: Optional[pd.Series] = None) -> None:
-        if expected_returns is None:
-            return
-        self.metrics.expected_returns = expected_returns
-        self.assets = expected_returns.index
+        if expected_returns is not None:
+            self.metrics.expected_returns = expected_returns
+            self.assets = expected_returns.index
 
     @property
     def covariance_matrix(self) -> Optional[pd.DataFrame]:
@@ -111,11 +110,10 @@ class Optimizer:
     def covariance_matrix(
         self, covariance_matrix: Optional[pd.DataFrame] = None
     ) -> None:
-        if covariance_matrix is None:
-            return
-        self.metrics.covariance_matrix = covariance_matrix
-        self.assets = covariance_matrix.index
-        self.assets = covariance_matrix.columns
+        if covariance_matrix is not None:
+            self.metrics.covariance_matrix = covariance_matrix
+            self.assets = covariance_matrix.index
+            self.assets = covariance_matrix.columns
 
     @property
     def correlation_matrix(self) -> Optional[pd.DataFrame]:
@@ -126,11 +124,10 @@ class Optimizer:
     def correlation_matrix(
         self, correlation_matrix: Optional[pd.DataFrame] = None
     ) -> None:
-        if correlation_matrix is None:
-            return
-        self.metrics.correlation_matrix = correlation_matrix
-        self.assets = correlation_matrix.index
-        self.assets = correlation_matrix.columns
+        if correlation_matrix is not None:
+            self.metrics.correlation_matrix = correlation_matrix
+            self.assets = correlation_matrix.index
+            self.assets = correlation_matrix.columns
 
     @property
     def prices(self) -> Optional[pd.DataFrame]:
@@ -323,14 +320,16 @@ class Optimizer:
         """_summary_
 
         Args:
-            objective (Callable): _description_
-            extra_constraints (Optional[List[Dict]], optional): _description_. Defaults to None.
+            objective (Callable): optimization objective.
+            extra_constraints (Optional[List[Dict]]): temporary constraints.
+                Defaults to None.
 
         Returns:
-            Optional[pd.Series]: _description_
+            Optional[pd.Series]: optimized weights
         """
         constraints = self.constraints.copy()
-        if extra_constraints: constraints.extend(extra_constraints)
+        if extra_constraints:
+            constraints.extend(extra_constraints)
         problem = minimize(
             fun=objective,
             method="SLSQP",
@@ -339,11 +338,15 @@ class Optimizer:
         )
 
         if problem.success:
-            return pd.Series(data=problem.x, index=self.assets, name="weights").round(6)
+            data = problem.x + 1e-16
+            return pd.Series(data=data, index=self.assets, name="weights").round(6)
         return None
 
     def maximized_return(self) -> Optional[pd.Series]:
-        """calculate max return weights"""
+        """calculate maximum return weights"""
+        if self.expected_returns is None:
+            warnings.warn("expected_returns must not be none.")
+            return
         return self.solve(
             objective=partial(
                 objectives.expected_return,
@@ -352,11 +355,10 @@ class Optimizer:
         )
 
     def minimized_volatility(self) -> Optional[pd.Series]:
-        """_summary_
-
-        Returns:
-            Optional[pd.Series]: _description_
-        """
+        """calculate minimum volatility weights"""
+        if self.covariance_matrix is None:
+            warnings.warn("covariance_matrix must not be none.")
+            return
         return self.solve(
             objective=partial(
                 objectives.expected_volatility,
@@ -365,11 +367,10 @@ class Optimizer:
         )
 
     def maximized_sharpe_ratio(self) -> Optional[pd.Series]:
-        """_summary_
-
-        Returns:
-            Optional[pd.Series]: _description_
-        """
+        """calculate maximum sharpe ratio weights"""
+        if self.expected_returns is None or self.covariance_matrix is None:
+            warnings.warn("expected_returns and covariance_matrix must not be none.")
+            return
         return self.solve(
             objective=partial(
                 objectives.expected_sharpe,
@@ -383,8 +384,14 @@ class Optimizer:
         self, linkage_method: str = "single"
     ) -> Optional[pd.Series]:
         """calculate herc weights"""
-        corr = cov_to_corr(self.covariance_matrix)
-        dist = np.sqrt((1 - corr).round(5) / 2)
+        if self.correlation_matrix is None:
+            if self.covariance_matrix is not None:
+                self.correlation_matrix = cov_to_corr(self.covariance_matrix)
+            elif self.prices is not None:
+                self.correlation_matrix = estimators.to_correlation_matrix(self.prices)
+            else:
+                raise ValueError("correlation matrix is none and uncomputable.")
+        dist = np.sqrt((1 - self.correlation_matrix).round(5) / 2)
         clusters = linkage(squareform(dist), method=linkage_method)
         sorted_tree = list(to_tree(clusters, rd=False).pre_order())
         cluster_sets = recursive_bisection(sorted_tree)
@@ -420,6 +427,14 @@ class Optimizer:
         self, linkage_method: str = "single"
     ) -> Optional[pd.Series]:
         """calculate herc weights"""
+        if self.correlation_matrix is None:
+            if self.covariance_matrix is not None:
+                self.correlation_matrix = cov_to_corr(self.covariance_matrix)
+            elif self.prices is not None:
+                self.correlation_matrix = estimators.to_correlation_matrix(self.prices)
+            else:
+                raise ValueError("correlation matrix is none and uncomputable.")
+
         dist = np.sqrt((1 - self.correlation_matrix).round(5) / 2)
         clusters = linkage(squareform(dist), method=linkage_method)
         sorted_tree = list(to_tree(clusters, rd=False).pre_order())
@@ -463,7 +478,8 @@ class Optimizer:
                     np.multiply(
                         budgets,
                         objectives.expected_volatility(
-                            weights=w, covariance_matrix=np.array(self.covariance_matrix)
+                            weights=w,
+                            covariance_matrix=np.array(self.covariance_matrix),
                         ),
                     ),
                 )

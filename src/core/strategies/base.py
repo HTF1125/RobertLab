@@ -166,30 +166,14 @@ class Strategy:
     """base strategy"""
 
     def __init__(
-        self,
-        prices: pd.DataFrame,
-        reb_frequency: str = "M",
-        bar_frequency: str = "D",
+        self, prices: pd.DataFrame,
+        frequency: str = "M",
         initial_investment: float = 1000.0,
-        min_num_asset: int = 2,
-        min_num_period: int = 252,
     ) -> None:
+
         self.account = VirtualAccount(initial_investment=initial_investment)
         self.prices = prices.ffill()
-        self.reb_frequency = reb_frequency
-        self.bar_frequency = bar_frequency
-        self.min_num_asset = min_num_asset
-        self.min_num_period = min_num_period
-
-    @property
-    def current_bar(self) -> pd.Series:
-        """get the current bar"""
-        return self.prices.loc[self.account.date]
-
-    @property
-    def reb_prices(self) -> pd.DataFrame:
-        """get rebalancing prices"""
-        return self.prices.loc[: self.date].dropna(thresh=self.min_num_period, axis=1)
+        self.frequency = frequency
 
     @property
     def date(self) -> Optional[pd.Timestamp]:
@@ -200,6 +184,12 @@ class Strategy:
     def date(self, date: pd.Timestamp) -> None:
         """date property"""
         self.account.date = date
+        self.account.prices = self.prices.loc[self.date]
+
+    @property
+    def reb_prices(self) -> pd.DataFrame:
+        """rebalancing prices"""
+        return self.prices.loc[:self.date]
 
     ################################################################################
 
@@ -257,7 +247,7 @@ class Strategy:
 
     def rebalance(self) -> pd.Series:
         """Default rebalancing method"""
-        asset = self.reb_prices.iloc[-1].dropna().index
+        asset = self.prices.loc[: self.date].iloc[-1].dropna().index
         uniform_weight = np.ones(len(asset))
         uniform_weight /= uniform_weight.sum()
         weight = pd.Series(index=asset, data=uniform_weight)
@@ -273,36 +263,35 @@ class Strategy:
         Returns:
             Strategy: _description_
         """
-        start = start or self.prices.index[self.min_num_period]
+        start = start or self.prices.index[0]
         end = end or self.prices.index[-1]
-        reb_dates = pd.date_range(start=start, end=end, freq=self.reb_frequency)
-        bar_dates = pd.date_range(start=start, end=end, freq=self.bar_frequency)
-        num_bar_dates = len(bar_dates)
+
+        reb_dates = [
+            self.prices.loc[date:].index[0]
+            for date in pd.date_range(start=start, end=end, freq=self.frequency)
+        ]
         make_rebalance = True
-        for idx, self.date in enumerate(bar_dates, 1):
+        for idx, self.date in enumerate(self.prices.index, 1):
             terminal_progress(
                 current_bar=idx,
-                total_bar=num_bar_dates,
+                total_bar=len(self.prices.index),
                 prefix="simulate",
                 suffix=f"{self.account.value:.2f}",
             )
-            if self.date in self.prices.index:
-                self.account.prices = self.prices.loc[self.account.date]
-                if not self.account.allocations.empty:
-                    self.account.trades = self.account.allocations.subtract(
-                        self.account.weights, fill_value=0
-                    ).abs()
-                    self.account.weights = self.account.allocations
-                    self.account.capitals = self.account.value * self.account.weights
-                    self.account.shares = self.account.capitals.divide(
-                        self.prices.loc[self.date].dropna()
-                    )
-                    self.account.reset_allocations()
+
+            if not self.account.allocations.empty:
+                self.account.trades = self.account.allocations.subtract(
+                    self.account.weights, fill_value=0
+                ).abs()
+                self.account.weights = self.account.allocations
+                self.account.capitals = self.account.value * self.account.weights
+                self.account.shares = self.account.capitals.divide(
+                    self.prices.loc[self.date].dropna()
+                )
+                self.account.reset_allocations()
             if self.date in reb_dates:
                 make_rebalance = True
             if make_rebalance:
-                if self.reb_prices.empty:
-                    continue
                 self.account.allocations = self.rebalance()
                 if self.account.allocations is not None:
                     self.account.allocations = self.clean_weights(
@@ -312,6 +301,7 @@ class Strategy:
         return self
 
     def analytics(self) -> pd.DataFrame:
+        """analytics"""
         return pd.concat(
             [
                 metrics.to_ann_return(self.value.to_frame()),
@@ -437,7 +427,7 @@ class TargetVol(Strategy):
 
 
 class Momentum(Strategy):
-    def rebalance(self, **kwargs) -> pd.Series:
+    def rebalance(self, **kwargs) -> Optional[pd.Series]:
         prices = self.prices.loc[: self.date]
         momentum_1y = prices.iloc[-1] / prices.iloc[-21]
 

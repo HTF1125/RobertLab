@@ -1,8 +1,5 @@
-import enum
 import sqlalchemy as sa
 from .mixins import StaticBase, TimeSeriesBase
-
-
 
 class Meta(StaticBase):
     """
@@ -71,6 +68,12 @@ class Meta(StaticBase):
         default=sa.text("false"),
         server_default=sa.text("false"),
     )
+    source = sa.Column(
+        sa.VARCHAR(255),
+        nullable=True,
+        comment="source",
+        doc="source"
+    )
     yahoo = sa.Column(
         sa.VARCHAR(100),
         nullable=True,
@@ -101,6 +104,24 @@ class Meta(StaticBase):
         comment="Code that could be recognized by Reuters.",
         doc="Code for Reuters.",
     )
+
+
+    def source_data(self):
+
+        if self.source == "YAHOO":
+
+            import yfinance as yf
+
+            data = yf.download(self.yahoo, start="1990-1-1")
+
+            return data
+
+        return None
+
+
+
+
+
 
 
 class DailyBar(TimeSeriesBase):
