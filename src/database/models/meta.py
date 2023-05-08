@@ -106,24 +106,6 @@ class Meta(StaticBase):
     )
 
 
-    def source_data(self):
-
-        if self.source == "YAHOO":
-
-            import yfinance as yf
-
-            data = yf.download(self.yahoo, start="1990-1-1")
-
-            return data
-
-        return None
-
-
-
-
-
-
-
 class DailyBar(TimeSeriesBase):
     """daily bar series"""
 

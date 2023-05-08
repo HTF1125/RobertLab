@@ -166,14 +166,16 @@ class Strategy:
     """base strategy"""
 
     def __init__(
-        self, prices: pd.DataFrame,
+        self,
+        prices: pd.DataFrame,
         frequency: str = "M",
         initial_investment: float = 1000.0,
+        min_periods: int = 2,
     ) -> None:
-
         self.account = VirtualAccount(initial_investment=initial_investment)
         self.prices = prices.ffill()
         self.frequency = frequency
+        self.min_periods = min_periods
 
     @property
     def date(self) -> Optional[pd.Timestamp]:
@@ -189,7 +191,7 @@ class Strategy:
     @property
     def reb_prices(self) -> pd.DataFrame:
         """rebalancing prices"""
-        return self.prices.loc[:self.date]
+        return self.prices.loc[: self.date]
 
     ################################################################################
 
@@ -253,12 +255,14 @@ class Strategy:
         weight = pd.Series(index=asset, data=uniform_weight)
         return weight
 
-    def simulate(self, start: ... = None, end: ... = None) -> "Strategy":
+    def simulate(
+        self, start: Optional[str] = None, end: Optional[str] = None
+    ) -> "Strategy":
         """_summary_
 
         Args:
-            start (None, optional): _description_. Defaults to None.
-            end (None, optional): _description_. Defaults to None.
+            start (None, optional): start date of simulation. Defaults to None.
+            end (None, optional): end date of simulation. Defaults to None.
 
         Returns:
             Strategy: _description_
@@ -271,12 +275,12 @@ class Strategy:
             for date in pd.date_range(start=start, end=end, freq=self.frequency)
         ]
         make_rebalance = True
-        for idx, self.date in enumerate(self.prices.index, 1):
+        for idx, self.date in enumerate(self.prices.loc[start:end].index, 1):
             terminal_progress(
                 current_bar=idx,
                 total_bar=len(self.prices.index),
                 prefix="simulate",
-                suffix=f"{self.account.value:.2f}",
+                suffix=f"{self.date} - {self.account.value:.2f}",
             )
 
             if not self.account.allocations.empty:
@@ -289,6 +293,8 @@ class Strategy:
                     self.prices.loc[self.date].dropna()
                 )
                 self.account.reset_allocations()
+            if len(self.reb_prices) <= self.min_periods:
+                continue
             if self.date in reb_dates:
                 make_rebalance = True
             if make_rebalance:
@@ -298,6 +304,7 @@ class Strategy:
                         weights=self.account.allocations, num_decimal=4
                     )
                     make_rebalance = False
+
         return self
 
     def analytics(self) -> pd.DataFrame:
@@ -367,6 +374,7 @@ class HierarchicalEqualRiskContribution(Strategy):
 
 class HierarchicalRiskParity(Strategy):
     def rebalance(self, **kwargs):
+
         covariance_matrix = estimators.to_covariance_matrix(
             prices=self.reb_prices, halflife=63
         )
