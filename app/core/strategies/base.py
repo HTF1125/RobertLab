@@ -277,10 +277,11 @@ class Strategy:
             for date in pd.date_range(start=start, end=end, freq=self.frequency)
         ]
         make_rebalance = True
+        total_bar = len(self.prices.loc[start:end].index)
         for idx, self.date in enumerate(self.prices.loc[start:end].index, 1):
             terminal_progress(
                 current_bar=idx,
-                total_bar=len(self.prices.index),
+                total_bar=total_bar,
                 prefix="simulate",
                 suffix=f"{self.date} - {self.account.value:.2f}",
             )
@@ -302,8 +303,9 @@ class Strategy:
             if make_rebalance:
                 self.account.allocations = self.rebalance()
                 if self.account.allocations is None:
-                    self.account.allocations = pd.Series(dtype=float)
-                if self.account.allocations.empty:
+                    self.account.reset_allocations()
+                    continue
+                if not self.account.allocations.empty:
                     self.account.allocations = self.clean_weights(
                         weights=self.account.allocations, num_decimal=4
                     )
