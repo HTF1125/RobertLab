@@ -4,7 +4,7 @@ import pandas as pd
 import sqlalchemy as sa
 from datetime import date, timedelta
 from dateutil import parser
-from src import db
+from app import db
 import yfinance as yf
 import pandas_datareader as pdr
 today = date.today()

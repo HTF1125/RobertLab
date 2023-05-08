@@ -171,11 +171,13 @@ class Strategy:
         frequency: str = "M",
         initial_investment: float = 1000.0,
         min_periods: int = 2,
+        min_assets: int = 2,
     ) -> None:
         self.account = VirtualAccount(initial_investment=initial_investment)
         self.prices = prices.ffill()
         self.frequency = frequency
         self.min_periods = min_periods
+        self.min_assets = min_assets
 
     @property
     def date(self) -> Optional[pd.Timestamp]:
@@ -191,7 +193,7 @@ class Strategy:
     @property
     def reb_prices(self) -> pd.DataFrame:
         """rebalancing prices"""
-        return self.prices.loc[: self.date]
+        return self.prices.loc[: self.date].dropna(thresh=self.min_periods, axis=1)
 
     ################################################################################
 
@@ -299,7 +301,9 @@ class Strategy:
                 make_rebalance = True
             if make_rebalance:
                 self.account.allocations = self.rebalance()
-                if self.account.allocations is not None:
+                if self.account.allocations is None:
+                    self.account.allocations = pd.Series(dtype=float)
+                if self.account.allocations.empty:
                     self.account.allocations = self.clean_weights(
                         weights=self.account.allocations, num_decimal=4
                     )

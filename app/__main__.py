@@ -17,4 +17,4 @@ args = parse.parse_args()
 
 
 if not args.script:
-    uvicorn.run(app="src.api.main:app", reload=True)
+    uvicorn.run(app="app.api.main:app", reload=True)

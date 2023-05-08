@@ -7,8 +7,8 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
-from src.config import APISRC_FOLDER
-from src import database
+from app.config import APISRC_FOLDER
+from app import database
 
 ####################################################################################################
 # create fastapi instance.

@@ -3,7 +3,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.pool import StaticPool
-from src.config import DATABASE_URL
+from app.config import DATABASE_URL
 
 Base = declarative_base()
 
