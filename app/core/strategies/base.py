@@ -14,7 +14,7 @@ class Strategy:
         self,
         prices: pd.DataFrame,
         rebalance: Callable,
-        frequency: str = "M",
+        frequency: str = "MS",
         initial_investment: float = 1000.0,
         min_periods: int = 2,
         min_assets: int = 2,
@@ -38,9 +38,16 @@ class Strategy:
         self.account.prices = self.prices.loc[self.date]
 
     @property
+    def asofdate(self) -> Optional[pd.Timestamp]:
+        """asofdate property"""
+        if self.date is None:
+            return None
+        return self.date - pd.Timedelta(days=1)
+
+    @property
     def reb_prices(self) -> Optional[pd.DataFrame]:
         """rebalancing prices"""
-        reb_prices = self.prices.loc[: self.date].copy()
+        reb_prices = self.prices.loc[: self.asofdate].copy()
         reb_prices.dropna(thresh=self.min_periods, axis=1, inplace=True)
         if len(reb_prices) < self.min_assets:
             return None
@@ -88,18 +95,20 @@ class Strategy:
 
     ################################################################################
 
-    def simulate(self, *args, **kwargs) -> "Strategy":
-        """"""
+    def simulate(
+        self, start: Optional[str] = None, end: Optional[str] = None, **kwargs
+    ) -> "Strategy":
+        """simulate strategy"""
+
+        start = start or str(self.prices.index[0])
+        end = end or str(self.prices.index[-1])
+
         reb_dates = [
             self.prices.loc[date:].index[0]
-            for date in pd.date_range(
-                start=str(self.prices.index[0]),
-                end=str(self.prices.index[-1]),
-                freq=self.frequency,
-            )
+            for date in pd.date_range(start=start, end=end, freq=self.frequency)
         ]
         total_bar = len(self.prices)
-        for idx, self.date in enumerate(self.prices.index, 1):
+        for idx, self.date in enumerate(self.prices.loc[start:end].index, 1):
             terminal_progress(
                 current_bar=idx,
                 total_bar=total_bar,
@@ -119,14 +128,12 @@ class Strategy:
             if self.date in reb_dates or self.account.shares.empty:
                 reb_prices = self.reb_prices
                 if reb_prices is not None:
-                    try:
-                        allocations = self.rebalance(prices=reb_prices, *args, **kwargs)
-                        self.account.allocations = clean_weights(
-                            weights=allocations, num_decimal=4
-                        )
-                    except:
-                        self.account.reset_allocations()
-
+                    self.account.allocations = clean_weights(
+                        weights=self.rebalance(
+                            prices=reb_prices, strategy=self, **kwargs
+                        ),
+                        num_decimal=4,
+                    )
         return self
 
     def analytics(self) -> pd.DataFrame:
