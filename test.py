@@ -36,6 +36,6 @@ import yfinance as yf
 
 prices = yf.download("SPY, VNQ, XLK, XLU, XLB, XLV, XLY, XLG, BIL, AGG, TLT")["Adj Close"]
 
-strategy = DualMomentum(prices=prices).simulate("2015-1-1")
+strategy = DualMomentum(prices=prices).simulate()
 
 strategy.value.plot()

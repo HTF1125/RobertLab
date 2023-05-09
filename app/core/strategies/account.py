@@ -1,7 +1,5 @@
-""""""
-
+"""ROBERT"""
 from typing import Optional
-from datetime import datetime
 import pandas as pd
 
 
@@ -63,6 +61,7 @@ class VirtualAccount:
         """account value property"""
         self.metrics.value = value
         self.records.value.update({self.metrics.date: self.value})
+        self.weights = self.capitals.divide(self.value)
 
     ################################################################################
     @property
@@ -104,7 +103,6 @@ class VirtualAccount:
         self.metrics.capitals = capitals
         self.records.capitals.update({self.metrics.date: self.capitals})
         self.value = self.capitals.sum()
-        self.weights = self.capitals.divide(self.value)
 
     ################################################################################
     @property
@@ -128,8 +126,11 @@ class VirtualAccount:
     def allocations(self, allocations: pd.Series) -> None:
         """account allocations property"""
         self.metrics.allocations = allocations
-        if self.metrics.allocations is not None:
-            self.records.allocations.update({self.metrics.date: self.allocations})
+        self.records.allocations.update({self.metrics.date: self.allocations})
+
+    def reset_allocations(self) -> None:
+        """reset allocations"""
+        self.metrics.allocations = pd.Series(dtype=float)
 
     ################################################################################
     @property
@@ -154,7 +155,3 @@ class VirtualAccount:
         """account profits property"""
         self.metrics.profits = profits
         self.records.profits.update({self.metrics.date: self.profits})
-
-    @property
-    def has_allocations(self) -> bool:
-        return not self.allocations.empty
