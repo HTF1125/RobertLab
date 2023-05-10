@@ -14,7 +14,7 @@ class Strategy:
         self,
         prices: pd.DataFrame,
         rebalance: Callable,
-        frequency: str = "MS",
+        frequency: str = "M",
         initial_investment: float = 1000.0,
         min_periods: int = 2,
         min_assets: int = 2,
@@ -38,16 +38,9 @@ class Strategy:
         self.account.prices = self.prices.loc[self.date]
 
     @property
-    def asofdate(self) -> Optional[pd.Timestamp]:
-        """asofdate property"""
-        if self.date is None:
-            return None
-        return self.date - pd.Timedelta(days=1)
-
-    @property
     def reb_prices(self) -> Optional[pd.DataFrame]:
         """rebalancing prices"""
-        reb_prices = self.prices.loc[: self.asofdate].copy()
+        reb_prices = self.prices.loc[: self.date].copy()
         reb_prices.dropna(thresh=self.min_periods, axis=1, inplace=True)
         if len(reb_prices) < self.min_assets:
             return None
@@ -104,7 +97,7 @@ class Strategy:
         end = end or str(self.prices.index[-1])
 
         reb_dates = [
-            self.prices.loc[date:].index[0]
+            self.prices.loc[:date].index[-1]
             for date in pd.date_range(start=start, end=end, freq=self.frequency)
         ]
         total_bar = len(self.prices)
@@ -143,5 +136,6 @@ class Strategy:
                 metrics.to_ann_return(self.value.to_frame()),
                 metrics.to_ann_volatility(self.value.to_frame()),
                 metrics.to_sharpe_ratio(self.value.to_frame()),
-            ]
+            ],
+            names=["Ann.Return", "Ann.Volatility", "Ann.Sharpe"],
         )
