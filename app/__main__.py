@@ -1,20 +1,20 @@
+"""ROBERT"""
 import os
 import sys
-import argparse
-from datetime import datetime
+import click
 import uvicorn
-
+from datetime import date
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.abspath(__file__), "../..")))
 
 
+@click.command()
+@click.option("--asofdate", default=str(date.today()), type=str)
+@click.option("--reload", is_flag=True, default=False, help="Enable auto-reload.")
+def main(reload: bool, asofdate: str):
+    """main cli function"""
+    print(asofdate)
+    uvicorn.run(app="app.api.main:app", reload=reload)
 
-####################################################################################################
-# parse arguments
-parse = argparse.ArgumentParser(description="Client Interface")
-parse.add_argument("-s", "--script", default=None)
-parse.add_argument("-d", "--date", default=datetime.today())
-args = parse.parse_args()
 
-
-if not args.script:
-    uvicorn.run(app="app.api.main:app", reload=True)
+if __name__ == "__main__":
+    main()  # pragma: no cover  

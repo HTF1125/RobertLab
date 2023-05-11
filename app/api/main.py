@@ -1,13 +1,10 @@
-from pydantic import BaseModel
-from datetime import date
-from typing import Optional, List
+"""ROBERT"""
 import os
-from fastapi import FastAPI, Depends
+from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
-from sqlalchemy.orm import Session
-from app.config import APISRC_FOLDER
+from fastapi.requests import Request
+from app.config import API_FOLDER
 from app import database
 
 ####################################################################################################
@@ -19,7 +16,6 @@ app = FastAPI(
     contact={"name": "robert", "email": "hantianfeng@outlook.com"},
     openapi_url="/api/v1/openapi.json",
 )
-
 
 ####################################################################################################
 # define allowed origins
@@ -33,9 +29,9 @@ app.add_middleware(
 )
 
 
-if os.path.exists(APISRC_FOLDER + "/build"):
+if os.path.exists(API_FOLDER + "/build"):
     app.mount(
-        "/static", StaticFiles(directory=APISRC_FOLDER + "/build/static"), name="static"
+        "/static", StaticFiles(directory=API_FOLDER + "/build/static"), name="static"
     )
 
 ####################################################################################################
@@ -51,16 +47,22 @@ if os.path.exists("../sphinx"):
 @app.get("/")
 def home():
     database.create_all()
-
     return {"message": "hello world."}
 
 
 @app.get("/test")
-def test():
-
+def test(request: Request):
+    if request.client is not None:
+        print(request.client.host)
+        print(request.client.port)
+    print(request.url.path)
     import yfinance as yf
     from ..core.portfolios import Optimizer
 
     prices = yf.download("SPY, AGG, GSG, TLT")["Adj Close"]
-    opt = Optimizer.from_prices(prices=prices)
-    return opt.hierarchical_equal_risk_contribution().to_dict()
+    weights = Optimizer.from_prices(
+        prices=prices
+    ).hierarchical_equal_risk_contribution()
+    if weights is None:
+        return None
+    return weights.to_dict()

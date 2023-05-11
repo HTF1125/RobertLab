@@ -100,7 +100,7 @@ class Strategy:
             self.prices.loc[:date].index[-1]
             for date in pd.date_range(start=start, end=end, freq=self.frequency)
         ]
-        total_bar = len(self.prices)
+        total_bar = len(self.prices.loc[start:end].index)
         for idx, self.date in enumerate(self.prices.loc[start:end].index, 1):
             terminal_progress(
                 current_bar=idx,
@@ -129,13 +129,19 @@ class Strategy:
                     )
         return self
 
+
     def analytics(self) -> pd.DataFrame:
         """analytics"""
-        return pd.concat(
-            [
-                metrics.to_ann_return(self.value.to_frame()),
-                metrics.to_ann_volatility(self.value.to_frame()),
-                metrics.to_sharpe_ratio(self.value.to_frame()),
-            ],
-            names=["Ann.Return", "Ann.Volatility", "Ann.Sharpe"],
-        )
+
+        __metrics__ = [
+            metrics.to_ann_return,
+            metrics.to_ann_volatility,
+            metrics.to_sharpe_ratio,
+            metrics.to_skewness,
+            metrics.to_kurtosis,
+            metrics.to_value_at_risk,
+            metrics.to_conditional_value_at_risk,
+        ]
+
+        result = [metric(self.value.to_frame()).to_frame() for metric in __metrics__]
+        return pd.concat(result, axis=1).T

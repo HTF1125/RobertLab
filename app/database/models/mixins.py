@@ -1,3 +1,4 @@
+"""ROBERT"""
 import logging
 from typing import Union, Optional, Dict, List
 from datetime import date, datetime
@@ -34,6 +35,7 @@ class Mixins(Base):
 
     @staticmethod
     def parse_datetime(table: sa.Table, records: List[Dict]) -> List[Dict]:
+        """parse datetime"""
         mapped = {"datetime": [], "date": []}
         for column in table.columns:
             if isinstance(column.type, sa.Date):

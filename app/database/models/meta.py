@@ -1,5 +1,7 @@
+"""ROBERT"""
 import sqlalchemy as sa
 from .mixins import StaticBase, TimeSeriesBase
+
 
 class Meta(StaticBase):
     """
@@ -13,8 +15,8 @@ class Meta(StaticBase):
         primary_key=True,
         unique=True,
         nullable=False,
-        comment="Internal ID",
-        doc="Internal ID (UNIVERSAL)",
+        comment="Internal MetaID",
+        doc="Internal Meta ID (UNIVERSAL)",
     )
     code = sa.Column(
         sa.VARCHAR(100),
@@ -44,9 +46,6 @@ class Meta(StaticBase):
         comment="International Securities Identification Code (12)",
         doc="International Securities Identification Code (12)",
     )
-    inception_date = sa.Column(
-        sa.Date, nullable=True, comment="Inception Date", doc="Inception Date"
-    )
     name = sa.Column(
         sa.VARCHAR(255),
         nullable=False,
@@ -68,12 +67,7 @@ class Meta(StaticBase):
         default=sa.text("false"),
         server_default=sa.text("false"),
     )
-    source = sa.Column(
-        sa.VARCHAR(255),
-        nullable=True,
-        comment="source",
-        doc="source"
-    )
+    source = sa.Column(sa.VARCHAR(255), nullable=True, comment="source", doc="source")
     yahoo = sa.Column(
         sa.VARCHAR(100),
         nullable=True,
@@ -110,17 +104,34 @@ class DailyBar(TimeSeriesBase):
     """daily bar series"""
 
     __tablename__ = "tb_dailybar"
-    meta_id = sa.Column(
-        sa.ForeignKey("tb_meta.meta_id"),
+    meta_id = sa.Column(sa.ForeignKey("tb_meta.meta_id"), primary_key=True)
+    date = sa.Column(sa.Date, primary_key=True)
+    open = sa.Column(sa.Numeric(30, 5), nullable=True)
+    high = sa.Column(sa.Numeric(30, 5), nullable=True)
+    low = sa.Column(sa.Numeric(30, 5), nullable=True)
+    close = sa.Column(sa.Numeric(30, 5), nullable=True)
+    volume = sa.Column(sa.Numeric(30, 5), nullable=True)
+    dividends = sa.Column(sa.Numeric(30, 5), nullable=True)
+    stock_splits = sa.Column(sa.Numeric(30, 5), nullable=True)
+    pri_return = sa.Column(sa.Numeric(30, 5), nullable=True)
+    dvd_return = sa.Column(sa.Numeric(30, 5), nullable=True)
+    tot_return = sa.Column(sa.Numeric(30, 5), nullable=True)
+
+
+
+class Universe(StaticBase):
+    __tablename__ = "tb_universe"
+    universe_id = sa.Column(
+        sa.Integer,
         primary_key=True,
-        comment="Internal ID (FK from tb_meta)",
-        doc="Internal ID (UNIVERSAL) (FK from tb_meta)",
+        unique=True,
+        nullable=False,
+        comment="Internal Universe ID",
+        doc="Internal Universe ID (UNIVERSAL)",
     )
-    date = sa.Column(sa.Date, primary_key=True, nullable=False)
-    open = sa.Column(sa.Numeric(30, 5), nullable=False)
-    high = sa.Column(sa.Numeric(30, 5), nullable=False)
-    low = sa.Column(sa.Numeric(30, 5), nullable=False)
-    close = sa.Column(sa.Numeric(30, 5), nullable=False)
-    dvds = sa.Column(sa.Numeric(30, 5), nullable=False)
-    volume = sa.Column(sa.Numeric(30, 5), nullable=False)
-    gross_rtn = sa.Column(sa.Numeric(30, 5), nullable=False)
+class UniverseMeta(TimeSeriesBase):
+    """investment universe"""
+    __tablename__ = "tb_universe_meta"
+    date = sa.Column(sa.Date, primary_key=True)
+    universe_id = sa.Column(sa.ForeignKey("tb_universe.universe_id"), primary_key=True)
+    meta_id = sa.Column(sa.ForeignKey("tb_meta.meta_id"), primary_key=True)
