@@ -1,10 +1,133 @@
 """ROBERT"""
 from typing import Optional, Callable
 import pandas as pd
-from .account import VirtualAccount
-from ..analytics import metrics
-from ..ext.progress import terminal_progress
-from ..ext.clean import clean_weights
+from app.core.analytics import metrics
+from app.core.ext.clean import clean_weights
+
+
+class AccountRecords:
+    """virtual account records to store account records"""
+
+    def __init__(self) -> None:
+        self.value = {}
+        self.shares = {}
+        self.capitals = {}
+        self.prices = {}
+        self.weights = {}
+        self.allocations = {}
+
+
+class AccountMetrics:
+    """virtual account metrics to store account metrics"""
+
+    def __init__(self, initial_investment: float = 1000.0) -> None:
+        self.value: float = initial_investment
+        self.date: Optional[pd.Timestamp] = None
+        self.shares: pd.Series = pd.Series(dtype=float)
+        self.prices: pd.Series = pd.Series(dtype=float)
+        self.capitals: pd.Series = pd.Series(dtype=float)
+        self.weights: pd.Series = pd.Series(dtype=float)
+        self.allocations: pd.Series = pd.Series(dtype=float)
+
+
+class VirtualAccount:
+    """virtual account to store account information"""
+
+    def __init__(self, initial_investment: float = 1000.0) -> None:
+        self.metrics = AccountMetrics(initial_investment)
+        self.records = AccountRecords()
+
+    ################################################################################
+    @property
+    def date(self) -> Optional[pd.Timestamp]:
+        """account date property"""
+        return self.metrics.date
+
+    @date.setter
+    def date(self, date: pd.Timestamp) -> None:
+        """account date property"""
+        self.metrics.date = date
+
+    ################################################################################
+    @property
+    def value(self) -> float:
+        """account value property"""
+        return self.metrics.value
+
+    @value.setter
+    def value(self, value: float) -> None:
+        """account value property"""
+        self.metrics.value = value
+        self.records.value.update({self.metrics.date: self.value})
+        self.weights = self.capitals.divide(self.value)
+
+    ################################################################################
+    @property
+    def prices(self) -> pd.Series:
+        """account value property"""
+        return self.metrics.prices
+
+    @prices.setter
+    def prices(self, prices: pd.Series) -> None:
+        """account value property"""
+        if not self.shares.empty:
+            self.metrics.prices = prices
+            self.records.prices.update({self.metrics.date: self.prices})
+            self.capitals = self.shares.multiply(self.prices.fillna(0))
+
+    ################################################################################
+    @property
+    def shares(self) -> pd.Series:
+        """account shares property"""
+        return self.metrics.shares
+
+    @shares.setter
+    def shares(self, shares: pd.Series) -> None:
+        """account shares property"""
+        self.metrics.shares = shares
+        self.records.shares.update({self.metrics.date: self.shares})
+
+    ################################################################################
+    @property
+    def capitals(self) -> pd.Series:
+        """account capitals property"""
+        return self.metrics.capitals
+
+    @capitals.setter
+    def capitals(self, capitals: pd.Series) -> None:
+        """account capitals property"""
+        self.metrics.capitals = capitals
+        self.records.capitals.update({self.metrics.date: self.capitals})
+        self.value = self.capitals.sum()
+
+    ################################################################################
+    @property
+    def weights(self) -> pd.Series:
+        """account weights property"""
+        return self.metrics.weights
+
+    @weights.setter
+    def weights(self, weights: pd.Series) -> None:
+        """account weights property"""
+        self.metrics.weights = weights
+        self.records.weights.update({self.metrics.date: self.weights})
+
+    ################################################################################
+    @property
+    def allocations(self) -> pd.Series:
+        """account allocations property"""
+        return self.metrics.allocations
+
+    @allocations.setter
+    def allocations(self, allocations: pd.Series) -> None:
+        """account allocations property"""
+        if allocations is not None:
+            self.metrics.allocations = allocations
+            self.records.allocations.update({self.metrics.date: self.allocations})
+
+    def reset_allocations(self) -> None:
+        """reset allocations"""
+        self.metrics.allocations = pd.Series(dtype=float)
 
 
 class Strategy:
@@ -35,7 +158,8 @@ class Strategy:
     def date(self, date: pd.Timestamp) -> None:
         """date property"""
         self.account.date = date
-        self.account.prices = self.prices.loc[self.date]
+        if date in self.prices.index:
+            self.account.prices = self.prices.loc[self.date]
 
     @property
     def reb_prices(self) -> Optional[pd.DataFrame]:
@@ -73,13 +197,6 @@ class Strategy:
         ).T.sort_index()
 
     @property
-    def profits(self) -> pd.DataFrame:
-        """strategy profits time-series"""
-        return pd.DataFrame(
-            data=self.account.records.profits, dtype=float
-        ).T.sort_index()
-
-    @property
     def allocations(self) -> pd.DataFrame:
         """strategy allocations time-series"""
         return pd.DataFrame(
@@ -89,29 +206,18 @@ class Strategy:
     ################################################################################
 
     def simulate(
-        self, start: Optional[str] = None, end: Optional[str] = None, **kwargs
+        self, start: Optional[str] = None, end: Optional[str] = None
     ) -> "Strategy":
         """simulate strategy"""
 
         start = start or str(self.prices.index[0])
         end = end or str(self.prices.index[-1])
 
-        reb_dates = [
-            self.prices.loc[:date].index[-1]
-            for date in pd.date_range(start=start, end=end, freq=self.frequency)
-        ]
-        total_bar = len(self.prices.loc[start:end].index)
-        for idx, self.date in enumerate(self.prices.loc[start:end].index, 1):
-            terminal_progress(
-                current_bar=idx,
-                total_bar=total_bar,
-                prefix="simulate",
-                suffix=f"{self.date:%Y-%m-%d} - {self.account.value:.2f}",
-            )
-            if not self.account.allocations.empty:
-                self.account.trades = self.account.allocations.subtract(
-                    self.account.weights, fill_value=0
-                ).abs()
+        reb_dates = pd.date_range(start=start, end=end, freq=self.frequency)
+
+        for self.date in pd.date_range(start=start, end=end, freq="D"):
+
+            if self.date in self.prices.index and not self.account.allocations.empty:
                 self.account.weights = self.account.allocations
                 self.account.capitals = self.account.value * self.account.weights
                 self.account.shares = self.account.capitals.divide(
@@ -119,16 +225,15 @@ class Strategy:
                 )
                 self.account.reset_allocations()
             if self.date in reb_dates or self.account.shares.empty:
-                reb_prices = self.reb_prices
-                if reb_prices is not None:
+                print(self.date, "attempt to rebalance.")
+                try:
                     self.account.allocations = clean_weights(
-                        weights=self.rebalance(
-                            prices=reb_prices, strategy=self, **kwargs
-                        ),
+                        weights=self.rebalance(strategy=self),
                         num_decimal=4,
                     )
+                except Exception as exc:
+                    pass
         return self
-
 
     def analytics(self) -> pd.DataFrame:
         """analytics"""

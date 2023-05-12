@@ -10,11 +10,9 @@ class Meta(StaticBase):
 
     __tablename__ = "tb_meta"
     __table_args__ = (sa.UniqueConstraint("code", "name", name="uc_code_name"),)
-    meta_id = sa.Column(
+    id = sa.Column(
         sa.Integer,
         primary_key=True,
-        unique=True,
-        nullable=False,
         comment="Internal MetaID",
         doc="Internal Meta ID (UNIVERSAL)",
     )
@@ -26,14 +24,14 @@ class Meta(StaticBase):
         comment="Code that could be recognized by Users.",
         doc="Code for user interface",
     )
-    meta_type = sa.Column(
+    category = sa.Column(
         sa.VARCHAR(20),
         nullable=True,
         unique=False,
         comment="Metadata Type",
         doc="Metadata Type",
     )
-    meta_instrument = sa.Column(
+    instrument = sa.Column(
         sa.VARCHAR(20),
         nullable=True,
         unique=False,
@@ -104,7 +102,7 @@ class DailyBar(TimeSeriesBase):
     """daily bar series"""
 
     __tablename__ = "tb_dailybar"
-    meta_id = sa.Column(sa.ForeignKey("tb_meta.meta_id"), primary_key=True)
+    meta_id = sa.Column(sa.ForeignKey("tb_meta.id"), primary_key=True)
     date = sa.Column(sa.Date, primary_key=True)
     open = sa.Column(sa.Numeric(30, 5), nullable=True)
     high = sa.Column(sa.Numeric(30, 5), nullable=True)
@@ -120,18 +118,18 @@ class DailyBar(TimeSeriesBase):
 
 
 class Universe(StaticBase):
+    """InvestmentUniverse"""
     __tablename__ = "tb_universe"
-    universe_id = sa.Column(
+    id = sa.Column(
         sa.Integer,
         primary_key=True,
-        unique=True,
-        nullable=False,
         comment="Internal Universe ID",
         doc="Internal Universe ID (UNIVERSAL)",
     )
+    name = sa.Column(sa.String(255), nullable=False)
 class UniverseMeta(TimeSeriesBase):
     """investment universe"""
     __tablename__ = "tb_universe_meta"
     date = sa.Column(sa.Date, primary_key=True)
-    universe_id = sa.Column(sa.ForeignKey("tb_universe.universe_id"), primary_key=True)
-    meta_id = sa.Column(sa.ForeignKey("tb_meta.meta_id"), primary_key=True)
+    universe_id = sa.Column(sa.ForeignKey("tb_universe.id"), primary_key=True)
+    meta_id = sa.Column(sa.ForeignKey("tb_meta.id"), primary_key=True)

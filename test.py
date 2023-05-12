@@ -1,41 +1,32 @@
 from typing import Optional
-import pandas as pd
 from app.core.strategies import Strategy
-from app.core.analytics.features import momentum
-from app.core.analytics.metrics import to_ann_volatility
+from functools import partial
+import pandas as pd
 
+data = pd.read_clipboard()
+port3 = data[data.strategy == "MLP_US_3"]
+port4 = data[data.strategy == "MLP_US_4"]
+port5 = data[data.strategy == "MLP_US_5"]
 
-class DualMomentum(Strategy):
-    # Objective: balanced growth
-    # Type: momentum strategy
-    # Invests in: ETFs tracking stocks, bonds, real estate, and gold
-    # Rebalancing schedule: monthly
-    # Taxation: 50% short-term capital gains
-    # Minimum account size: $5,000
+def rebalance(strategy: Strategy, port: pd.DataFrame) -> Optional[pd.Series]:
 
-    def rebalance(self) -> Optional[pd.Series]:
-        single_weight = 1 / (len(self.reb_prices.columns) - 1)
-        safe = to_ann_volatility(self.reb_prices.iloc[-252:]).idxmin()
-        mome_1y = momentum(self.reb_prices, months=6).iloc[-1]
-        safe_mome = mome_1y.loc[safe]
-        weights = {}
-        for asset in self.reb_prices:
-            if asset == safe:
-                continue
-            if mome_1y.loc[asset] > safe_mome:
-                weights.update({asset: single_weight})
-            else:
-                if safe in weights.keys():
-                    weights.update({safe: weights[safe] + single_weight})
-                else:
-                    weights.update({safe: single_weight})
-        return pd.Series(weights)
-
+    p = port.loc[strategy.date].dropna()
+    print(p)
+    return p
 
 import yfinance as yf
 
-prices = yf.download("SPY, VNQ, XLK, XLU, XLB, XLV, XLY, XLG, BIL, AGG, TLT")["Adj Close"]
+cport = (
+    port5[["date", "ticker_bloomberg", "weight"]]
+    .set_index(["date", "ticker_bloomberg"])
+    .unstack()["weight"]
+)
+cport.index = pd.to_datetime(cport.index)
+cport = cport.sort_index()
+cport.columns = [t.replace(" US Equity", "") for t in cport.columns]
+cport.index = cport.index - pd.DateOffset(months=1)
+cport = cport.resample("M").last()
+prices = yf.download(tickers=list(cport.columns))["Adj Close"]
 
-strategy = DualMomentum(prices=prices).simulate()
-
-strategy.value.plot()
+strategy = Strategy(prices=prices, rebalance=partial(rebalance, port=cport)).simulate(start="2017-12-28")
+strategy.analytics()
