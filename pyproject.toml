@@ -9,7 +9,9 @@ dependencies = [
 ]
 name = "robo"
 version = "0.0.1"
-
+authors = [
+  {name = "Robert Han", email = "hantianfeng@outlook.com"},
+]
 
 [tool.setuptools.packages.find]
 where = ["app"]  # ["."] by default
@@ -20,3 +22,27 @@ namespaces = false  # true by default
 
 [project.scripts]
 cli-name = "robo.app"
+
+[project.optional-dependencies]
+dev = [
+    "pylint ~=2.14.0",
+    "toml ~=0.10.2",
+    "yapf ~=0.32.0",
+]
+test = [
+    "pytest-cov ~=3.0.0",
+]
+
+[tool.pylint]
+max-line-length = 88
+disable = [
+    "C0103", # (invalid-name)
+    "C0114", # (missing-module-docstring)
+    "C0115", # (missing-class-docstring)
+    "C0116", # (missing-function-docstring)
+    "R0903", # (too-few-public-methods)
+    "R0913", # (too-many-arguments)
+    "W0105", # (pointless-string-statement)
+]
+
+https://github.com/pypa/sampleproject/blob/main/pyproject.toml

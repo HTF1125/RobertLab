@@ -98,10 +98,14 @@ class Meta(StaticBase):
     )
 
 
-class DailyBar(TimeSeriesBase):
-    """daily bar series"""
+class # `DailyPx` is a class that represents a daily price time series for a
+# particular security or asset. It has columns for the security's metadata
+# ID, date, open price, high price, low price, close price, volume,
+# dividends, stock splits, and various types of returns.
+DailyPx(TimeSeriesBase):
+    """daily price series"""
 
-    __tablename__ = "tb_dailybar"
+    __tablename__ = "tb_pxlast"
     meta_id = sa.Column(sa.ForeignKey("tb_meta.id"), primary_key=True)
     date = sa.Column(sa.Date, primary_key=True)
     open = sa.Column(sa.Numeric(30, 5), nullable=True)
@@ -116,7 +120,6 @@ class DailyBar(TimeSeriesBase):
     tot_return = sa.Column(sa.Numeric(30, 5), nullable=True)
 
 
-
 class Universe(StaticBase):
     """InvestmentUniverse"""
     __tablename__ = "tb_universe"
@@ -127,6 +130,7 @@ class Universe(StaticBase):
         doc="Internal Universe ID (UNIVERSAL)",
     )
     name = sa.Column(sa.String(255), nullable=False)
+
 class UniverseMeta(TimeSeriesBase):
     """investment universe"""
     __tablename__ = "tb_universe_meta"

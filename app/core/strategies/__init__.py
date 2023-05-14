@@ -1,2 +1,2 @@
 from .base import Strategy
-from .ew import equal_weights
+from .ew import EW, HRP, HERC, InvVariance, MaxSharpe, TargetVol

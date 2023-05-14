@@ -225,7 +225,6 @@ class Strategy:
                 )
                 self.account.reset_allocations()
             if self.date in reb_dates or self.account.shares.empty:
-                print(self.date, "attempt to rebalance.")
                 try:
                     self.account.allocations = clean_weights(
                         weights=self.rebalance(strategy=self),
