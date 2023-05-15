@@ -1,5 +1,5 @@
 from typing import Optional
-from app.core.strategies import Strategy
+from src.core.strategies import Strategy
 from functools import partial
 import pandas as pd
 
