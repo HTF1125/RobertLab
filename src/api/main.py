@@ -29,7 +29,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-
+####################################################################################################
+# append web html
 if os.path.exists(TOP_FOLDER + "/web/build/static"):
     app.mount(
         path="/static",
@@ -37,8 +38,7 @@ if os.path.exists(TOP_FOLDER + "/web/build/static"):
         name="static"
     )
 
-####################################################################################################
-# append additional rountes to fastapi
+# append docs html
 if os.path.exists(TOP_FOLDER + "/docs/build/static"):
     app.mount(
         path=TOP_FOLDER + "/docs/build/static",
@@ -47,7 +47,21 @@ if os.path.exists(TOP_FOLDER + "/docs/build/static"):
     )
 
 
+
+@app.get("/test")
+def test():
+    return {"test":"hello"}
+
+
+
+
+
+
+####################################################################################################
 # Catch-all route for React Router to handle
 @app.get("/{path:path}")
 async def catch_all(path: str):
-    return FileResponse(TOP_FOLDER + "web/build/index.html", media_type="text/html")
+    return FileResponse(
+        path = os.path.join(TOP_FOLDER, "web/build/index.html"),
+        media_type="text/html"
+    )

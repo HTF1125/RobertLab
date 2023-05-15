@@ -1,6 +1,7 @@
 """ROBERT"""
 import sqlalchemy as sa
-from .mixins import StaticBase, TimeSeriesBase
+from sqlalchemy.ext.declarative import declared_attr
+from .mixins import Mixins, MemoBase, StaticBase, TimeSeriesBase
 
 
 class Meta(StaticBase):
@@ -97,27 +98,43 @@ class Meta(StaticBase):
         doc="Code for Reuters.",
     )
 
+class SingleFloatBase(TimeSeriesBase):
+    """single value mixins"""
+    __abstract__= True
+    value = sa.Column(sa.Float, nullable=False)
 
-class DailyPx(TimeSeriesBase):
-    """daily price series"""
-    # `DailyPx` is a class that represents a daily price time series for a
-    # particular security or asset. It has columns for the security's metadata
-    # ID, date, open price, high price, low price, close price, volume,
-    # dividends, stock splits, and various types of returns.
+    @declared_attr
+    def meta_id(self) -> sa.Column:
+        return sa.Column(sa.ForeignKey("tb_meta.id"), primary_key=True)
 
-    __tablename__ = "tb_pxlast"
-    meta_id = sa.Column(sa.ForeignKey("tb_meta.id"), primary_key=True)
-    date = sa.Column(sa.Date, primary_key=True)
-    open = sa.Column(sa.Numeric(30, 5), nullable=True)
-    high = sa.Column(sa.Numeric(30, 5), nullable=True)
-    low = sa.Column(sa.Numeric(30, 5), nullable=True)
-    close = sa.Column(sa.Numeric(30, 5), nullable=True)
-    volume = sa.Column(sa.Numeric(30, 5), nullable=True)
-    dividends = sa.Column(sa.Numeric(30, 5), nullable=True)
-    stock_splits = sa.Column(sa.Numeric(30, 5), nullable=True)
-    pri_return = sa.Column(sa.Numeric(30, 5), nullable=True)
-    dvd_return = sa.Column(sa.Numeric(30, 5), nullable=True)
-    tot_return = sa.Column(sa.Numeric(30, 5), nullable=True)
+
+class PxOpen(SingleFloatBase):
+    """px_open"""
+    __tablename__ = "tb_pxopen"
+
+class PxHigh(SingleFloatBase):
+    """px_high"""
+    __tablename__ = "tb_pxhigh"
+
+class PxLow(SingleFloatBase):
+    """px_low"""
+    __tablename__ = "tb_pxlow"
+
+class PxClose(SingleFloatBase):
+    """px_close"""
+    __tablename__ = "tb_pxclose"
+
+class PxDvds(SingleFloatBase):
+    """dividends"""
+    __tablename__ = "tb_pxdvds"
+
+class PxSplits(SingleFloatBase):
+    """splits"""
+    __tablename__ = "tb_pxsplits"
+
+class PxVolume(SingleFloatBase):
+    """splits"""
+    __tablename__ = "tb_pxvolume"
 
 
 class Universe(StaticBase):

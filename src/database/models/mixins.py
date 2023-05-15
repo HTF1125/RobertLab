@@ -152,7 +152,18 @@ class Mixins(Base):
             session.query(cls).filter_by(**kwargs).delete()
 
 
-class StaticBase(Mixins):
+class MemoBase(Mixins):
+    __abstract__ = True
+    memo = sa.Column(
+        sa.VARCHAR(1000),
+        unique=False,
+        nullable=True,
+        comment="Additional Comments.",
+        doc="Additional Comments.",
+    )
+
+
+class StaticBase(MemoBase):
     """abstract static mixins"""
 
     __abstract__ = True
@@ -174,16 +185,10 @@ class StaticBase(Mixins):
         comment="Last Modified Datetime.",
         doc="Last Modified Datetime.",
     )
-    memo = sa.Column(
-        sa.VARCHAR(1000),
-        unique=False,
-        nullable=True,
-        comment="Additional Comments.",
-        doc="Additional Comments.",
-    )
+
 
 
 class TimeSeriesBase(Mixins):
     """abstract timeseries mixins"""
-
     __abstract__ = True
+    date = sa.Column(sa.Date, primary_key=True)
