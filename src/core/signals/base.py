@@ -16,21 +16,20 @@ class Signal:
         self.states: pd.Series = pd.Series(dtype=str)
         self.process()
 
-
     def process(self) -> None:
         """ process data to signal """
         raise NotImplementedError("user must implement `process` method to make signal.")
 
-
-    def add_states(self, arg: pd.Series) -> pd.DataFrame:
+    def add_states(self, idx: pd.Index) -> pd.Series:
         """ assign the state column to the pandas """
-        states = self.states.resample("D").last().ffill().reindex(arg.index).ffill()
-        return arg.assign(states=states)
+        return self.states.reindex(idx).ffill()
 
-    def expected_returns_by_states(self, price_df: pd.DataFrame) -> pd.DataFrame:
+    def expected_returns_by_states(
+        self, prices: pd.DataFrame, frequency: str = "M"
+    ) -> pd.DataFrame:
         """ calculate expected return by states """
-        data = price_df.resample("d").last().ffill().reindex(self.states.index)
-        fwd_return = self.add_states(data.pct_change().shift(-1)).dropna()
+        fwd_return = prices.resample(rule=frequency).last().ffill().pct_change().shift(-1)
+        fwd_return["states"] = self.add_states(fwd_return.index)
         grouped = fwd_return.groupby(by="states").mean() * 12
         return grouped
 
