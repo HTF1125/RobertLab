@@ -168,7 +168,7 @@ class StaticBase(MemoBase):
 
     __abstract__ = True
     created_date = sa.Column(
-        sa.DateTime,
+        sa.DateTime(timezone=True),
         default=sa.func.now(),
         server_default=sa.func.now(),
         nullable=False,
@@ -176,7 +176,7 @@ class StaticBase(MemoBase):
         doc="Last Modified Datetime.",
     )
     last_modified_date = sa.Column(
-        sa.DateTime,
+        sa.DateTime(timezone=True),
         default=sa.func.now(),
         onupdate=sa.func.now(),
         server_default=sa.func.now(),
@@ -188,7 +188,7 @@ class StaticBase(MemoBase):
 
 
 
-class TimeSeriesBase(Mixins):
+class DateSeriesBase(Mixins):
     """abstract timeseries mixins"""
     __abstract__ = True
     date = sa.Column(sa.Date, primary_key=True)

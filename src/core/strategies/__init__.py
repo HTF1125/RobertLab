@@ -1,2 +1,2 @@
-from .base import Strategy
-from .ew import EW, HRP, HERC, InvVariance, MaxSharpe, TargetVol
+from .base import Strategy, backtest
+from . import ext

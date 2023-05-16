@@ -1,7 +1,7 @@
 """ROBERT"""
 import sqlalchemy as sa
 from sqlalchemy.ext.declarative import declared_attr
-from .mixins import Mixins, MemoBase, StaticBase, TimeSeriesBase
+from .mixins import Mixins, StaticBase, DateSeriesBase
 
 
 class Meta(StaticBase):
@@ -98,41 +98,48 @@ class Meta(StaticBase):
         doc="Code for Reuters.",
     )
 
-class SingleFloatBase(TimeSeriesBase):
-    """single value mixins"""
-    __abstract__= True
-    value = sa.Column(sa.Float, nullable=False)
+
+class MetaIDMixin(Mixins):
+    """MetaId ForeignKey"""
+    __abstract__ = True
 
     @declared_attr
     def meta_id(self) -> sa.Column:
         return sa.Column(sa.ForeignKey("tb_meta.id"), primary_key=True)
 
 
-class PxOpen(SingleFloatBase):
+class DSSingleFloatBase(DateSeriesBase, MetaIDMixin):
+    """single float value mixins"""
+    __abstract__= True
+    value = sa.Column(sa.Float, nullable=False)
+
+
+
+class PxOpen(DSSingleFloatBase):
     """px_open"""
     __tablename__ = "tb_pxopen"
 
-class PxHigh(SingleFloatBase):
+class PxHigh(DSSingleFloatBase):
     """px_high"""
     __tablename__ = "tb_pxhigh"
 
-class PxLow(SingleFloatBase):
+class PxLow(DSSingleFloatBase):
     """px_low"""
     __tablename__ = "tb_pxlow"
 
-class PxClose(SingleFloatBase):
+class PxClose(DSSingleFloatBase):
     """px_close"""
     __tablename__ = "tb_pxclose"
 
-class PxDvds(SingleFloatBase):
+class PxDvds(DSSingleFloatBase):
     """dividends"""
     __tablename__ = "tb_pxdvds"
 
-class PxSplits(SingleFloatBase):
+class PxSplits(DSSingleFloatBase):
     """splits"""
     __tablename__ = "tb_pxsplits"
 
-class PxVolume(SingleFloatBase):
+class PxVolume(DSSingleFloatBase):
     """splits"""
     __tablename__ = "tb_pxvolume"
 
@@ -141,16 +148,14 @@ class Universe(StaticBase):
     """InvestmentUniverse"""
     __tablename__ = "tb_universe"
     id = sa.Column(
-        sa.Integer,
-        primary_key=True,
+        sa.Integer, primary_key=True,
         comment="Internal Universe ID",
         doc="Internal Universe ID (UNIVERSAL)",
     )
     name = sa.Column(sa.String(255), nullable=False)
 
-class UniverseMeta(TimeSeriesBase):
+class UniverseMeta(DateSeriesBase, MetaIDMixin):
     """investment universe"""
     __tablename__ = "tb_universe_meta"
-    date = sa.Column(sa.Date, primary_key=True)
     universe_id = sa.Column(sa.ForeignKey("tb_universe.id"), primary_key=True)
-    meta_id = sa.Column(sa.ForeignKey("tb_meta.id"), primary_key=True)
+

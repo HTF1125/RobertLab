@@ -1,2 +1,2 @@
 fastapi[all]
-motor
+passlib==1.7.4

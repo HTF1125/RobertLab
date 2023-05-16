@@ -1,54 +1,39 @@
-"""ROBERT"""
-from typing import Optional, Callable
-from functools import partial
-import pandas as pd
-from .base import Strategy
+from .base import backtest
 from ..portfolios import Optimizer
 
 
-def backtest(func: Callable):
-    """strategy wrapper"""
-    def wrapper(prices: pd.DataFrame, start: Optional[str] = None, **kwargs):
-        return Strategy(
-            prices=prices, rebalance=partial(func, **kwargs)
-        ).simulate(start=start)
-    return wrapper
-
-
 @backtest
-def EW(strategy: Strategy) -> Optional[pd.Series]:
+def EW(strategy):
     """equal"""
     return Optimizer.from_prices(prices=strategy.reb_prices).uniform_allocation()
 
 @backtest
-def HRP(strategy: Strategy) -> Optional[pd.Series]:
+def HRP(strategy):
     """hrp"""
     return Optimizer.from_prices(prices=strategy.reb_prices).hierarchical_risk_parity()
 
 @backtest
-def HERC(strategy: Strategy) -> Optional[pd.Series]:
+def HERC(strategy):
     """hrp"""
     return Optimizer.from_prices(prices=strategy.reb_prices).hierarchical_risk_parity()
 
-
 @backtest
-def RP(strategy: Strategy) -> Optional[pd.Series]:
+def RP(strategy):
     """hrp"""
     return Optimizer.from_prices(prices=strategy.reb_prices).risk_parity()
 
 @backtest
-def MaxSharpe(strategy: Strategy) -> Optional[pd.Series]:
+def MaxSharpe(strategy):
     """hrp"""
     return Optimizer.from_prices(prices=strategy.reb_prices).maximized_sharpe_ratio()
 
 @backtest
-def InvVariance(strategy: Strategy) -> Optional[pd.Series]:
+def InvVariance(strategy):
     """hrp"""
     return Optimizer.from_prices(prices=strategy.reb_prices).inverse_variance()
 
-
 @backtest
-def MeanReversion(strategy: Strategy) -> Optional[pd.Series]:
+def MeanReversion(strategy):
     """
     What is Mean Reversion?
         According to Investopedia, mean reversion, or reversion to the mean, is
@@ -77,7 +62,7 @@ def MeanReversion(strategy: Strategy) -> Optional[pd.Series]:
 
 
 @backtest
-def TargetVol(strategy: Strategy, target_vol: float = 0.10) -> Optional[pd.Series]:
+def TargetVol(strategy, target_vol: float = 0.10):
     """target_vol"""
     return Optimizer.from_prices(
         prices=strategy.reb_prices,
@@ -87,7 +72,7 @@ def TargetVol(strategy: Strategy, target_vol: float = 0.10) -> Optional[pd.Serie
 
 
 @backtest
-def DualMomentum(strategy: Strategy) -> Optional[pd.Series]:
+def DualMomentum(strategy):
     """
 
     Procedure:
@@ -105,7 +90,7 @@ def DualMomentum(strategy: Strategy) -> Optional[pd.Series]:
     ).uniform_allocation()
 
 @backtest
-def TrendFollowing(strategy: Strategy) -> Optional[pd.Series]:
+def TrendFollowing(strategy):
     """
     The idea behind market trends is simple: Stocks that have been rising (or falling)
     in the past tend to continue growing (or falling) in the future.

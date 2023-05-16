@@ -1,2 +1,2 @@
 """ROBERT"""
-from .meta import Meta
+from .meta import *

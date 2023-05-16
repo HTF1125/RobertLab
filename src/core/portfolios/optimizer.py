@@ -155,7 +155,7 @@ class Optimizer:
         self.metrics.assets = assets
 
     @property
-    def num_asset(self) -> int:
+    def num_assets(self) -> int:
         """return number of asset"""
         if self.assets is None:
             return 0
@@ -334,7 +334,7 @@ class Optimizer:
             fun=objective,
             method="SLSQP",
             constraints=constraints,
-            x0=np.ones(shape=self.num_asset) / self.num_asset,
+            x0=np.ones(shape=self.num_assets) / self.num_assets,
         )
 
         if problem.success:
@@ -384,6 +384,7 @@ class Optimizer:
         self, linkage_method: str = "single"
     ) -> Optional[pd.Series]:
         """calculate herc weights"""
+        if self.num_assets <= 2: return self.risk_parity()
         if self.correlation_matrix is None:
             if self.covariance_matrix is not None:
                 self.correlation_matrix = cov_to_corr(self.covariance_matrix)
@@ -427,6 +428,7 @@ class Optimizer:
         self, linkage_method: str = "single"
     ) -> Optional[pd.Series]:
         """calculate herc weights"""
+        if self.num_assets <= 2: return self.risk_parity()
         if self.correlation_matrix is None:
             if self.covariance_matrix is not None:
                 self.correlation_matrix = cov_to_corr(self.covariance_matrix)
@@ -468,7 +470,7 @@ class Optimizer:
             Optional[pd.Series]: _description_
         """
         if budgets is None:
-            budgets = np.ones(self.num_asset) / self.num_asset
+            budgets = np.ones(self.num_assets) / self.num_assets
         weights = self.solve(
             objective=lambda w: objectives.l1_norm(
                 np.subtract(
@@ -505,7 +507,7 @@ class Optimizer:
         Returns:
             Optional[pd.Series]: _description_
         """
-        target_allocations = np.ones(shape=self.num_asset) / self.num_asset
+        target_allocations = np.ones(shape=self.num_assets) / self.num_assets
         return self.solve(
             objective=lambda w: objectives.l1_norm(np.subtract(w, target_allocations))
         )

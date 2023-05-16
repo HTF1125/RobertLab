@@ -1,8 +1,9 @@
 """ROBERT"""
 from typing import Optional, Callable
+from functools import partial
 import pandas as pd
-from src.core.analytics import metrics
-from src.core.ext.clean import clean_weights
+from ..analytics import metrics
+from ..ext.clean import clean_weights
 
 
 class AccountRecords:
@@ -139,15 +140,17 @@ class Strategy:
         rebalance: Callable,
         frequency: str = "M",
         initial_investment: float = 1000.0,
-        min_periods: int = 2,
-        min_assets: int = 2,
+        start: Optional[str] = None,
+        end: Optional[str] = None,
     ) -> None:
         self.account = VirtualAccount(initial_investment=initial_investment)
         self.prices = prices.ffill()
         self.rebalance = rebalance
         self.frequency = frequency
-        self.min_periods = min_periods
-        self.min_assets = min_assets
+        self.simulate(
+            start=start or str(self.prices.index[0]),
+            end = end or str(self.prices.index[-1]),
+        )
 
     @property
     def date(self) -> Optional[pd.Timestamp]:
@@ -160,11 +163,6 @@ class Strategy:
         self.account.date = date
         if date in self.prices.index:
             self.account.prices = self.prices.loc[self.date]
-
-    @property
-    def reb_prices(self) -> pd.DataFrame:
-        """rebalancing prices"""
-        return self.prices.loc[: self.date].dropna(thresh=self.min_periods, axis=1)
 
     ################################################################################
 
@@ -199,6 +197,13 @@ class Strategy:
 
     ################################################################################
 
+    @property
+    def reb_prices(self) -> pd.DataFrame:
+        """rebalancing prices"""
+        if self.date is None:
+            return pd.DataFrame()
+        return self.prices.loc[:self.date]
+
 
     def make_allocation(self) -> pd.Series:
         """wrapper"""
@@ -228,8 +233,6 @@ class Strategy:
                 )
                 self.account.reset_allocations()
             if self.date in reb_dates or self.account.shares.empty:
-                if len(self.reb_prices) < self.min_assets or len(self.reb_prices.columns) < self.min_assets:
-                    continue
                 self.account.allocations = clean_weights(
                     weights=self.make_allocation(), num_decimal=4,
                 )
@@ -250,3 +253,17 @@ class Strategy:
 
         result = [metric(self.value.to_frame()).to_frame() for metric in __metrics__]
         return pd.concat(result, axis=1).T
+
+def backtest(func: Callable):
+    """strategy wrapper"""
+    def wrapper(
+        prices: pd.DataFrame,
+        start: Optional[str] = None,
+        end: Optional[str] = None,
+        **kwargs
+    ):
+        return Strategy(
+            prices=prices, rebalance=partial(func, **kwargs),
+            start=start, end=end,
+        )
+    return wrapper

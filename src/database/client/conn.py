@@ -38,3 +38,13 @@ def SessionContext():
         raise
     finally:
         session.close()
+
+
+def create_all():
+    """ "create all database tables"""
+    Base.metadata.create_all(engine)
+
+
+def drop_all():
+    """drop all database tables"""
+    Base.metadata.drop_all(engine)
