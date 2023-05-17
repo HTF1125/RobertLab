@@ -30,7 +30,7 @@ class Signal:
         """ calculate expected return by states """
         fwd_return = prices.resample(rule=frequency).last().ffill().pct_change().shift(-1)
         fwd_return["states"] = self.add_states(fwd_return.index)
-        grouped = fwd_return.groupby(by="states").mean() * 12
+        grouped = fwd_return.groupby(by="states").mean()
         return grouped
 
     def get_state(self, date:str) -> str:

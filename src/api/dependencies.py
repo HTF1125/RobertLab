@@ -1,13 +1,8 @@
 
-from ..database.client import SessionMaker
+from database import engine, Session
 
 
 # Dependency
-def get_db():
-    db = SessionMaker()
-    try:
-        yield db
-    finally:
-        db.close()
-
-
+def get_session():
+    with Session(engine) as session:
+        yield session

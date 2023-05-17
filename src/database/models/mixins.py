@@ -179,16 +179,14 @@ class StaticBase(MemoBase):
         sa.DateTime(timezone=True),
         default=sa.func.now(),
         onupdate=sa.func.now(),
-        server_default=sa.func.now(),
-        server_onupdate=sa.func.now(),
         nullable=False,
         comment="Last Modified Datetime.",
         doc="Last Modified Datetime.",
     )
 
 
-
 class DateSeriesBase(Mixins):
     """abstract timeseries mixins"""
+
     __abstract__ = True
     date = sa.Column(sa.Date, primary_key=True)
