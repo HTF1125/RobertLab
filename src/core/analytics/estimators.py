@@ -16,6 +16,7 @@ def to_expected_returns(prices: pd.DataFrame) -> pd.Series:
     """
     return to_ann_return(prices=prices)
 
+
 def exponential_alpha(
     com: Optional[float] = None,
     span: Optional[float] = None,
@@ -41,6 +42,7 @@ def exponential_alpha(
     if halflife:
         return 1 - np.exp(-np.log(2) / halflife)
 
+    return 1.
 
 def to_covariance_matrix(
     prices: pd.DataFrame,

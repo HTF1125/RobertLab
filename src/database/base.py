@@ -1,11 +1,13 @@
+"""ROBERT"""
+import os
 from typing import Optional, List
 from datetime import datetime, date
 from sqlmodel import Session, SQLModel, Field, Relationship, create_engine
 from sqlalchemy import Column, DateTime, String, Float, func
 from pydantic import BaseModel
-from config import DATABASE_URL
 
-
+path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "database.db")
+DATABASE_URL: str = os.getenv("DATABASE_URL") or f"sqlite:///{path}"
 class DatePkBase(BaseModel):
     dt: date = Field(default=None, primary_key=True)
 
