@@ -35,6 +35,21 @@ def expected_variance(
     """
     return np.linalg.multi_dot((weights, covariance_matrix, weights))
 
+def expected_correlation(
+    weights: np.ndarray,
+    correlation_matrix: np.ndarray,
+) -> float:
+    """
+    Portfolio expected variance.
+
+    Args:
+        weight (np.ndarray): weight of assets.
+        correlation_matrix (np.ndarray): covariance matrix of assets.
+
+    Returns:
+        float: portfolio expected variance.
+    """
+    return np.linalg.multi_dot((weights, correlation_matrix, weights))
 
 def expected_volatility(
     weights: np.ndarray,

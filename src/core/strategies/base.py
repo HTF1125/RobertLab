@@ -143,13 +143,15 @@ class Strategy:
         start: Optional[str] = None,
         end: Optional[str] = None,
     ) -> None:
-        self.account = VirtualAccount(initial_investment=initial_investment)
-        self.prices = prices.ffill()
-        self.rebalance = rebalance
-        self.frequency = frequency
+        self.account: VirtualAccount = VirtualAccount(
+            initial_investment=initial_investment
+        )
+        self.prices: pd.DataFrame = prices.ffill()
+        self.rebalance: Callable = rebalance
+        self.frequency: str = frequency
         self.simulate(
             start=start or str(self.prices.index[0]),
-            end = end or str(self.prices.index[-1]),
+            end=end or str(self.prices.index[-1]),
         )
 
     @property
@@ -161,8 +163,6 @@ class Strategy:
     def date(self, date: pd.Timestamp) -> None:
         """date property"""
         self.account.date = date
-        if date in self.prices.index:
-            self.account.prices = self.prices.loc[self.date]
 
     ################################################################################
 
@@ -202,29 +202,31 @@ class Strategy:
         """rebalancing prices"""
         if self.date is None:
             return pd.DataFrame()
-        return self.prices.loc[:self.date]
-
+        return self.prices[self.prices.index < self.date].dropna(how="all", axis=1)
 
     def make_allocation(self) -> pd.Series:
         """wrapper"""
         allocations = self.rebalance(strategy=self)
         if not isinstance(allocations, pd.Series):
-            try:
-                return pd.Series(allocations, dtype=float)
-            except:
-                return pd.Series(dtype=float)
+            return pd.Series(allocations, dtype=float)
         return allocations
 
-
-    def simulate(
-        self, start: Optional[str] = None, end: Optional[str] = None
-    ) -> "Strategy":
+    def simulate(self, start: str, end: str) -> None:
         """simulate strategy"""
 
-        start = start or str(self.prices.index[0])
-        end = end or str(self.prices.index[-1])
         reb_dates = pd.date_range(start=start, end=end, freq=self.frequency)
+        rebalance = True
         for self.date in pd.date_range(start=start, end=end, freq="D"):
+            if self.date not in self.prices.index:
+                continue
+            self.account.prices = self.prices.loc[self.date]
+            if rebalance:
+                self.account.allocations = clean_weights(
+                    weights=self.make_allocation(),
+                    num_decimal=4,
+                )
+                if not self.account.allocations.empty:
+                    rebalance = False
             if self.date in self.prices.index and not self.account.allocations.empty:
                 self.account.weights = self.account.allocations
                 self.account.capitals = self.account.value * self.account.weights
@@ -232,38 +234,39 @@ class Strategy:
                     self.prices.loc[self.date].dropna()
                 )
                 self.account.reset_allocations()
-            if self.date in reb_dates or self.account.shares.empty:
-                self.account.allocations = clean_weights(
-                    weights=self.make_allocation(), num_decimal=4,
-                )
-        return self
 
-    def analytics(self) -> pd.DataFrame:
+            if not rebalance:
+                rebalance = self.date in reb_dates
+
+    def analytics(self) -> pd.Series:
         """analytics"""
+        return pd.Series(
+            data={
+                "AnnReturn": metrics.to_ann_return(self.value),
+                "AnnVolatility": metrics.to_ann_volatility(self.value),
+                "SharpeRatio": metrics.to_sharpe_ratio(self.value),
+                "Skew": metrics.to_skewness(self.value),
+                "Kurt": metrics.to_kurtosis(self.value),
+                "VaR": metrics.to_value_at_risk(self.value),
+                "CVaR": metrics.to_conditional_value_at_risk(self.value),
+            }
+        )
 
-        __metrics__ = [
-            metrics.to_ann_return,
-            metrics.to_ann_volatility,
-            metrics.to_sharpe_ratio,
-            metrics.to_skewness,
-            metrics.to_kurtosis,
-            metrics.to_value_at_risk,
-            metrics.to_conditional_value_at_risk,
-        ]
-
-        result = [metric(self.value.to_frame()).to_frame() for metric in __metrics__]
-        return pd.concat(result, axis=1).T
 
 def backtest(func: Callable):
     """strategy wrapper"""
+
     def wrapper(
         prices: pd.DataFrame,
         start: Optional[str] = None,
         end: Optional[str] = None,
-        **kwargs
+        **kwargs,
     ):
         return Strategy(
-            prices=prices, rebalance=partial(func, **kwargs),
-            start=start, end=end,
+            prices=prices,
+            rebalance=partial(func, **kwargs),
+            start=start,
+            end=end,
         )
+
     return wrapper

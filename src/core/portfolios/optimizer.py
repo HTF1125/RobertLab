@@ -366,6 +366,15 @@ class Optimizer:
             )
         )
 
+    def minimized_correlation(self) -> Optional[pd.Series]:
+        """calculate minimum correlation weights"""
+
+        return self.solve(
+            objective=partial(
+                objectives.expected_correlation,
+                correlation_matrix=np.array(self.correlation_matrix),
+            )
+        )
     def maximized_sharpe_ratio(self) -> Optional[pd.Series]:
         """calculate maximum sharpe ratio weights"""
         if self.expected_returns is None or self.covariance_matrix is None:
@@ -384,7 +393,8 @@ class Optimizer:
         self, linkage_method: str = "single"
     ) -> Optional[pd.Series]:
         """calculate herc weights"""
-        if self.num_assets <= 2: return self.risk_parity()
+        if self.num_assets <= 2:
+            return self.risk_parity()
         if self.correlation_matrix is None:
             if self.covariance_matrix is not None:
                 self.correlation_matrix = cov_to_corr(self.covariance_matrix)
@@ -428,7 +438,8 @@ class Optimizer:
         self, linkage_method: str = "single"
     ) -> Optional[pd.Series]:
         """calculate herc weights"""
-        if self.num_assets <= 2: return self.risk_parity()
+        if self.num_assets <= 2:
+            return self.risk_parity()
         if self.correlation_matrix is None:
             if self.covariance_matrix is not None:
                 self.correlation_matrix = cov_to_corr(self.covariance_matrix)

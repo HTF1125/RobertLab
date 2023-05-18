@@ -42,7 +42,8 @@ def exponential_alpha(
     if halflife:
         return 1 - np.exp(-np.log(2) / halflife)
 
-    return 1.
+    return 0.0
+
 
 def to_covariance_matrix(
     prices: pd.DataFrame,
@@ -65,18 +66,16 @@ def to_covariance_matrix(
     """
 
     pri_returns = to_pri_return(prices=prices)
-    if ann_factor is None:
-        ann_factor = to_ann_factor(prices=prices)
-    alpha = exponential_alpha(com=com, span=span, halflife=halflife)
 
-    if alpha is None:
-        return pri_returns.cov() * ann_factor
+    if com is not None or span is not None or halflife is not None:
+        alpha = exponential_alpha(com=com, span=span, halflife=halflife)
 
-    exp_covariance_matrix = (
-        pri_returns.ewm(alpha=alpha).cov().unstack().iloc[-1].unstack() * ann_factor
-    )
+        exp_covariance_matrix = (
+            pri_returns.ewm(alpha=alpha).cov().unstack().iloc[-1].unstack() * ann_factor
+        )
 
-    return exp_covariance_matrix.loc[prices.columns, prices.columns]
+        return exp_covariance_matrix.loc[prices.columns, prices.columns]
+    return pri_returns.cov() * ann_factor
 
 
 def to_correlation_matrix(
@@ -99,13 +98,13 @@ def to_correlation_matrix(
     """
 
     pri_returns = to_pri_return(prices=prices)
-    alpha = exponential_alpha(com=com, span=span, halflife=halflife)
 
-    if alpha is None:
-        return pri_returns.corr()
+    if com is not None or span is not None or halflife is not None:
+        alpha = exponential_alpha(com=com, span=span, halflife=halflife)
 
-    exp_covariance_matrix = (
-        pri_returns.ewm(alpha=alpha).corr().unstack().iloc[-1].unstack()
-    )
+        exp_covariance_matrix = (
+            pri_returns.ewm(alpha=alpha).corr().unstack().iloc[-1].unstack()
+        )
 
-    return exp_covariance_matrix.loc[prices.columns, prices.columns]
+        return exp_covariance_matrix.loc[prices.columns, prices.columns]
+    return pri_returns.corr()
