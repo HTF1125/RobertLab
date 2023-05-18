@@ -14,7 +14,7 @@ from ..analytics.utils import cov_to_corr, recursive_bisection
 class OptimizerMetrics:
     def __init__(self) -> None:
         self.prices: Optional[pd.DataFrame] = None
-        self.expected_returns: Optional[pd.Series] = None
+        self.expected_returns: pd.Series = None
         self.covariance_matrix: Optional[pd.DataFrame] = None
         self.correlation_matrix: Optional[pd.DataFrame] = None
         self.assets: Optional[pd.Index] = None
@@ -42,13 +42,13 @@ class Optimizer:
 
     def __init__(
         self,
-        expected_returns: Optional[pd.Series] = None,
+        expected_returns: pd.Series = None,
         covariance_matrix: Optional[pd.DataFrame] = None,
         correlation_matrix: Optional[pd.DataFrame] = None,
         risk_free: float = 0.0,
         prices: Optional[pd.DataFrame] = None,
-        prices_bm: Optional[pd.Series] = None,
-        weights_bm: Optional[pd.Series] = None,
+        prices_bm: pd.Series = None,
+        weights_bm: pd.Series = None,
         min_weight: float = 0.0,
         max_weight: float = 1.0,
         sum_weight: float = 1.0,
@@ -91,12 +91,12 @@ class Optimizer:
             self.set_max_expost_tracking_error(max_expost_tracking_error)
 
     @property
-    def expected_returns(self) -> Optional[pd.Series]:
+    def expected_returns(self) -> pd.Series:
         """expected_returns"""
         return self.metrics.expected_returns
 
     @expected_returns.setter
-    def expected_returns(self, expected_returns: Optional[pd.Series] = None) -> None:
+    def expected_returns(self, expected_returns: pd.Series = None) -> None:
         if expected_returns is not None:
             self.metrics.expected_returns = expected_returns
             self.assets = expected_returns.index
@@ -316,7 +316,7 @@ class Optimizer:
 
     def solve(
         self, objective: Callable, extra_constraints: Optional[List[Dict]] = None
-    ) -> Optional[pd.Series]:
+    ) -> pd.Series:
         """_summary_
 
         Args:
@@ -325,7 +325,7 @@ class Optimizer:
                 Defaults to None.
 
         Returns:
-            Optional[pd.Series]: optimized weights
+            pd.Series: optimized weights
         """
         constraints = self.constraints.copy()
         if extra_constraints:
@@ -340,9 +340,9 @@ class Optimizer:
         if problem.success:
             data = problem.x + 1e-16
             return pd.Series(data=data, index=self.assets, name="weights").round(6)
-        return None
+        return pd.Series(dtype=float)
 
-    def maximized_return(self) -> Optional[pd.Series]:
+    def maximized_return(self) -> pd.Series:
         """calculate maximum return weights"""
         if self.expected_returns is None:
             warnings.warn("expected_returns must not be none.")
@@ -354,7 +354,7 @@ class Optimizer:
             )
         )
 
-    def minimized_volatility(self) -> Optional[pd.Series]:
+    def minimized_volatility(self) -> pd.Series:
         """calculate minimum volatility weights"""
         if self.covariance_matrix is None:
             warnings.warn("covariance_matrix must not be none.")
@@ -366,7 +366,7 @@ class Optimizer:
             )
         )
 
-    def minimized_correlation(self) -> Optional[pd.Series]:
+    def minimized_correlation(self) -> pd.Series:
         """calculate minimum correlation weights"""
 
         return self.solve(
@@ -375,7 +375,7 @@ class Optimizer:
                 correlation_matrix=np.array(self.correlation_matrix),
             )
         )
-    def maximized_sharpe_ratio(self) -> Optional[pd.Series]:
+    def maximized_sharpe_ratio(self) -> pd.Series:
         """calculate maximum sharpe ratio weights"""
         if self.expected_returns is None or self.covariance_matrix is None:
             warnings.warn("expected_returns and covariance_matrix must not be none.")
@@ -391,7 +391,7 @@ class Optimizer:
 
     def hierarchical_equal_risk_contribution(
         self, linkage_method: str = "single"
-    ) -> Optional[pd.Series]:
+    ) -> pd.Series:
         """calculate herc weights"""
         if self.num_assets <= 2:
             return self.risk_parity()
@@ -436,7 +436,7 @@ class Optimizer:
 
     def hierarchical_risk_parity(
         self, linkage_method: str = "single"
-    ) -> Optional[pd.Series]:
+    ) -> pd.Series:
         """calculate herc weights"""
         if self.num_assets <= 2:
             return self.risk_parity()
@@ -474,11 +474,11 @@ class Optimizer:
             )
         )
 
-    def risk_parity(self, budgets: Optional[np.ndarray] = None) -> Optional[pd.Series]:
+    def risk_parity(self, budgets: Optional[np.ndarray] = None) -> pd.Series:
         """_summary_
 
         Returns:
-            Optional[pd.Series]: _description_
+            pd.Series: _description_
         """
         if budgets is None:
             budgets = np.ones(self.num_assets) / self.num_assets
@@ -500,11 +500,11 @@ class Optimizer:
         )
         return weights
 
-    def inverse_variance(self) -> Optional[pd.Series]:
+    def inverse_variance(self) -> pd.Series:
         """_summary_
 
         Returns:
-            Optional[pd.Series]: _description_
+            pd.Series: _description_
         """
         inv_var_weights = 1 / np.diag(np.array(self.covariance_matrix))
         inv_var_weights /= inv_var_weights.sum()
@@ -512,11 +512,11 @@ class Optimizer:
             objective=lambda w: objectives.l1_norm(np.subtract(w, inv_var_weights))
         )
 
-    def uniform_allocation(self) -> Optional[pd.Series]:
+    def uniform_allocation(self) -> pd.Series:
         """_summary_
 
         Returns:
-            Optional[pd.Series]: _description_
+            pd.Series: _description_
         """
         target_allocations = np.ones(shape=self.num_assets) / self.num_assets
         return self.solve(

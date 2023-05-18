@@ -238,6 +238,7 @@ class Strategy:
             if not rebalance:
                 rebalance = self.date in reb_dates
 
+    @property
     def analytics(self) -> pd.Series:
         """analytics"""
         return pd.Series(
@@ -251,22 +252,3 @@ class Strategy:
                 "CVaR": metrics.to_conditional_value_at_risk(self.value),
             }
         )
-
-
-def backtest(func: Callable):
-    """strategy wrapper"""
-
-    def wrapper(
-        prices: pd.DataFrame,
-        start: Optional[str] = None,
-        end: Optional[str] = None,
-        **kwargs,
-    ):
-        return Strategy(
-            prices=prices,
-            rebalance=partial(func, **kwargs),
-            start=start,
-            end=end,
-        )
-
-    return wrapper

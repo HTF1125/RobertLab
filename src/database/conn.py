@@ -1,8 +1,11 @@
 """ROBERT"""
 import os
+from typing import List, Dict
+from datetime import datetime
 from contextlib import contextmanager
-from sqlalchemy import Column, String, Integer, Date, ForeignKey
 from sqlalchemy import create_engine
+from sqlalchemy import Column, String, Integer, Float, Date, DateTime, ForeignKey
+from sqlalchemy import func
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 from sqlalchemy.ext.declarative import declarative_base
@@ -45,20 +48,67 @@ def Session():
         session.close()
 
 
-
 Base = declarative_base()
 
-class Meta(Base):
-    __tablename__ = "meta1"
 
-    id = Column(Integer, primary_key=True, autoincrement=True)
+class Mixins(Base):
+    __abstract__ = True
+
+    @classmethod
+    def insert(cls, records: List[Dict]) -> bool:
+        with Session() as session:
+            session.bulk_insert_mappings(cls, records)
+        return True
+
+
+class TimeMixins(Mixins):
+
+    __abstract__ = True
+    created_at = Column(
+        DateTime(timezone=True),
+        default=datetime.utcnow,
+        onupdate=datetime.utcnow,
+        server_default=func.now(),
+    )
+    updated_at = Column(
+        DateTime(timezone=True),
+        default=datetime.utcnow,
+        onupdate=datetime.utcnow,
+        server_default=func.now(),
+    )
+
+
+class Investable(TimeMixins):
+    __tablename__ = "investable"
+
     ticker = Column(String, index=True)
+    id = Column(Integer, primary_key=True, autoincrement=True)
     name = Column(String)
-    source = Column(String)
-    category = Column(String)
+    description = Column(String)
 
 
 class PxLast(Base):
-    __tablename__ = "px_index"
+    __tablename__ = "px_last"
     date = Column(Date, primary_key=True)
-    meta_id = Column(ForeignKey("meta1.id"))
+    investable_id = Column(ForeignKey("investable.id"), primary_key=True)
+    px_last = Column(Float)
+
+
+class Universe(TimeMixins):
+    __tablename__ = "universe"
+    ticker = Column(String, index=True)
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    name = Column(String)
+    description = Column(String)
+
+
+class UniverseInvestable(Mixins):
+    __tablename__ = "universe_investable"
+    date = Column(Date, primary_key=True)
+    universe_id = Column(ForeignKey("universe.id"), primary_key=True)
+    investable_id = Column(ForeignKey("investable.id"), primary_key=True)
+
+
+def create_all() -> None:
+
+    Base.metadata.create_all(engine)

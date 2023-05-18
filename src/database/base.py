@@ -97,4 +97,4 @@ engine = create_engine(
     echo=False,
 )
 
-SQLModel.metadata.create_all(engine)
+# SQLModel.metadata.create_all(engine)
