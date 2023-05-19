@@ -21,11 +21,8 @@ class Backtest:
                 start=start or cls.start,
                 end=end or cls.end,
             )
-
             cls.strategies[func.__name__] = strategy
-
             return strategy
-
         return wrapper
 
 

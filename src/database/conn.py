@@ -62,7 +62,6 @@ class Mixins(Base):
 
 
 class TimeMixins(Mixins):
-
     __abstract__ = True
     created_at = Column(
         DateTime(timezone=True),
@@ -87,13 +86,6 @@ class Investable(TimeMixins):
     description = Column(String)
 
 
-class PxLast(Base):
-    __tablename__ = "px_last"
-    date = Column(Date, primary_key=True)
-    investable_id = Column(ForeignKey("investable.id"), primary_key=True)
-    px_last = Column(Float)
-
-
 class Universe(TimeMixins):
     __tablename__ = "universe"
     ticker = Column(String, index=True)
@@ -109,6 +101,32 @@ class UniverseInvestable(Mixins):
     investable_id = Column(ForeignKey("investable.id"), primary_key=True)
 
 
-def create_all() -> None:
+class PxLast(Base):
+    __tablename__ = "px_last"
+    date = Column(Date, primary_key=True)
+    investable_id = Column(ForeignKey("investable.id"), primary_key=True)
+    px_last = Column(Float)
 
+
+class PxVolume(Base):
+    __abstract__ = True
+    date = Column(Date, primary_key=True)
+    investable_id = Column(ForeignKey("investable.id"), primary_key=True)
+    px_volume = Column(Integer)
+
+class PxDvd(Base):
+    __abstract__ = True
+    date = Column(Date, primary_key=True)
+    investable_id = Column(ForeignKey("investable.id"), primary_key=True)
+    px_dvd = Column(Float)
+
+
+class PxSplit(Base):
+    __abstract__ = True
+    date = Column(Date, primary_key=True)
+    investable_id = Column(ForeignKey("investable.id"), primary_key=True)
+    px_split = Column(Float)
+
+
+def create_all() -> None:
     Base.metadata.create_all(engine)

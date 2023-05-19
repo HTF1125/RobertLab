@@ -7,14 +7,14 @@ from scipy.spatial.distance import squareform
 import numpy as np
 import pandas as pd
 from . import objectives
-from ..analytics import estimators
+from ..analytics import metrics
 from ..analytics.utils import cov_to_corr, recursive_bisection
 
 
 class OptimizerMetrics:
     def __init__(self) -> None:
         self.prices: Optional[pd.DataFrame] = None
-        self.expected_returns: pd.Series = None
+        self.expected_returns: Optional[pd.Series] = None
         self.covariance_matrix: Optional[pd.DataFrame] = None
         self.correlation_matrix: Optional[pd.DataFrame] = None
         self.assets: Optional[pd.Index] = None
@@ -34,21 +34,21 @@ class Optimizer:
             Optimizer: initialized optimizer class.
         """
         return cls(
-            expected_returns=estimators.to_expected_returns(prices=prices),
-            covariance_matrix=estimators.to_covariance_matrix(prices=prices),
-            correlation_matrix=estimators.to_correlation_matrix(prices=prices),
+            expected_returns=metrics.to_expected_returns(prices=prices),
+            covariance_matrix=metrics.to_covariance_matrix(prices=prices),
+            correlation_matrix=metrics.to_correlation_matrix(prices=prices),
             **kwargs,
         )
 
     def __init__(
         self,
-        expected_returns: pd.Series = None,
+        expected_returns: Optional[pd.Series] = None,
         covariance_matrix: Optional[pd.DataFrame] = None,
         correlation_matrix: Optional[pd.DataFrame] = None,
         risk_free: float = 0.0,
         prices: Optional[pd.DataFrame] = None,
-        prices_bm: pd.Series = None,
-        weights_bm: pd.Series = None,
+        prices_bm: Optional[pd.Series] = None,
+        weights_bm: Optional[pd.Series] = None,
         min_weight: float = 0.0,
         max_weight: float = 1.0,
         sum_weight: float = 1.0,
@@ -96,7 +96,7 @@ class Optimizer:
         return self.metrics.expected_returns
 
     @expected_returns.setter
-    def expected_returns(self, expected_returns: pd.Series = None) -> None:
+    def expected_returns(self, expected_returns: Optional[pd.Series] = None) -> None:
         if expected_returns is not None:
             self.metrics.expected_returns = expected_returns
             self.assets = expected_returns.index
@@ -399,7 +399,7 @@ class Optimizer:
             if self.covariance_matrix is not None:
                 self.correlation_matrix = cov_to_corr(self.covariance_matrix)
             elif self.prices is not None:
-                self.correlation_matrix = estimators.to_correlation_matrix(self.prices)
+                self.correlation_matrix = metrics.to_correlation_matrix(self.prices)
             else:
                 raise ValueError("correlation matrix is none and uncomputable.")
         dist = np.sqrt((1 - self.correlation_matrix).round(5) / 2)
@@ -444,7 +444,7 @@ class Optimizer:
             if self.covariance_matrix is not None:
                 self.correlation_matrix = cov_to_corr(self.covariance_matrix)
             elif self.prices is not None:
-                self.correlation_matrix = estimators.to_correlation_matrix(self.prices)
+                self.correlation_matrix = metrics.to_correlation_matrix(self.prices)
             else:
                 raise ValueError("correlation matrix is none and uncomputable.")
 

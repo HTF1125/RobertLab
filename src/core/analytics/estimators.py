@@ -1,7 +1,7 @@
 from typing import Optional
 import numpy as np
 import pandas as pd
-from .metrics import to_pri_return, to_ann_factor, to_ann_return
+from .metrics import to_pri_return, to_ann_return
 from ..ext.periods import AnnFactor
 
 

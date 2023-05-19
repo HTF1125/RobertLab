@@ -1,6 +1,5 @@
 """ROBERT"""
 from typing import Optional, Callable
-from functools import partial
 import pandas as pd
 from ..analytics import metrics
 from ..ext.clean import clean_weights
@@ -246,8 +245,8 @@ class Strategy:
                 "AnnReturn": metrics.to_ann_return(self.value),
                 "AnnVolatility": metrics.to_ann_volatility(self.value),
                 "SharpeRatio": metrics.to_sharpe_ratio(self.value),
-                "Skew": metrics.to_skewness(self.value),
-                "Kurt": metrics.to_kurtosis(self.value),
+                "Skewness": metrics.to_skewness(self.value),
+                "Kurtosis": metrics.to_kurtosis(self.value),
                 "VaR": metrics.to_value_at_risk(self.value),
                 "CVaR": metrics.to_conditional_value_at_risk(self.value),
             }
