@@ -6,12 +6,10 @@ from fastapi import FastAPI, Depends, HTTPException
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
-from core.strategies import backtest
 from core.portfolios import Optimizer
 from config import SRC_FOLDER
 from sqlmodel import Session
 from sqlalchemy.exc import IntegrityError
-from database import MetaBase, Meta
 from .dependencies import get_session
 
 
@@ -53,36 +51,6 @@ if os.path.exists(SRC_FOLDER + "/docs/build/static"):
         app=StaticFiles(directory="../sphinx/docs/build/html", html=True),
         name="sphinx",
     )
-
-
-@app.get("/strategies/ew")
-def ew():
-    import yfinance as yf
-
-    @backtest
-    def EW(strategy):
-        """equal"""
-        return Optimizer.from_prices(prices=strategy.reb_prices).uniform_allocation()
-
-    result = EW(yf.download("SPY, AGG")["Adj Close"], start="2010-1-1")
-
-    return {"value": result.value.to_dict()}
-
-
-@app.post("/meta/create", response_model=Meta)
-async def add_meta(meta_in: MetaBase, session: Session = Depends(get_session)):
-    obj = Meta(ticker=meta_in.ticker, name=meta_in.name)
-    session.add(obj)
-    try:
-        session.commit()
-        session.refresh(obj)
-        return obj
-    except IntegrityError as exc:
-        raise HTTPException(status_code=404, detail="Hero not found") from exc
-
-@app.get("/meta", response_model=List[MetaBase])
-async def meta(session: Session = Depends(get_session), limit: int = 10):
-    return session.query(Meta).limit(limit).all()
 
 
 ####################################################################################################

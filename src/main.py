@@ -12,3 +12,9 @@ def start(reload: bool, asofdate: str):
     """main cli function"""
     print(asofdate)
     uvicorn.run(app="api.main:app", reload=reload)
+
+
+
+if __name__ == "__main__":
+
+    start()

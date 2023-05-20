@@ -4,7 +4,7 @@ from functools import partial
 import pandas as pd
 from .base import Strategy
 from ..portfolios import Optimizer
-
+from ..analytics import metrics
 
 class Backtest:
     def __call__(self, func) -> Callable:
@@ -23,12 +23,11 @@ class Backtest:
             )
             cls.strategies[func.__name__] = strategy
             return strategy
+
         return wrapper
 
 
 class BacktestManager:
-    strategies: Dict[str, Strategy] = dict()
-
     def __init__(
         self,
         prices: Optional[pd.DataFrame] = None,
@@ -38,6 +37,7 @@ class BacktestManager:
         self.prices = prices
         self.start = start
         self.end = end
+        self.strategies: Dict[str, Strategy] = dict()
 
     @Backtest()
     def RegimeRotation(self, strategy: Strategy, signal) -> pd.Series:
@@ -68,7 +68,7 @@ class BacktestManager:
 
     @Backtest()
     def Momentum(self, strategy: Strategy) -> pd.Series:
-        mom = strategy.reb_prices.iloc[-1] / strategy.reb_prices.iloc[-252]
+        mom = metrics.momentum(strategy.reb_prices, years=1).iloc[-1]
         index = mom.dropna().nlargest(5).index
         return Optimizer.from_prices(
             prices=strategy.reb_prices[index]

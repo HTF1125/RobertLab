@@ -216,26 +216,26 @@ class Strategy:
         reb_dates = pd.date_range(start=start, end=end, freq=self.frequency)
         rebalance = True
         for self.date in pd.date_range(start=start, end=end, freq="D"):
-            if self.date not in self.prices.index:
-                continue
-            self.account.prices = self.prices.loc[self.date]
-            if rebalance:
-                self.account.allocations = clean_weights(
-                    weights=self.make_allocation(),
-                    num_decimal=4,
-                )
-                if not self.account.allocations.empty:
-                    rebalance = False
-            if self.date in self.prices.index and not self.account.allocations.empty:
-                self.account.weights = self.account.allocations
-                self.account.capitals = self.account.value * self.account.weights
-                self.account.shares = self.account.capitals.divide(
-                    self.prices.loc[self.date].dropna()
-                )
-                self.account.reset_allocations()
 
+            if self.date in self.prices.index:
+                self.account.prices = self.prices.loc[self.date]
+                if rebalance:
+                    self.account.allocations = clean_weights(
+                        weights=self.make_allocation(),
+                        num_decimal=4,
+                    )
+                    if not self.account.allocations.empty:
+                        rebalance = False
+                if self.date in self.prices.index and not self.account.allocations.empty:
+                    self.account.weights = self.account.allocations
+                    self.account.capitals = self.account.value * self.account.weights
+                    self.account.shares = self.account.capitals.divide(
+                        self.prices.loc[self.date].dropna()
+                    )
+                    self.account.reset_allocations()
             if not rebalance:
                 rebalance = self.date in reb_dates
+
 
     @property
     def analytics(self) -> pd.Series:
@@ -245,9 +245,11 @@ class Strategy:
                 "AnnReturn": metrics.to_ann_return(self.value),
                 "AnnVolatility": metrics.to_ann_volatility(self.value),
                 "SharpeRatio": metrics.to_sharpe_ratio(self.value),
+                "SortinoRatio": metrics.to_sortino_ratio(self.value),
                 "Skewness": metrics.to_skewness(self.value),
                 "Kurtosis": metrics.to_kurtosis(self.value),
                 "VaR": metrics.to_value_at_risk(self.value),
                 "CVaR": metrics.to_conditional_value_at_risk(self.value),
+                "TailRatio": metrics.to_tail_ratio(self.value),
             }
         )

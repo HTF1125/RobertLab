@@ -3,8 +3,7 @@ from typing import Union, Optional
 from typing import overload
 import numpy as np
 import pandas as pd
-from scipy.stats import skew, kurtosis
-from ...ext.periods import AnnFactor
+from ..ext.periods import AnnFactor
 
 
 @overload
@@ -84,6 +83,13 @@ def to_log_return(prices: pd.DataFrame) -> pd.DataFrame:
     ...
 
 
+@overload
+def to_log_return(
+    prices: Union[pd.DataFrame, pd.Series]
+) -> Union[pd.DataFrame, pd.Series]:
+    ...
+
+
 def to_log_return(
     prices: Union[pd.DataFrame, pd.Series]
 ) -> Union[pd.DataFrame, pd.Series]:
@@ -110,12 +116,16 @@ def to_cum_return(
 
 
 @overload
-def to_ann_return(prices: pd.DataFrame, ann_factor: Union[int, float]) -> pd.Series:
+def to_ann_return(
+    prices: pd.DataFrame, ann_factor: Union[int, float] = AnnFactor.daily
+) -> pd.Series:
     ...
 
 
 @overload
-def to_ann_return(prices: pd.Series, ann_factor: Union[int, float]) -> float:
+def to_ann_return(
+    prices: pd.Series, ann_factor: Union[int, float] = AnnFactor.daily
+) -> float:
     ...
 
 
@@ -127,12 +137,16 @@ def to_ann_return(
 
 
 @overload
-def to_ann_variance(prices: pd.DataFrame, ann_factor: Union[int, float]) -> pd.Series:
+def to_ann_variance(
+    prices: pd.DataFrame, ann_factor: Union[int, float] = AnnFactor.daily
+) -> float:
     ...
 
 
 @overload
-def to_ann_variance(prices: pd.Series, ann_factor: Union[int, float]) -> float:
+def to_ann_variance(
+    prices: pd.Series, ann_factor: Union[int, float] = AnnFactor.daily
+) -> float:
     ...
 
 
@@ -146,12 +160,16 @@ def to_ann_variance(
 
 
 @overload
-def to_ann_volatility(prices: pd.DataFrame, ann_factor: Union[int, float]) -> pd.Series:
+def to_ann_volatility(
+    prices: pd.Series, ann_factor: Union[int, float] = AnnFactor.daily
+) -> float:
     ...
 
 
 @overload
-def to_ann_volatility(prices: pd.Series, ann_factor: Union[int, float]) -> float:
+def to_ann_volatility(
+    prices: pd.DataFrame, ann_factor: Union[int, float] = AnnFactor.daily
+) -> pd.Series:
     ...
 
 
@@ -163,14 +181,26 @@ def to_ann_volatility(
 
 
 @overload
+def to_ann_semi_variance(prices: pd.DataFrame) -> pd.Series:
+    ...
+
+
+@overload
+def to_ann_semi_variance(prices: pd.Series) -> float:
+    ...
+
+
+@overload
 def to_ann_semi_variance(
-    prices: pd.DataFrame, ann_factor: Union[int, float]
+    prices: pd.DataFrame, ann_factor: Union[int, float] = AnnFactor.daily
 ) -> pd.Series:
     ...
 
 
 @overload
-def to_ann_semi_variance(prices: pd.Series, ann_factor: Union[int, float]) -> float:
+def to_ann_semi_variance(
+    prices: pd.Series, ann_factor: Union[int, float] = AnnFactor.daily
+) -> float:
     ...
 
 
@@ -178,25 +208,25 @@ def to_ann_semi_variance(
     prices: Union[pd.DataFrame, pd.Series],
     ann_factor: Union[int, float] = AnnFactor.daily,
 ) -> Union[pd.Series, float]:
-    if isinstance(prices, pd.Series):
-        prices = prices.to_frame()
+    if isinstance(prices, pd.DataFrame):
+        return prices.aggregate(to_ann_semi_variance, ann_factor=ann_factor)
     pri_return = to_pri_return(prices=prices)
-    semi_var = pri_return[pri_return >= 0].var()
-    out = semi_var * ann_factor
-    if isinstance(prices, pd.Series):
-        return out.iloc[0]
-    return out
+    return float(np.var(pri_return[pri_return >= 0])) * ann_factor
+
+
 
 
 @overload
 def to_ann_semi_volatility(
-    prices: pd.DataFrame, ann_factor: Union[int, float]
+    prices: pd.DataFrame, ann_factor: Union[int, float] = AnnFactor.daily
 ) -> pd.Series:
     ...
 
 
 @overload
-def to_ann_semi_volatility(prices: pd.Series, ann_factor: Union[int, float]) -> float:
+def to_ann_semi_volatility(
+    prices: pd.Series, ann_factor: Union[int, float] = AnnFactor.daily
+) -> float:
     ...
 
 
@@ -244,14 +274,18 @@ def to_max_drawdown(
 
 @overload
 def to_sharpe_ratio(
-    prices: pd.DataFrame, risk_free: Union[int, float], ann_factor: Union[int, float]
+    prices: pd.DataFrame,
+    risk_free: Union[int, float] = 0.0,
+    ann_factor: Union[int, float] = AnnFactor.daily,
 ) -> pd.Series:
     ...
 
 
 @overload
 def to_sharpe_ratio(
-    prices: pd.Series, risk_free: Union[int, float], ann_factor: Union[int, float]
+    prices: pd.Series,
+    risk_free: Union[int, float] = 0.0,
+    ann_factor: Union[int, float] = AnnFactor.daily,
 ) -> float:
     ...
 
@@ -266,12 +300,16 @@ def to_sharpe_ratio(
 
 
 @overload
-def to_sortino_ratio(prices: pd.DataFrame, ann_factor: Union[int, float]) -> pd.Series:
+def to_sortino_ratio(
+    prices: pd.DataFrame, ann_factor: Union[int, float] = AnnFactor.daily
+) -> pd.Series:
     ...
 
 
 @overload
-def to_sortino_ratio(prices: pd.Series, ann_factor: Union[int, float]) -> float:
+def to_sortino_ratio(
+    prices: pd.Series, ann_factor: Union[int, float] = AnnFactor.daily
+) -> float:
     ...
 
 
@@ -285,12 +323,12 @@ def to_sortino_ratio(
 
 
 @overload
-def to_tail_ratio(prices: pd.DataFrame, alpha: float) -> pd.Series:
+def to_tail_ratio(prices: pd.DataFrame, alpha: float = 0.05) -> pd.Series:
     ...
 
 
 @overload
-def to_tail_ratio(prices: pd.Series, alpha: float) -> float:
+def to_tail_ratio(prices: pd.Series, alpha: float = 0.05) -> float:
     ...
 
 
@@ -301,12 +339,12 @@ def to_tail_ratio(
 
 
 @overload
-def to_skewness(prices: pd.DataFrame, log_return: bool) -> pd.Series:
+def to_skewness(prices: pd.DataFrame, log_return: bool = False) -> pd.Series:
     ...
 
 
 @overload
-def to_skewness(prices: pd.Series, log_return: bool) -> float:
+def to_skewness(prices: pd.Series, log_return: bool = False) -> float:
     ...
 
 
@@ -326,12 +364,12 @@ def to_skewness(
 
 
 @overload
-def to_kurtosis(prices: pd.DataFrame, log_return: bool) -> pd.Series:
+def to_kurtosis(prices: pd.DataFrame, log_return: bool = False) -> pd.Series:
     ...
 
 
 @overload
-def to_kurtosis(prices: pd.Series, log_return: bool) -> float:
+def to_kurtosis(prices: pd.Series, log_return: bool = False) -> float:
     ...
 
 
@@ -351,12 +389,12 @@ def to_kurtosis(
 
 
 @overload
-def to_value_at_risk(prices: pd.DataFrame, alpha: float) -> pd.Series:
+def to_value_at_risk(prices: pd.DataFrame, alpha: float = 0.05) -> pd.Series:
     ...
 
 
 @overload
-def to_value_at_risk(prices: pd.Series, alpha: float) -> float:
+def to_value_at_risk(prices: pd.Series, alpha: float = 0.05) -> float:
     ...
 
 
@@ -370,12 +408,14 @@ def to_value_at_risk(
 
 
 @overload
-def to_conditional_value_at_risk(prices: pd.DataFrame, alpha: float) -> pd.Series:
+def to_conditional_value_at_risk(
+    prices: pd.DataFrame, alpha: float = 0.05
+) -> pd.Series:
     ...
 
 
 @overload
-def to_conditional_value_at_risk(prices: pd.Series, alpha: float) -> float:
+def to_conditional_value_at_risk(prices: pd.Series, alpha: float = 0.05) -> float:
     ...
 
 
@@ -408,16 +448,11 @@ def momentum(
     return (prices / offset_prices).loc[prices.index]
 
 
-def to_expected_returns(prices: pd.DataFrame) -> pd.Series:
-    """Calculates the expected returns from a DataFrame of prices.
-
-    Args:
-        prices (pd.DataFrame): A DataFrame of asset prices.
-
-    Returns:
-        pd.Series: A Series of expected returns.
-    """
-    return to_ann_return(prices=prices)
+def to_expected_returns(
+    prices: Union[pd.DataFrame, pd.Series]
+) -> Union[pd.Series, float]:
+    """this is a pass through function"""
+    return to_ann_return(prices=prices, ann_factor=AnnFactor.daily)
 
 
 def exponential_alpha(
@@ -511,3 +546,28 @@ def to_correlation_matrix(
 
         return exp_covariance_matrix.loc[prices.columns, prices.columns]
     return pri_returns.corr()
+
+
+@overload
+def to_monthly_return(prices: pd.DataFrame) -> pd.DataFrame:
+    ...
+
+
+@overload
+def to_monthly_return(prices: pd.Series) -> pd.Series:
+    ...
+
+
+def to_monthly_return(
+    prices: Union[pd.DataFrame, pd.Series]
+) -> Union[pd.DataFrame, pd.Series]:
+    def agg_ret(x):
+        return x.add(1).prod() - 1
+
+    return (
+        to_pri_return(prices=prices)
+        .groupby([lambda x: x.year, lambda x: x.month])
+        .apply(agg_ret)
+    )
+
+

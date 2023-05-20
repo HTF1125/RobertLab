@@ -1,4 +1,4 @@
 
-from .analytics import metrics, estimators, features
+from .analytics import metrics
 from .portfolios import Optimizer
 from .strategies import Strategy, BacktestManager
