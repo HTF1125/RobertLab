@@ -1,5 +1,3 @@
-
-
 from datetime import datetime
 import numpy as np
 import pandas as pd
@@ -8,7 +6,7 @@ import pandas_datareader as pdr
 
 
 class Signal:
-    """ signal """
+    """signal"""
 
     __regime__ = {}
 
@@ -17,30 +15,36 @@ class Signal:
         self.process()
 
     def process(self) -> None:
-        """ process data to signal """
-        raise NotImplementedError("user must implement `process` method to make signal.")
+        """process data to signal"""
+        raise NotImplementedError(
+            "user must implement `process` method to make signal."
+        )
 
     def add_states(self, idx: pd.Index) -> pd.Series:
-        """ assign the state column to the pandas """
+        """assign the state column to the pandas"""
         return self.states.reindex(idx).ffill()
 
     def expected_returns_by_states(
         self, prices: pd.DataFrame, frequency: str = "M"
     ) -> pd.DataFrame:
-        """ calculate expected return by states """
-        fwd_return = prices.resample(rule=frequency).last().ffill().pct_change().shift(-1)
+        """calculate expected return by states"""
+        fwd_return = (
+            prices.resample(rule=frequency).last().ffill().pct_change().shift(-1)
+        )
         fwd_return["states"] = self.add_states(fwd_return.index)
         grouped = fwd_return.groupby(by="states").mean()
         return grouped
 
-    def get_state(self, date:str) -> str:
+    def get_state(self, date: str) -> str:
         return self.states.resample("D").last().ffill().loc[date]
 
 
-
 def get_oecd_us_leading_indicator(meta: str = "USALOLITONOSTSAM") -> pd.DataFrame:
-    data = pdr.DataReader(name=meta, data_source="fred", start=datetime(1900,1,1)).astype(float)
+    data = pdr.DataReader(
+        name=meta, data_source="fred", start=datetime(1900, 1, 1)
+    ).astype(float)
     return data
+
 
 class OECDUSLEIHP(Signal):
     """OECD US Leading Economic Indicator Signal"""
@@ -56,7 +60,7 @@ class OECDUSLEIHP(Signal):
         lamb: int = 0,
         min_periods: int = 12,
         months_offset: int = 1,
-        resample_by: str = "M"
+        resample_by: str = "M",
     ) -> None:
         self.data = data
         self.lamb = lamb
@@ -65,9 +69,8 @@ class OECDUSLEIHP(Signal):
         self.resample_by = resample_by
         super().__init__()
 
-
     def process(self) -> None:
-        """ process signals """
+        """process signals"""
         # process data for processing.
 
         if self.resample_by:
@@ -77,7 +80,6 @@ class OECDUSLEIHP(Signal):
         data = self.data - 100
 
         for idx, date in enumerate(self.data.index):
-
             if idx < self.min_periods:
                 continue
             _, trend = tsa.filters.hpfilter(x=data.loc[:date].values, lamb=self.lamb)

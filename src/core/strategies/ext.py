@@ -6,6 +6,7 @@ from .base import Strategy
 from ..portfolios import Optimizer
 from ..analytics import metrics
 
+
 class Backtest:
     def __call__(self, func) -> Callable:
         def wrapper(
@@ -28,6 +29,24 @@ class Backtest:
 
 
 class BacktestManager:
+
+
+    @classmethod
+    def from_universe(
+        cls,
+        name: str = "USSECTORETF",
+        start: Optional[str] = None,
+        end: Optional[str] = None,
+    ) -> "BacktestManager":
+        try:
+            import yfinance as yf
+            prices = yf.download(
+                tickers="SPY, XLC, XLY, XLP, XLE, XLF, XLV, XLI, XLB, XLRE, XLK, XLU, GLD, BIL"
+            )["Adj Close"]
+            return cls(prices=prices, start=start, end=end)
+        except ImportError as exc:
+            raise ImportError() from exc
+
     def __init__(
         self,
         prices: Optional[pd.DataFrame] = None,
@@ -38,6 +57,8 @@ class BacktestManager:
         self.start = start
         self.end = end
         self.strategies: Dict[str, Strategy] = dict()
+
+
 
     @Backtest()
     def RegimeRotation(self, strategy: Strategy, signal) -> pd.Series:

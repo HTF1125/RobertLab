@@ -1,7 +1,22 @@
 """ROBERT"""
 import os
 from datetime import date
+from dotenv import load_dotenv
 import click
+
+"""configuration"""
+
+path = os.path.dirname(os.path.abspath(__file__))
+while os.path.basename(path) != "src":
+    path = os.path.abspath(os.path.join(path, "../"))
+    break
+TOP_FOLDER = os.path.abspath(os.path.join(path, "../"))
+SRC_FOLDER: str = os.path.join(TOP_FOLDER, "src")
+API_FOLDER: str = os.path.join(SRC_FOLDER, "api")
+ENV_FILE: str = os.path.join(SRC_FOLDER, ".env")
+# Load environment variables from .env file
+load_dotenv(dotenv_path=ENV_FILE)
+
 
 @click.command()
 @click.argument("task", default="api")
@@ -11,16 +26,20 @@ def start(task: str, reload: bool, asofdate: str):
     """main cli function"""
     print(task, asofdate)
     if task == "api":
-        import uvicorn
-        uvicorn.run(app="api.main:app", reload=reload)
+        try:
+            import uvicorn
+
+            uvicorn.run(app="api.main:app", reload=reload)
+        except ImportError as exc:
+            raise ImportError() from exc
+
     elif task == "streamlit":
-        import streamlit.web.bootstrap
-        dirname = os.path.dirname(os.path.abspath(__file__))
-        filename = os.path.join(dirname, "web/stream/main.py")
-        streamlit.web.bootstrap.run(filename, "", [], flag_options={})
-        # streamlit.bootstrap.run(filename, "", args, flag_option   s={})
+        import sys
+        from streamlit.web import cli as stcli
 
+        file = os.path.join(
+            os.path.dirname(os.path.abspath(__file__)), "api/web/stream/main.py"
+        )
 
-if __name__ == "__main__":
-
-    start()
+        sys.argv = ["streamlit", "run", file]
+        sys.exit(stcli.main())
