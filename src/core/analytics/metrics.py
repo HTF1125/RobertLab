@@ -215,7 +215,6 @@ def to_ann_semi_variance(
 
 
 
-
 @overload
 def to_ann_semi_volatility(
     prices: pd.DataFrame, ann_factor: Union[int, float] = AnnFactor.daily
@@ -446,6 +445,13 @@ def momentum(
     resampled_prices = prices.resample("D").last().ffill()
     offset_prices = resampled_prices.shift(1, freq=pd.DateOffset(**kwargs))
     return (prices / offset_prices).loc[prices.index]
+
+
+@overload
+def to_expected_returns(prices: pd.DataFrame) -> pd.Series: ...
+
+@overload
+def to_expected_returns(prices: pd.Series) -> float: ...
 
 
 def to_expected_returns(

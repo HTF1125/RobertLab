@@ -24,7 +24,26 @@ class Optimizer:
     """portfolio optimizer"""
 
     @classmethod
-    def from_prices(cls, prices: pd.DataFrame, **kwargs) -> "Optimizer":
+    def from_prices(
+        cls,
+        prices: pd.DataFrame,
+        com: Optional[float] = None,
+        span: Optional[float] = None,
+        halflife: Optional[float] = None,
+        risk_free: float = 0.0,
+        prices_bm: Optional[pd.Series] = None,
+        weights_bm: Optional[pd.Series] = None,
+        min_weight: float = 0.0,
+        max_weight: float = 1.0,
+        sum_weight: float = 1.0,
+        min_return: Optional[float] = None,
+        max_return: Optional[float] = None,
+        min_volatility: Optional[float] = None,
+        max_volatility: Optional[float] = None,
+        max_active_weight: Optional[float] = None,
+        max_exante_tracking_error: Optional[float] = None,
+        max_expost_tracking_error: Optional[float] = None,
+    ) -> "Optimizer":
         """_summary_
 
         Args:
@@ -35,9 +54,25 @@ class Optimizer:
         """
         return cls(
             expected_returns=metrics.to_expected_returns(prices=prices),
-            covariance_matrix=metrics.to_covariance_matrix(prices=prices),
-            correlation_matrix=metrics.to_correlation_matrix(prices=prices),
-            **kwargs,
+            covariance_matrix=metrics.to_covariance_matrix(
+                prices=prices, span=span, com=com, halflife=halflife
+            ),
+            correlation_matrix=metrics.to_correlation_matrix(
+                prices=prices, span=span, com=com, halflife=halflife
+            ),
+            risk_free=risk_free,
+            prices_bm=prices_bm,
+            weights_bm=weights_bm,
+            min_weight=min_weight,
+            max_weight=max_weight,
+            sum_weight=sum_weight,
+            min_return=min_return,
+            max_return=max_return,
+            min_volatility=min_volatility,
+            max_volatility=max_volatility,
+            max_active_weight=max_active_weight,
+            max_exante_tracking_error=max_exante_tracking_error,
+            max_expost_tracking_error=max_expost_tracking_error,
         )
 
     def __init__(
@@ -293,11 +328,11 @@ class Optimizer:
         if self.prices is None:
             warnings.warn("unable to set maximum active weight constraint.")
             warnings.warn("benchmark weights is null.")
-            return
+            raise ValueError("prices must not be none.")
         if self.prices_bm is None:
             warnings.warn("unable to set maximum active weight constraint.")
             warnings.warn("benchmark weights is null.")
-            return
+            raise ValueError("prices_bm must not be none.")
         itx = self.prices.dropna().index.intersection(self.prices_bm.dropna().index)
         pri_returns_assets = self.prices.loc[itx].pct_change().fillna(0)
         pri_returns_bm = self.prices_bm.loc[itx].pct_change().fillna(0)
@@ -346,7 +381,7 @@ class Optimizer:
         """calculate maximum return weights"""
         if self.expected_returns is None:
             warnings.warn("expected_returns must not be none.")
-            return
+            raise ValueError("expected_returns must not be none.")
         return self.solve(
             objective=partial(
                 objectives.expected_return,
@@ -358,7 +393,8 @@ class Optimizer:
         """calculate minimum volatility weights"""
         if self.covariance_matrix is None:
             warnings.warn("covariance_matrix must not be none.")
-            return
+            raise ValueError("covariance_matrix must not be none.")
+
         return self.solve(
             objective=partial(
                 objectives.expected_volatility,
@@ -375,11 +411,13 @@ class Optimizer:
                 correlation_matrix=np.array(self.correlation_matrix),
             )
         )
+
     def maximized_sharpe_ratio(self) -> pd.Series:
         """calculate maximum sharpe ratio weights"""
         if self.expected_returns is None or self.covariance_matrix is None:
             warnings.warn("expected_returns and covariance_matrix must not be none.")
-            return
+            raise ValueError("expected_returns must not be none.")
+
         return self.solve(
             objective=partial(
                 objectives.expected_sharpe,
@@ -434,9 +472,7 @@ class Optimizer:
 
         return weights
 
-    def hierarchical_risk_parity(
-        self, linkage_method: str = "single"
-    ) -> pd.Series:
+    def hierarchical_risk_parity(self, linkage_method: str = "single") -> pd.Series:
         """calculate herc weights"""
         if self.num_assets <= 2:
             return self.risk_parity()

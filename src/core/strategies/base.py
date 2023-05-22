@@ -15,6 +15,7 @@ class AccountRecords:
         self.prices = {}
         self.weights = {}
         self.allocations = {}
+        self.trades = {}
 
 
 class AccountMetrics:
@@ -28,14 +29,18 @@ class AccountMetrics:
         self.capitals: pd.Series = pd.Series(dtype=float)
         self.weights: pd.Series = pd.Series(dtype=float)
         self.allocations: pd.Series = pd.Series(dtype=float)
+        self.trades: pd.Series = pd.Series(dtype=float)
 
 
 class VirtualAccount:
     """virtual account to store account information"""
 
-    def __init__(self, initial_investment: float = 1000.0) -> None:
+    def __init__(
+        self, initial_investment: float = 10000.0, commission: int = 10
+    ) -> None:
         self.metrics = AccountMetrics(initial_investment)
         self.records = AccountRecords()
+        self.commission = commission
 
     ################################################################################
     @property
@@ -114,6 +119,22 @@ class VirtualAccount:
 
     ################################################################################
     @property
+    def trades(self) -> pd.Series:
+        """account allocations property"""
+        return self.metrics.allocations
+
+    @trades.setter
+    def trades(self, trades: pd.Series) -> None:
+        """account allocations property"""
+        if trades is not None:
+            self.metrics.trades = trades
+            self.metrics.value -= (
+                self.value * trades.abs().sum() * self.commission / 10_000
+            )
+            self.records.trades.update({self.metrics.date: trades})
+
+    ################################################################################
+    @property
     def allocations(self) -> pd.Series:
         """account allocations property"""
         return self.metrics.allocations
@@ -138,17 +159,28 @@ class Strategy:
         prices: pd.DataFrame,
         rebalance: Callable,
         frequency: str = "M",
-        initial_investment: float = 1000.0,
+        initial_investment: float = 10000.0,
         start: Optional[str] = None,
         end: Optional[str] = None,
+        commission: int = 10,
     ) -> None:
         self.account: VirtualAccount = VirtualAccount(
-            initial_investment=initial_investment
+            initial_investment=initial_investment,
+            commission=commission,
         )
         self.prices: pd.DataFrame = prices.ffill()
         self.rebalance: Callable = rebalance
         self.frequency: str = frequency
         self.simulate(
+            start=start or str(self.prices.index[0]),
+            end=end or str(self.prices.index[-1]),
+        )
+
+        self._value = self._cash = initial_investment
+        self._shares = pd.Series(dtype=float)
+        self._allocations = pd.Series(dtype=float)
+        self._commission = commission
+        self._simulate(
             start=start or str(self.prices.index[0]),
             end=end or str(self.prices.index[-1]),
         )
@@ -188,6 +220,13 @@ class Strategy:
         ).T.sort_index()
 
     @property
+    def trades(self) -> pd.DataFrame:
+        """strategy allocations time-series"""
+        return pd.DataFrame(
+            data=self.account.records.trades, dtype=float
+        ).T.sort_index()
+
+    @property
     def allocations(self) -> pd.DataFrame:
         """strategy allocations time-series"""
         return pd.DataFrame(
@@ -216,7 +255,6 @@ class Strategy:
         reb_dates = pd.date_range(start=start, end=end, freq=self.frequency)
         rebalance = True
         for self.date in pd.date_range(start=start, end=end, freq="D"):
-
             if self.date in self.prices.index:
                 self.account.prices = self.prices.loc[self.date]
                 if rebalance:
@@ -226,7 +264,13 @@ class Strategy:
                     )
                     if not self.account.allocations.empty:
                         rebalance = False
-                if self.date in self.prices.index and not self.account.allocations.empty:
+                if (
+                    self.date in self.prices.index
+                    and not self.account.allocations.empty
+                ):
+                    self.account.trades = self.account.allocations.subtract(
+                        self.account.weights, fill_value=0
+                    )
                     self.account.weights = self.account.allocations
                     self.account.capitals = self.account.value * self.account.weights
                     self.account.shares = self.account.capitals.divide(
@@ -236,20 +280,62 @@ class Strategy:
             if not rebalance:
                 rebalance = self.date in reb_dates
 
+    def _simulate(self, start: str, end: str) -> None:
+        print("custom simulate")
+        reb_dates = pd.date_range(start=start, end=end, freq=self.frequency)
+        rebalance = True
+        for self.date in pd.date_range(start=start, end=end, freq="D"):
+
+            if self.date in self.prices.index and not self._shares.empty:
+                self._value = self._cash + self._shares.multiply(
+                    self.prices.loc[self.date]
+                )
+            if rebalance:
+                allocations = self.rebalance(strategy=self)
+                if not isinstance(allocations, pd.Series):
+                    allocations = pd.Series(allocations, dtype=float)
+
+                # clean weights for decimal
+                self._allocations = clean_weights(weights=allocations, num_decimal=4)
+                rebalance = self._allocations.empty
+
+                # if not self._allocations.empty: rebalance = False
+            if self.date in self.prices.index and not self._allocations.empty:
+                # Make trades here
+                print(self._allocations)
+
+                target_shares = self._allocations.divide(
+                    self.prices.loc[self.date]
+                ).multiply(self._value).round(0)
+
+                print(target_shares.subtract(self._shares, fill_value=0))
+                # ............!!!!!!!!!!!!!!!!!!!!!!!
+                trade_shares = target_shares.subtract(self._shares, fill_value=0)
+                trade_val = trade_shares.multiply(self.prices.loc[self.date])
+                cost = trade_val * self._commission / 1000
+
+
+
+            if not rebalance:
+                rebalance = self.date in reb_dates
 
     @property
     def analytics(self) -> pd.Series:
         """analytics"""
         return pd.Series(
             data={
+                "Start": metrics.to_start(self.value).strftime("%Y-%m-%d"),
+                "End": metrics.to_end(self.value).strftime("%Y-%m-%d"),
                 "AnnReturn": metrics.to_ann_return(self.value),
                 "AnnVolatility": metrics.to_ann_volatility(self.value),
                 "SharpeRatio": metrics.to_sharpe_ratio(self.value),
                 "SortinoRatio": metrics.to_sortino_ratio(self.value),
+                "MaxDrawdown": metrics.to_max_drawdown(self.value),
                 "Skewness": metrics.to_skewness(self.value),
                 "Kurtosis": metrics.to_kurtosis(self.value),
                 "VaR": metrics.to_value_at_risk(self.value),
                 "CVaR": metrics.to_conditional_value_at_risk(self.value),
                 "TailRatio": metrics.to_tail_ratio(self.value),
+                "Turnover(M)": self.trades.resample("M").sum().sum(axis=1).mean(),
             }
         )

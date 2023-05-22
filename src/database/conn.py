@@ -114,6 +114,7 @@ class PxVolume(Base):
     investable_id = Column(ForeignKey("investable.id"), primary_key=True)
     px_volume = Column(Integer)
 
+
 class PxDvd(Base):
     __abstract__ = True
     date = Column(Date, primary_key=True)

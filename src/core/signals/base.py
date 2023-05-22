@@ -69,6 +69,12 @@ class OECDUSLEIHP(Signal):
         self.resample_by = resample_by
         super().__init__()
 
+    def __str__(self):
+        return "OECDUSLEIHP"
+
+    def __repr__(self):
+        return "OECDUSLEIHP"
+
     def process(self) -> None:
         """process signals"""
         # process data for processing.
