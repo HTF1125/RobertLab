@@ -89,72 +89,64 @@ class BacktestManager:
     @Backtest()
     def RegimeRotation(self, strategy: Strategy, signal) -> pd.Series:
         state = signal.get_state(str(strategy.date))
-        exp_ret = signal.expected_returns_by_states(
-            strategy.reb_prices.iloc[-10 * 252 :]
-        )
+        exp_ret = signal.expected_returns_by_states(strategy.prices.iloc[-10 * 252 :])
         index = exp_ret.loc[state].nlargest(5).index
-        return Optimizer.from_prices(
-            prices=strategy.reb_prices[index]
-        ).uniform_allocation()
+        return Optimizer.from_prices(prices=strategy.prices[index]).uniform_allocation()
 
     @Backtest()
     def RegimeRotationMinCorr(self, strategy: Strategy, signal, **kwargs) -> pd.Series:
         state = signal.get_state(str(strategy.date))
-        exp_ret = signal.expected_returns_by_states(
-            strategy.reb_prices.iloc[-10 * 252 :]
-        )
+        exp_ret = signal.expected_returns_by_states(strategy.prices.iloc[-10 * 252 :])
         index = exp_ret.loc[state].nlargest(5).index
         return Optimizer.from_prices(
-            prices=strategy.reb_prices[index], **kwargs
+            prices=strategy.prices[index], **kwargs
         ).minimized_correlation()
 
     @Backtest()
     def EqualWeight(self, strategy: Strategy, **kwargs) -> pd.Series:
         """equal"""
         return Optimizer.from_prices(
-            prices=strategy.reb_prices, **kwargs
+            prices=strategy.prices, **kwargs
         ).uniform_allocation()
 
     @Backtest()
     def Momentum(self, strategy: Strategy) -> pd.Series:
-        mom = metrics.momentum(strategy.reb_prices, years=1).iloc[-1]
+        mom = metrics.momentum(strategy.prices, years=1).iloc[-1]
         index = mom.dropna().nlargest(5).index
-        return Optimizer.from_prices(
-            prices=strategy.reb_prices[index]
-        ).uniform_allocation()
+        return Optimizer.from_prices(prices=strategy.prices[index]).uniform_allocation()
 
     @Backtest()
     def MinCorr(self, strategy: Strategy, **kwargs) -> pd.Series:
         return Optimizer.from_prices(
-            prices=strategy.reb_prices, **kwargs
+            prices=strategy.prices, **kwargs
         ).minimized_correlation()
 
     @Backtest()
     def MinVol(self, strategy: Strategy, **kwargs) -> pd.Series:
         return Optimizer.from_prices(
-            prices=strategy.reb_prices, **kwargs
+            prices=strategy.prices, **kwargs
         ).minimized_volatility()
 
     @Backtest()
     def MaxSharpe(self, strategy: Strategy, **kwargs) -> pd.Series:
         return Optimizer.from_prices(
-            prices=strategy.reb_prices, **kwargs
+            prices=strategy.prices, **kwargs
         ).maximized_sharpe_ratio()
 
     @Backtest()
     def RiskParity(self, strategy: Strategy, **kwargs) -> pd.Series:
-        return Optimizer.from_prices(prices=strategy.reb_prices, **kwargs).risk_parity()
+        return Optimizer.from_prices(prices=strategy.prices, **kwargs).risk_parity()
 
     @Backtest()
     def HRiskParity(self, strategy: Strategy, **kwargs) -> pd.Series:
         return Optimizer.from_prices(
-            prices=strategy.reb_prices, **kwargs
+            prices=strategy.prices, **kwargs
         ).hierarchical_risk_parity()
 
     @property
     def values(self) -> pd.DataFrame:
         return pd.DataFrame(
-            {name: strategy.value for name, strategy in self.strategies.items()}
+            {name: strategy.data.value for name, strategy in self.strategies.items()}
         )
 
     @property
