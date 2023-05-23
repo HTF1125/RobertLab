@@ -146,7 +146,7 @@ class BacktestManager:
     @property
     def values(self) -> pd.DataFrame:
         return pd.DataFrame(
-            {name: strategy.data.value for name, strategy in self.strategies.items()}
+            {name: strategy.value for name, strategy in self.strategies.items()}
         )
 
     @property

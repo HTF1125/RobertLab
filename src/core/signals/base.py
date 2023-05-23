@@ -1,8 +1,7 @@
-from datetime import datetime
+"""ROBERT"""
 import numpy as np
 import pandas as pd
 from statsmodels.api import tsa
-import pandas_datareader as pdr
 
 
 class Signal:
@@ -39,20 +38,17 @@ class Signal:
         return self.states.resample("D").last().ffill().loc[date]
 
 
-def get_oecd_us_leading_indicator(meta: str = "USALOLITONOSTSAM") -> pd.DataFrame:
-    data = pdr.DataReader(
-        name=meta, data_source="fred", start=datetime(1900, 1, 1)
-    ).astype(float)
-    return data
-
-
 class OECDUSLEIHP(Signal):
     """OECD US Leading Economic Indicator Signal"""
 
     @classmethod
     def from_fred_data(cls, **kwargs) -> "OECDUSLEIHP":
-        """"""
-        return cls(data=get_oecd_us_leading_indicator(), **kwargs)
+        """get the data from fred"""
+        try:
+            from database import fred
+        except ImportError as exc:
+            raise ImportError() from exc
+        return cls(data=fred.get_oecd_us_leading_indicator(), **kwargs)
 
     def __init__(
         self,
