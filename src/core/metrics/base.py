@@ -6,6 +6,102 @@ import pandas as pd
 from ..ext.periods import AnnFactor
 
 
+class Metrics:
+
+
+    def __init__(self, prices: pd.DataFrame) -> None:
+
+        self.series = {
+            name : MetricsSeries(prices[name], ) for name in prices
+        }
+
+    
+
+
+
+
+
+class MetricsSeries:
+    def __init__(
+        self,
+        prices: pd.Series,
+        ann_factor: int = AnnFactor.daily,
+        risk_free: float = 0.0,
+    ) -> None:
+
+        self.prices = prices.dropna()
+        self.ann_factor = ann_factor
+        self.risk_free = risk_free
+        self.pri_return = self.prices.dropna().pct_change().fillna(0)
+        self.log_return = self.pri_return.apply(np.log1p)
+        self.dates: pd.DatetimeIndex = pd.to_datetime(self.prices.index)
+
+    def start(self) -> pd.Timestamp:
+        return self.dates[0]
+
+    def end(self) -> pd.Timestamp:
+        return self.dates[-1]
+
+    def cum_return(self) -> float:
+        return self.prices.iloc[0] / self.prices.iloc[-1] - 1
+
+    def ann_return(self) -> float:
+        return (self.log_return.apply(np.exp).mean() - 1) * self.ann_factor
+
+    def ann_variance(self) -> float:
+        return float(np.var(self.pri_return) * self.ann_factor)
+
+    def ann_volatility(self) -> float:
+        return np.sqrt(self.ann_variance())
+
+    def ann_semi_variance(self) -> float:
+        return float(np.var(self.pri_return[self.pri_return >= 0])) * self.ann_factor
+
+    def ann_semi_volatility(self) -> float:
+        return np.sqrt(self.ann_semi_variance())
+
+    def drawdown(self) -> pd.Series:
+        return self.prices / self.prices.expanding().max() - 1
+
+    def max_drawdown(self) -> float:
+        return self.drawdown().min()
+
+    def sharpe_ratio(self) -> float:
+        return (self.ann_return() - self.risk_free) / self.ann_volatility()
+
+    def sortino_ratio(self) -> float:
+        return self.ann_return() / self.ann_semi_volatility()
+
+    def tail_ratio(self, alpha: float = 0.05) -> float:
+        return self.pri_return.quantile(q=alpha) / self.pri_return.quantile(q=1 - alpha)
+
+    def skewness(self, log_return: bool = False) -> float:
+        if log_return:
+            return (1 / len(self.log_return)) * (
+                (self.log_return - self.log_return.mean()) / self.log_return.std()
+            ).pow(3).sum()
+        return (1 / len(self.pri_return)) * (
+            (self.pri_return - self.pri_return.mean()) / self.pri_return.std()
+        ).pow(3).sum()
+
+    def kurtosis(self, log_return: bool = False) -> float:
+        if log_return:
+            return (1 / len(self.log_return)) * (
+                (self.log_return - self.log_return.mean()) / self.log_return.std()
+            ).pow(4).sum()
+        return (1 / len(self.pri_return)) * (
+            (self.pri_return - self.pri_return.mean()) / self.pri_return.std()
+        ).pow(4).sum()
+
+    def value_at_risk(self, alpha: float = 0.05) -> float:
+        return self.pri_return.quantile(q=alpha)
+
+    def conditional_value_at_risk(self, alpha: float = 0.05) -> float:
+        return self.pri_return[self.pri_return < self.value_at_risk(alpha=alpha)].mean()
+
+
+
+
 @overload
 def to_start(prices: pd.Series) -> pd.Timestamp:
     ...
@@ -212,7 +308,6 @@ def to_ann_semi_variance(
         return prices.aggregate(to_ann_semi_variance, ann_factor=ann_factor)
     pri_return = to_pri_return(prices=prices)
     return float(np.var(pri_return[pri_return >= 0])) * ann_factor
-
 
 
 @overload
@@ -447,20 +542,14 @@ def momentum(
     return (prices / offset_prices).loc[prices.index]
 
 
-
-
-
-
-
-
-
+@overload
+def to_expected_returns(prices: pd.DataFrame) -> pd.Series:
+    ...
 
 
 @overload
-def to_expected_returns(prices: pd.DataFrame) -> pd.Series: ...
-
-@overload
-def to_expected_returns(prices: pd.Series) -> float: ...
+def to_expected_returns(prices: pd.Series) -> float:
+    ...
 
 
 def to_expected_returns(
@@ -584,5 +673,3 @@ def to_monthly_return(
         .groupby([lambda x: x.year, lambda x: x.month])
         .apply(agg_ret)
     )
-
-

@@ -7,8 +7,8 @@ from scipy.spatial.distance import squareform
 import numpy as np
 import pandas as pd
 from . import objectives
-from ..analytics import metrics
-from ..analytics.utils import cov_to_corr, recursive_bisection
+from .. import metrics
+from ..metrics.utils import cov_to_corr, recursive_bisection
 
 
 class OptimizerMetrics:
@@ -126,7 +126,7 @@ class Optimizer:
             self.set_max_expost_tracking_error(max_expost_tracking_error)
 
     @property
-    def expected_returns(self) -> pd.Series:
+    def expected_returns(self) -> Optional[pd.Series]:
         """expected_returns"""
         return self.metrics.expected_returns
 
@@ -435,7 +435,7 @@ class Optimizer:
             return self.risk_parity()
         if self.correlation_matrix is None:
             if self.covariance_matrix is not None:
-                self.correlation_matrix = cov_to_corr(self.covariance_matrix)
+                self.correlation_matrix = metrics.cov_to_corr(self.covariance_matrix)
             elif self.prices is not None:
                 self.correlation_matrix = metrics.to_correlation_matrix(self.prices)
             else:
@@ -443,7 +443,7 @@ class Optimizer:
         dist = np.sqrt((1 - self.correlation_matrix).round(5) / 2)
         clusters = linkage(squareform(dist), method=linkage_method)
         sorted_tree = list(to_tree(clusters, rd=False).pre_order())
-        cluster_sets = recursive_bisection(sorted_tree)
+        cluster_sets = metrics.recursive_bisection(sorted_tree)
         if not isinstance(cluster_sets, List):
             cluster_sets = [cluster_sets]
         weights = self.solve(

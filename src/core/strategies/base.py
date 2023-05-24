@@ -1,7 +1,7 @@
 """ROBERT"""
 from typing import Optional, Callable, Iterator
 import pandas as pd
-from ..analytics import metrics
+from .. import metrics
 
 
 class DataStore(dict):
@@ -128,7 +128,7 @@ class Strategy:
         for rebalance_date in [
             pd.Timestamp(start),
             *pd.date_range(start=start, end=end, freq=freq, inclusive="neither"),
-            pd.Timestamp(end),
+            pd.Timestamp(end) - pd.tseries.offsets.DateOffset(days=1),
         ]:
             yield rebalance_date
 

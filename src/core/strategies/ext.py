@@ -3,8 +3,8 @@ from typing import Optional, Callable, Dict
 from functools import partial
 import pandas as pd
 from .base import Strategy
+from .. import metrics
 from ..portfolios import Optimizer
-from ..analytics import metrics
 
 
 def dict_to_signature_string(data):
