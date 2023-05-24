@@ -30,6 +30,7 @@ class Backtest:
                 frequency=kwargs.pop("frequency", cls.frequency),
                 commission=kwargs.pop("commission", cls.commission),
                 rebalance=partial(func, cls, **kwargs),
+                shares_frac=kwargs.pop("shares_frac", cls.shares_frac),
             )
             name = (
                 func.__name__ + "(" + dict_to_signature_string(kwargs) + ")"
@@ -42,6 +43,13 @@ class Backtest:
         return wrapper
 
 
+def single_momentum(prices: pd.DataFrame, **kwargs) -> pd.Series:
+    start = pd.Timestamp(str(prices.index[-1])) - pd.tseries.offsets.DateOffset(
+        **kwargs
+    )
+    return prices.resample("d").last().ffill().loc[start] / prices.iloc[-1] - 1
+
+
 class BacktestManager:
     @classmethod
     def from_universe(
@@ -51,13 +59,14 @@ class BacktestManager:
         end: Optional[str] = None,
         commission: int = 10,
         frequency: str = "M",
+        shares_frac: Optional[int] = None,
     ) -> "BacktestManager":
         try:
             import yfinance as yf
 
             if name == "USSECTORETF":
                 prices = yf.download(
-                    tickers="XLC, XLY, XLP, XLE, XLF, XLV, XLI, XLB, XLRE, XLK, XLU"
+                    tickers="XLC, XLY, XLP, XLE, XLF, XLV, XLI, XLB, XLRE, XLK, XLU, GLD, BIL"
                 )["Adj Close"]
             else:
                 prices = yf.download("ACWI, BND")["Adj Close"]
@@ -67,6 +76,7 @@ class BacktestManager:
                 end=end,
                 commission=commission,
                 frequency=frequency,
+                shares_frac=shares_frac,
             )
         except ImportError as exc:
             raise ImportError() from exc
@@ -78,12 +88,14 @@ class BacktestManager:
         commission: int = 10,
         start: Optional[str] = None,
         end: Optional[str] = None,
+        shares_frac: Optional[int] = None,
     ) -> None:
         self.prices = prices
         self.frequency = frequency
         self.commission = commission
         self.start = start
         self.end = end
+        self.shares_frac = shares_frac
         self.strategies: Dict[str, Strategy] = dict()
 
     @Backtest()
@@ -142,6 +154,25 @@ class BacktestManager:
         return Optimizer.from_prices(
             prices=strategy.prices, **kwargs
         ).hierarchical_risk_parity()
+
+    @Backtest()
+    def MMM(self, strategy: Strategy) -> pd.Series:
+        momentums = (
+            pd.concat(
+                [
+                    single_momentum(strategy.prices, months=months)
+                    for months in [1, 3, 6, 12]
+                ],
+                axis=1,
+            )
+            .rank(ascending=False)
+            .mean(axis=1)
+            .nlargest(5)
+        )
+
+        return Optimizer.from_prices(
+            prices=strategy.prices[momentums.index],
+        ).uniform_allocation()
 
     @property
     def values(self) -> pd.DataFrame:

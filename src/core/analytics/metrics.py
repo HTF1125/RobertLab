@@ -447,6 +447,15 @@ def momentum(
     return (prices / offset_prices).loc[prices.index]
 
 
+
+
+
+
+
+
+
+
+
 @overload
 def to_expected_returns(prices: pd.DataFrame) -> pd.Series: ...
 

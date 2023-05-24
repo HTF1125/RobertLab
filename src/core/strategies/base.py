@@ -1,5 +1,5 @@
 """ROBERT"""
-from typing import Optional, Callable
+from typing import Optional, Callable, Iterator
 import pandas as pd
 from ..analytics import metrics
 
@@ -110,29 +110,52 @@ class Strategy:
         return pd.DataFrame(self.data.get("allocations")).T
 
     ################################################################################
+    @staticmethod
+    def generate_rebalance_dates(
+        start: str, end: str, freq: str
+    ) -> Iterator[pd.Timestamp]:
+        """
+        Generate rebalance dates between the given start and end dates with the specified frequency.
+
+        Args:
+            start (str): Start date in string format.
+            end (str): End date in string format.
+            freq (str): Frequency of rebalancing.
+
+        Yields:
+            Iterator[pd.Timestamp]: Iterator that yields rebalance dates.
+        """
+        for rebalance_date in [
+            pd.Timestamp(start),
+            *pd.date_range(start=start, end=end, freq=freq, inclusive="neither"),
+            pd.Timestamp(end),
+        ]:
+            yield rebalance_date
 
     def simulate(self, start: str, end: str, freq: str = "M") -> None:
         cash = self.initial_investment
         shares = pd.Series(dtype=float)
         allocations = pd.Series(dtype=float)
-        rebalance_dates = pd.DatetimeIndex([start]).append(
-            pd.date_range(start=start, end=end, freq=freq, inclusive="neither")
-        )
-        rebalance_dates = rebalance_dates.append(pd.DatetimeIndex([end]))
 
+        # generate rebalance dates
+        rebalance_dates = self.generate_rebalance_dates(start=start, end=end, freq=freq)
+        rebalance_date = next(rebalance_dates)
         for self.date in self.total_prices.loc[start:end].index:
 
             capitals = shares.multiply(self.total_prices.loc[self.date])
             value = capitals.sum() + cash
             weights = capitals.divide(value)
 
-            if self.date >= rebalance_dates[0]:
+            if self.date > rebalance_date:
                 allocations = self.rebalance(strategy=self)
                 if not isinstance(allocations, pd.Series):
                     allocations = pd.Series(allocations, dtype=float)
                 if not allocations.empty:
                     self.data["allocations"][self.date] = allocations
-                    rebalance_dates = rebalance_dates[1:]
+                    try:
+                        rebalance_date = next(rebalance_dates)
+                    except StopIteration:
+                        rebalance_date = None
 
                     # Make trades here
                     target_capials = value * allocations

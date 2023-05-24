@@ -12,7 +12,6 @@ from sqlalchemy.ext.declarative import declarative_base
 
 path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "database.db")
 DATABASE_URL: str = os.getenv("DATABASE_URL") or f"sqlite:///{path}"
-print(DATABASE_URL)
 Base = declarative_base()
 
 if DATABASE_URL.startswith("sqlite"):

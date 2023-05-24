@@ -1,20 +1,25 @@
 """ROBERT"""
 from datetime import datetime
+from functools import lru_cache
 import pandas as pd
 import pandas_datareader as pdr
 
-__data__ = {
-    "OecdUsLei": "USALOLITONOSTSAM",
-    "UsUnemploymentRate": "UNRATE",
-    "TransportAirPPI": "PCU481481",
-    "TransportDeepSeaPPI": "PCU4831114831115",
-    "UsM2": "M2SL",
-    "UsPce": "PCEPI",
-    "UsPceLife": "PCEPILIFE",
-    "UsFedEffectiveRate": "FEDFUNDS",
-}
+
+__data__ = dict(
+    OecdUsLei="USALOLITONOSTSAM",
+    UsUnemploymentRate="UNRATE",
+    TransportAirPPI="PCU481481",
+    TransportDeepSeaPPI="PCU4831114831115",
+    UsM2="M2SL",
+    UsPce="PCEPI",
+    UsCpiAllUrban="CPIAUCSL",
+    UsFedEffectiveRate="FEDFUNDS",
+    UsRealGDP="GDPC1",
+    UsRealGDPGovConsumtpi="GCEC1"
+)
 
 
+@lru_cache()
 def get_data(meta: str) -> pd.DataFrame:
     """get fred data"""
     return pdr.DataReader(
@@ -38,8 +43,8 @@ def get_us_pce() -> pd.DataFrame:
     return get_data(meta=__data__["UsPce"])
 
 
-def get_us_pce_life() -> pd.DataFrame:
-    return get_data(meta=__data__["UsPceLife"])
+def get_us_cpi_all_urban() -> pd.DataFrame:
+    return get_data(meta=__data__["UsCpiAllUrban"])
 
 
 def get_transport_air_ppi() -> pd.DataFrame:
@@ -52,3 +57,5 @@ def get_transport_deep_sea_ppi() -> pd.DataFrame:
 
 def get_us_fed_effective_rate() -> pd.DataFrame:
     return get_data(meta=__data__["UsFedEffectiveRate"])
+
+

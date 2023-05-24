@@ -1,6 +1,6 @@
 import streamlit as st
-
-# import database as db
+import plotly.graph_objects as go
+import database as db
 
 
 st.set_page_config(
@@ -14,37 +14,15 @@ st.set_page_config(
 
 st.write("Robert's Website")
 
-
-# with db.Session() as session:
-#     st.multiselect(
-#         label="Select investable assets",
-#         options=[record for record in session.query(db.Investable).limit(10).all()],
-#         format_func=lambda record: f"{record.name} ({record.ticker})",
-#     )
+data = db.data.get_us_pce().pct_change(12)
+fig = go.Figure(data=go.Scatter(x=data.index, y=data.iloc[:, 0], mode='lines'))
+st.plotly_chart(fig)
 
 
+data = db.data.get_us_cpi_all_urban().pct_change(12)
+fig = go.Figure(data=go.Scatter(x=data.index, y=data.iloc[:, 0], mode='lines'))
+st.plotly_chart(fig)
 
-
-
-with st.form("my_form"):
-    st.write("Inside the form")
-    slider_val = st.slider("Form slider")
-    checkbox_val = st.checkbox("Form checkbox")
-
-    # Every form must have a submit button.
-    submitted = st.form_submit_button("Submit")
-    if submitted:
-        st.write("slider", slider_val, "checkbox", checkbox_val)
-
-st.write("Outside the form")
-
-
-
-# Insert containers separated into tabs:
-tab1, tab2 = st.tabs(["Tab 1", "Tab2"])
-tab1.write("this is tab 1")
-tab2.write("this is tab 2")
-
-# You can also use "with" notation:
-with tab1:
-    st.radio("Select one:", [1, 2])
+data = db.data.get_oecd_us_leading_indicator() - 100
+fig = go.Figure(data=go.Scatter(x=data.index, y=data.iloc[:, 0], mode='lines'))
+st.plotly_chart(fig)

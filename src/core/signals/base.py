@@ -45,7 +45,7 @@ class OECDUSLEIHP(Signal):
     def from_fred_data(cls, **kwargs) -> "OECDUSLEIHP":
         """get the data from fred"""
         try:
-            from database import fred
+            from database.data import fred
         except ImportError as exc:
             raise ImportError() from exc
         return cls(data=fred.get_oecd_us_leading_indicator(), **kwargs)

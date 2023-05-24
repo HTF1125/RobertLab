@@ -1,3 +1,3 @@
 """ROBERT"""
 from .conn import *
-from . import fred
+from . import data
