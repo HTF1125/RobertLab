@@ -1,105 +1,10 @@
 """ROBERT"""
+import warnings
 from typing import Union, Optional
 from typing import overload
 import numpy as np
 import pandas as pd
 from ..ext.periods import AnnFactor
-
-
-class Metrics:
-
-
-    def __init__(self, prices: pd.DataFrame) -> None:
-
-        self.series = {
-            name : MetricsSeries(prices[name], ) for name in prices
-        }
-
-    
-
-
-
-
-
-class MetricsSeries:
-    def __init__(
-        self,
-        prices: pd.Series,
-        ann_factor: int = AnnFactor.daily,
-        risk_free: float = 0.0,
-    ) -> None:
-
-        self.prices = prices.dropna()
-        self.ann_factor = ann_factor
-        self.risk_free = risk_free
-        self.pri_return = self.prices.dropna().pct_change().fillna(0)
-        self.log_return = self.pri_return.apply(np.log1p)
-        self.dates: pd.DatetimeIndex = pd.to_datetime(self.prices.index)
-
-    def start(self) -> pd.Timestamp:
-        return self.dates[0]
-
-    def end(self) -> pd.Timestamp:
-        return self.dates[-1]
-
-    def cum_return(self) -> float:
-        return self.prices.iloc[0] / self.prices.iloc[-1] - 1
-
-    def ann_return(self) -> float:
-        return (self.log_return.apply(np.exp).mean() - 1) * self.ann_factor
-
-    def ann_variance(self) -> float:
-        return float(np.var(self.pri_return) * self.ann_factor)
-
-    def ann_volatility(self) -> float:
-        return np.sqrt(self.ann_variance())
-
-    def ann_semi_variance(self) -> float:
-        return float(np.var(self.pri_return[self.pri_return >= 0])) * self.ann_factor
-
-    def ann_semi_volatility(self) -> float:
-        return np.sqrt(self.ann_semi_variance())
-
-    def drawdown(self) -> pd.Series:
-        return self.prices / self.prices.expanding().max() - 1
-
-    def max_drawdown(self) -> float:
-        return self.drawdown().min()
-
-    def sharpe_ratio(self) -> float:
-        return (self.ann_return() - self.risk_free) / self.ann_volatility()
-
-    def sortino_ratio(self) -> float:
-        return self.ann_return() / self.ann_semi_volatility()
-
-    def tail_ratio(self, alpha: float = 0.05) -> float:
-        return self.pri_return.quantile(q=alpha) / self.pri_return.quantile(q=1 - alpha)
-
-    def skewness(self, log_return: bool = False) -> float:
-        if log_return:
-            return (1 / len(self.log_return)) * (
-                (self.log_return - self.log_return.mean()) / self.log_return.std()
-            ).pow(3).sum()
-        return (1 / len(self.pri_return)) * (
-            (self.pri_return - self.pri_return.mean()) / self.pri_return.std()
-        ).pow(3).sum()
-
-    def kurtosis(self, log_return: bool = False) -> float:
-        if log_return:
-            return (1 / len(self.log_return)) * (
-                (self.log_return - self.log_return.mean()) / self.log_return.std()
-            ).pow(4).sum()
-        return (1 / len(self.pri_return)) * (
-            (self.pri_return - self.pri_return.mean()) / self.pri_return.std()
-        ).pow(4).sum()
-
-    def value_at_risk(self, alpha: float = 0.05) -> float:
-        return self.pri_return.quantile(q=alpha)
-
-    def conditional_value_at_risk(self, alpha: float = 0.05) -> float:
-        return self.pri_return[self.pri_return < self.value_at_risk(alpha=alpha)].mean()
-
-
 
 
 @overload
@@ -165,7 +70,7 @@ def to_pri_return(
     if isinstance(prices, pd.DataFrame):
         return prices.apply(to_pri_return)
 
-    pri_return = prices.dropna().pct_change().fillna(0)
+    pri_return = prices.dropna().pct_change().iloc[1:]
     return pri_return
 
 
@@ -288,14 +193,18 @@ def to_ann_semi_variance(prices: pd.Series) -> float:
 
 @overload
 def to_ann_semi_variance(
-    prices: pd.DataFrame, ann_factor: Union[int, float] = AnnFactor.daily
+    prices: pd.DataFrame,
+    ann_factor: Union[int, float] = AnnFactor.daily,
+    threshold: float = 0.0,
 ) -> pd.Series:
     ...
 
 
 @overload
 def to_ann_semi_variance(
-    prices: pd.Series, ann_factor: Union[int, float] = AnnFactor.daily
+    prices: pd.Series,
+    ann_factor: Union[int, float] = AnnFactor.daily,
+    threshold: float = 0.0,
 ) -> float:
     ...
 
@@ -303,23 +212,28 @@ def to_ann_semi_variance(
 def to_ann_semi_variance(
     prices: Union[pd.DataFrame, pd.Series],
     ann_factor: Union[int, float] = AnnFactor.daily,
+    threshold: float = 0.0,
 ) -> Union[pd.Series, float]:
     if isinstance(prices, pd.DataFrame):
         return prices.aggregate(to_ann_semi_variance, ann_factor=ann_factor)
     pri_return = to_pri_return(prices=prices)
-    return float(np.var(pri_return[pri_return >= 0])) * ann_factor
+    return float(np.var(pri_return[pri_return < threshold])) * ann_factor
 
 
 @overload
 def to_ann_semi_volatility(
-    prices: pd.DataFrame, ann_factor: Union[int, float] = AnnFactor.daily
+    prices: pd.DataFrame,
+    ann_factor: Union[int, float] = AnnFactor.daily,
+    threshold: float = 0.0,
 ) -> pd.Series:
     ...
 
 
 @overload
 def to_ann_semi_volatility(
-    prices: pd.Series, ann_factor: Union[int, float] = AnnFactor.daily
+    prices: pd.Series,
+    ann_factor: Union[int, float] = AnnFactor.daily,
+    threshold: float = 0.0,
 ) -> float:
     ...
 
@@ -327,8 +241,12 @@ def to_ann_semi_volatility(
 def to_ann_semi_volatility(
     prices: Union[pd.DataFrame, pd.Series],
     ann_factor: Union[int, float] = AnnFactor.daily,
+    threshold: float = 0.0,
 ) -> Union[pd.Series, float]:
-    return to_ann_semi_variance(prices=prices, ann_factor=ann_factor) ** 0.5
+    return (
+        to_ann_semi_variance(prices=prices, ann_factor=ann_factor, threshold=threshold)
+        ** 0.5
+    )
 
 
 @overload
@@ -389,6 +307,20 @@ def to_sharpe_ratio(
     risk_free: Union[int, float] = 0.0,
     ann_factor: Union[int, float] = AnnFactor.daily,
 ) -> Union[pd.Series, float]:
+    """
+
+
+    Limitations:
+
+        *The sharpe ratio assumes the normal distribution of returns.
+
+        *Bias toward high frequency trading strategies. (favors strategies that
+        generate small frequent profits and assumes such profits scales
+        proportionally which may not hold true)
+
+        *Not accounting for tail risk
+
+    """
     excess_return = to_ann_return(prices=prices, ann_factor=ann_factor) - risk_free
     return excess_return / to_ann_volatility(prices=prices, ann_factor=ann_factor)
 
@@ -525,21 +457,31 @@ def to_conditional_value_at_risk(
 
 
 @overload
-def momentum(prices: pd.DataFrame, **kwargs) -> pd.DataFrame:
+def momentum(prices: pd.DataFrame, **kwargs) -> pd.Series:
     ...
 
 
 @overload
-def momentum(prices: pd.Series, **kwargs) -> pd.Series:
+def momentum(prices: pd.Series, **kwargs) -> float:
     ...
 
 
 def momentum(
     prices: Union[pd.DataFrame, pd.Series], **kwargs
-) -> Union[pd.DataFrame, pd.Series]:
-    resampled_prices = prices.resample("D").last().ffill()
-    offset_prices = resampled_prices.shift(1, freq=pd.DateOffset(**kwargs))
-    return (prices / offset_prices).loc[prices.index]
+) -> Union[pd.Series, float]:
+    if isinstance(prices, pd.DataFrame):
+        return prices.aggregate(momentum, **kwargs)
+    start = pd.Timestamp(str(prices.index[-1]))
+    start -= pd.tseries.offsets.DateOffset(**kwargs)
+    return prices.resample("d").last().ffill().loc[start] / prices.iloc[-1] - 1
+
+
+# def momentum(
+#     prices: Union[pd.DataFrame, pd.Series], **kwargs
+# ) -> Union[pd.DataFrame, pd.Series]:
+#     resampled_prices = prices.resample("D").last().ffill()
+#     offset_prices = resampled_prices.shift(1, freq=pd.DateOffset(**kwargs))
+#     return (prices / offset_prices).loc[prices.index]
 
 
 @overload
@@ -587,71 +529,6 @@ def exponential_alpha(
     return 0.0
 
 
-def to_covariance_matrix(
-    prices: pd.DataFrame,
-    ann_factor: float = AnnFactor.daily,
-    com: Optional[float] = None,
-    span: Optional[float] = None,
-    halflife: Optional[float] = None,
-) -> pd.DataFrame:
-    """_summary_
-
-    Args:
-        prices (pd.DataFrame): _description_
-        ann_factor (Optional[Union[int, float, pd.Series]], optional): _description_. Defaults to None.
-        com (Optional[float], optional): _description_. Defaults to None.
-        span (Optional[float], optional): _description_. Defaults to None.
-        halflife (Optional[float], optional): _description_. Defaults to None.
-
-    Returns:
-        pd.DataFrame: _description_
-    """
-
-    pri_returns = to_pri_return(prices=prices)
-
-    if com is not None or span is not None or halflife is not None:
-        alpha = exponential_alpha(com=com, span=span, halflife=halflife)
-
-        exp_covariance_matrix = (
-            pri_returns.ewm(alpha=alpha).cov().unstack().iloc[-1].unstack() * ann_factor
-        )
-
-        return exp_covariance_matrix.loc[prices.columns, prices.columns]
-    return pri_returns.cov() * ann_factor
-
-
-def to_correlation_matrix(
-    prices: pd.DataFrame,
-    com: Optional[float] = None,
-    span: Optional[float] = None,
-    halflife: Optional[float] = None,
-) -> pd.DataFrame:
-    """_summary_
-
-    Args:
-        prices (pd.DataFrame): _description_
-        ann_factor (Optional[Union[int, float, pd.Series]], optional): _description_. Defaults to None.
-        com (Optional[float], optional): _description_. Defaults to None.
-        span (Optional[float], optional): _description_. Defaults to None.
-        halflife (Optional[float], optional): _description_. Defaults to None.
-
-    Returns:
-        pd.DataFrame: _description_
-    """
-
-    pri_returns = to_pri_return(prices=prices)
-
-    if com is not None or span is not None or halflife is not None:
-        alpha = exponential_alpha(com=com, span=span, halflife=halflife)
-
-        exp_covariance_matrix = (
-            pri_returns.ewm(alpha=alpha).corr().unstack().iloc[-1].unstack()
-        )
-
-        return exp_covariance_matrix.loc[prices.columns, prices.columns]
-    return pri_returns.corr()
-
-
 @overload
 def to_monthly_return(prices: pd.DataFrame) -> pd.DataFrame:
     ...
@@ -673,3 +550,93 @@ def to_monthly_return(
         .groupby([lambda x: x.year, lambda x: x.month])
         .apply(agg_ret)
     )
+
+
+@overload
+def moving_average(prices: pd.DataFrame, window: int = 20) -> pd.Series:
+    ...
+
+
+@overload
+def moving_average(prices: pd.Series, window: int = 20) -> float:
+    ...
+
+
+def moving_average(
+    prices: Union[pd.DataFrame, pd.Series], window: int = 20
+) -> Union[pd.Series, float]:
+    if isinstance(prices, pd.DataFrame):
+        return prices.aggregate(moving_average, window=window)
+    return prices.iloc[-window:].mean()
+
+
+@overload
+def to_exponential_moving_average(prices: pd.DataFrame, span: int = 20) -> pd.Series:
+    ...
+
+
+@overload
+def to_exponential_moving_average(prices: pd.Series, span: int = 20) -> float:
+    ...
+
+
+def to_exponential_moving_average(
+    prices: Union[pd.DataFrame, pd.Series], span: int = 20
+) -> Union[pd.Series, float]:
+    if isinstance(prices, pd.DataFrame):
+        return prices.aggregate(to_exponential_moving_average, span=span)
+    return prices.dropna().ewm(span=span).mean().iloc[-1]
+
+
+def to_covariance_matrix(
+    prices: pd.DataFrame, ann_factor: int = AnnFactor.daily, span: Optional[int] = None
+) -> pd.DataFrame:
+    if span:
+        return to_exponential_covariance_matrix(
+            prices=prices, span=span, ann_factor=ann_factor
+        )
+    return to_pri_return(prices=prices).cov()
+
+
+def to_correlation_matrix(
+    prices: pd.DataFrame, span: Optional[int] = None
+) -> pd.DataFrame:
+    if span:
+        return to_exponential_correlation_matrix(prices=prices, span=span)
+    return to_pri_return(prices=prices).corr()
+
+
+def to_exponential_covariance_matrix(
+    prices: pd.DataFrame, span: int = 180, ann_factor: int = AnnFactor.daily
+) -> pd.DataFrame:
+    if span < 10:
+        warnings.warn("it is recommended to use a higher span, e.g 30 days")
+    pri_return = to_pri_return(prices=prices)
+    assets = prices.columns
+    num_assets = len(assets)
+    S = np.zeros((num_assets, num_assets))
+
+    for i in range(num_assets):
+        for j in range(i, num_assets):
+            S[i, j] = S[j, i] = (
+                pri_return.iloc[:, [i, j]].ewm(span=180).cov().iloc[-1].iloc[0]
+            )
+    return pd.DataFrame(S, columns=assets, index=assets) * ann_factor
+
+
+def to_exponential_correlation_matrix(
+    prices: pd.DataFrame, span: int = 180
+) -> pd.DataFrame:
+    if span < 10:
+        warnings.warn("it is recommended to use a higher span, e.g 30 days")
+    pri_return = to_pri_return(prices=prices)
+    assets = prices.columns
+    num_assets = len(assets)
+    S = np.zeros((num_assets, num_assets))
+
+    for i in range(num_assets):
+        for j in range(i, num_assets):
+            S[i, j] = S[j, i] = (
+                pri_return.iloc[:, [i, j]].ewm(span=span).corr().iloc[-1].iloc[0]
+            )
+    return pd.DataFrame(S, columns=assets, index=assets)
