@@ -27,9 +27,7 @@ class Optimizer:
     def from_prices(
         cls,
         prices: pd.DataFrame,
-        com: Optional[float] = None,
-        span: Optional[float] = None,
-        halflife: Optional[float] = None,
+        span: Optional[int] = None,
         risk_free: float = 0.0,
         prices_bm: Optional[pd.Series] = None,
         weights_bm: Optional[pd.Series] = None,
@@ -54,12 +52,8 @@ class Optimizer:
         """
         return cls(
             expected_returns=metrics.to_expected_returns(prices=prices),
-            covariance_matrix=metrics.to_covariance_matrix(
-                prices=prices, span=span, com=com, halflife=halflife
-            ),
-            correlation_matrix=metrics.to_correlation_matrix(
-                prices=prices, span=span, com=com, halflife=halflife
-            ),
+            covariance_matrix=metrics.to_covariance_matrix(prices=prices, span=span),
+            correlation_matrix=metrics.to_correlation_matrix(prices=prices, span=span),
             risk_free=risk_free,
             prices_bm=prices_bm,
             weights_bm=weights_bm,
@@ -477,10 +471,10 @@ class Optimizer:
         if self.num_assets <= 2:
             return self.risk_parity()
         if self.correlation_matrix is None:
-            if self.covariance_matrix is not None:
-                self.correlation_matrix = cov_to_corr(self.covariance_matrix)
-            elif self.prices is not None:
+            if self.prices is not None:
                 self.correlation_matrix = metrics.to_correlation_matrix(self.prices)
+            elif self.covariance_matrix is not None:
+                self.correlation_matrix = cov_to_corr(self.covariance_matrix)
             else:
                 raise ValueError("correlation matrix is none and uncomputable.")
 

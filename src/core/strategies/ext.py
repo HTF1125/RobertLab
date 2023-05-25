@@ -43,13 +43,6 @@ class Backtest:
         return wrapper
 
 
-def single_momentum(prices: pd.DataFrame, **kwargs) -> pd.Series:
-    start = pd.Timestamp(str(prices.index[-1])) - pd.tseries.offsets.DateOffset(
-        **kwargs
-    )
-    return prices.resample("d").last().ffill().loc[start] / prices.iloc[-1] - 1
-
-
 class BacktestManager:
     @classmethod
     def from_universe(
@@ -122,8 +115,8 @@ class BacktestManager:
         ).uniform_allocation()
 
     @Backtest()
-    def Momentum(self, strategy: Strategy) -> pd.Series:
-        mom = metrics.momentum(strategy.prices, years=1).iloc[-1]
+    def Momentum1Y(self, strategy: Strategy) -> pd.Series:
+        mom = metrics.to_momentum(strategy.prices, years=1)
         index = mom.dropna().nlargest(5).index
         return Optimizer.from_prices(prices=strategy.prices[index]).uniform_allocation()
 
@@ -160,7 +153,7 @@ class BacktestManager:
         momentums = (
             pd.concat(
                 [
-                    single_momentum(strategy.prices, months=months)
+                    metrics.to_momentum(strategy.prices, months=months)
                     for months in [1, 3, 6, 12]
                 ],
                 axis=1,

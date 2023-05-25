@@ -191,12 +191,13 @@ class Strategy:
                 "AnnVolatility": metrics.to_ann_volatility(self.value),
                 "SharpeRatio": metrics.to_sharpe_ratio(self.value),
                 "SortinoRatio": metrics.to_sortino_ratio(self.value),
+                "CalmarRatio": metrics.to_calmar_ratio(self.value),
+                "TailRatio": metrics.to_tail_ratio(self.value),
                 "MaxDrawdown": metrics.to_max_drawdown(self.value),
                 "Skewness": metrics.to_skewness(self.value),
                 "Kurtosis": metrics.to_kurtosis(self.value),
                 "VaR": metrics.to_value_at_risk(self.value),
                 "CVaR": metrics.to_conditional_value_at_risk(self.value),
-                "TailRatio": metrics.to_tail_ratio(self.value),
                 # "Turnover(M)": self.data.trades.resample("M").sum().sum(axis=1).mean(),
             }
         )

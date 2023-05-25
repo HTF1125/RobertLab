@@ -308,17 +308,27 @@ def to_sharpe_ratio(
     ann_factor: Union[int, float] = AnnFactor.daily,
 ) -> Union[pd.Series, float]:
     """
+    Calculates the Sharpe ratio for a given set of prices.
 
+    The Sharpe ratio is a measure of risk-adjusted return, indicating the excess return of an investment
+    per unit of risk. It is commonly used to evaluate the performance of investment strategies.
+
+    Args:
+        prices (Union[pd.DataFrame, pd.Series]): The price data used to calculate returns.
+            It can be either a DataFrame with multiple price series or a single Series.
+        risk_free (Union[int, float], optional): The risk-free rate of return. Default is 0.0.
+        ann_factor (Union[int, float], optional): The annualization factor for returns and volatility.
+            It determines the frequency of returns used in the calculation. Default is AnnFactor.daily.
+
+    Returns:
+        Union[pd.Series, float]: The Sharpe ratio as a single value or a Series of Sharpe ratios
+        if multiple price series are provided.
 
     Limitations:
-
-        *The sharpe ratio assumes the normal distribution of returns.
-
-        *Bias toward high frequency trading strategies. (favors strategies that
-        generate small frequent profits and assumes such profits scales
-        proportionally which may not hold true)
-
-        *Not accounting for tail risk
+        - The Sharpe ratio assumes the normal distribution of returns.
+        - It has a bias toward high-frequency trading strategies, favoring strategies that generate
+          small frequent profits and assuming proportional scaling of profits, which may not hold true.
+        - It does not account for tail risk.
 
     """
     excess_return = to_ann_return(prices=prices, ann_factor=ann_factor) - risk_free
@@ -343,9 +353,28 @@ def to_sortino_ratio(
     prices: Union[pd.DataFrame, pd.Series],
     ann_factor: Union[int, float] = AnnFactor.daily,
 ) -> Union[pd.Series, float]:
+    """
+    Calculates the Sortino ratio for a given set of prices.
+
+    The Sortino ratio is a measure of risk-adjusted return that considers only the downside volatility
+    of an investment. It is similar to the Sharpe ratio, but it focuses on the negative deviations
+    from the desired return, providing a better assessment of the risk associated with an investment.
+
+    Args:
+        prices (Union[pd.DataFrame, pd.Series]): The price data used to calculate returns.
+            It can be either a DataFrame with multiple price series or a single Series.
+        ann_factor (Union[int, float], optional): The annualization factor for returns and volatility.
+            It determines the frequency of returns used in the calculation. Default is AnnFactor.daily.
+
+    Returns:
+        Union[pd.Series, float]: The Sortino ratio as a single value or a Series of Sortino ratios
+        if multiple price series are provided.
+
+    """
     return to_ann_return(prices=prices, ann_factor=ann_factor) / to_ann_semi_volatility(
         prices=prices, ann_factor=ann_factor
     )
+
 
 
 @overload
@@ -359,9 +388,29 @@ def to_tail_ratio(prices: pd.Series, alpha: float = 0.05) -> float:
 
 
 def to_tail_ratio(
-    prices: Union[pd.DataFrame, pd.Series], alpha: float = 0.05
+    prices: Union[pd.DataFrame, pd.Series],
+    alpha: float = 0.05
 ) -> Union[pd.Series, float]:
+    """
+    Calculates the tail ratio for a given set of prices.
+
+    The tail ratio is a measure that compares the returns in the lower tail (alpha percentile) to
+    the returns in the upper tail (1 - alpha percentile) of a distribution. It provides an indication
+    of the asymmetry or skewness of returns.
+
+    Args:
+        prices (Union[pd.DataFrame, pd.Series]): The price data used to calculate the tail ratio.
+            It can be either a DataFrame with multiple price series or a single Series.
+        alpha (float, optional): The significance level used to calculate the quantiles.
+            Default is 0.05, indicating a 5% significance level.
+
+    Returns:
+        Union[pd.Series, float]: The tail ratio as a single value or a Series of tail ratios
+        if multiple price series are provided.
+
+    """
     return prices.dropna().quantile(q=alpha) / prices.dropna().quantile(q=1 - alpha)
+
 
 
 @overload
@@ -375,17 +424,41 @@ def to_skewness(prices: pd.Series, log_return: bool = False) -> float:
 
 
 def to_skewness(
-    prices: Union[pd.DataFrame, pd.Series], log_return: bool = False
+    prices: Union[pd.DataFrame, pd.Series],
+    log_return: bool = False
 ) -> Union[pd.Series, float]:
+    """
+    Calculates the skewness of returns for a given set of prices.
+
+    Skewness is a measure of the asymmetry or lack of symmetry in the distribution of returns.
+    It indicates whether the returns are concentrated on one side of the mean, either to the left
+    (negative skewness) or to the right (positive skewness).
+
+    Args:
+        prices (Union[pd.DataFrame, pd.Series]): The price data used to calculate returns.
+            It can be either a DataFrame with multiple price series or a single Series.
+        log_return (bool, optional): Specifies whether to use logarithmic returns.
+            If True, logarithmic returns are calculated. If False, simple returns are calculated.
+            Default is False.
+
+    Returns:
+        Union[pd.Series, float]: The skewness of returns as a single value or a Series of skewness
+        if multiple price series are provided.
+
+    """
     if isinstance(prices, pd.DataFrame):
         return prices.aggregate(to_skewness, log_return=log_return)
+
     if log_return:
         pri_return = to_log_return(prices=prices)
-    pri_return = to_pri_return(prices=prices)
+    else:
+        pri_return = to_pri_return(prices=prices)
+
     n = len(pri_return)
     mean = pri_return.mean()
     std = pri_return.std()
     skewness = (1 / n) * ((pri_return - mean) / std).pow(3).sum()
+
     return float(skewness)
 
 
@@ -400,18 +473,42 @@ def to_kurtosis(prices: pd.Series, log_return: bool = False) -> float:
 
 
 def to_kurtosis(
-    prices: Union[pd.DataFrame, pd.Series], log_return: bool = False
+    prices: Union[pd.DataFrame, pd.Series],
+    log_return: bool = False
 ) -> Union[pd.Series, float]:
+    """
+    Calculates the kurtosis of returns for a given set of prices.
+
+    Kurtosis is a measure of the "tailedness" or the degree of outliers in the distribution of returns.
+    It indicates the presence of fat tails or extreme observations in the data.
+
+    Args:
+        prices (Union[pd.DataFrame, pd.Series]): The price data used to calculate returns.
+            It can be either a DataFrame with multiple price series or a single Series.
+        log_return (bool, optional): Specifies whether to use logarithmic returns.
+            If True, logarithmic returns are calculated. If False, simple returns are calculated.
+            Default is False.
+
+    Returns:
+        Union[pd.Series, float]: The kurtosis of returns as a single value or a Series of kurtosis
+        if multiple price series are provided.
+
+    """
     if isinstance(prices, pd.DataFrame):
         return prices.aggregate(to_kurtosis, log_return=log_return)
+
     if log_return:
         pri_return = to_log_return(prices=prices)
-    pri_return = to_pri_return(prices=prices)
+    else:
+        pri_return = to_pri_return(prices=prices)
+
     n = len(pri_return)
     mean = pri_return.mean()
     std = pri_return.std()
     kurtosis = (1 / n) * ((pri_return - mean) / std).pow(4).sum()
+
     return float(kurtosis)
+
 
 
 @overload
@@ -457,31 +554,23 @@ def to_conditional_value_at_risk(
 
 
 @overload
-def momentum(prices: pd.DataFrame, **kwargs) -> pd.Series:
+def to_momentum(prices: pd.DataFrame, **kwargs) -> pd.Series:
     ...
 
 
 @overload
-def momentum(prices: pd.Series, **kwargs) -> float:
+def to_momentum(prices: pd.Series, **kwargs) -> float:
     ...
 
 
-def momentum(
+def to_momentum(
     prices: Union[pd.DataFrame, pd.Series], **kwargs
 ) -> Union[pd.Series, float]:
     if isinstance(prices, pd.DataFrame):
-        return prices.aggregate(momentum, **kwargs)
+        return prices.aggregate(to_momentum, **kwargs)
     start = pd.Timestamp(str(prices.index[-1]))
     start -= pd.tseries.offsets.DateOffset(**kwargs)
     return prices.resample("d").last().ffill().loc[start] / prices.iloc[-1] - 1
-
-
-# def momentum(
-#     prices: Union[pd.DataFrame, pd.Series], **kwargs
-# ) -> Union[pd.DataFrame, pd.Series]:
-#     resampled_prices = prices.resample("D").last().ffill()
-#     offset_prices = resampled_prices.shift(1, freq=pd.DateOffset(**kwargs))
-#     return (prices / offset_prices).loc[prices.index]
 
 
 @overload
@@ -499,34 +588,6 @@ def to_expected_returns(
 ) -> Union[pd.Series, float]:
     """this is a pass through function"""
     return to_ann_return(prices=prices, ann_factor=AnnFactor.daily)
-
-
-def exponential_alpha(
-    com: Optional[float] = None,
-    span: Optional[float] = None,
-    halflife: Optional[float] = None,
-) -> float:
-    """_summary_
-
-    Args:
-        com (Optional[float], optional): _description_. Defaults to None.
-        span (Optional[float], optional): _description_. Defaults to None.
-        halflife (Optional[float], optional): _description_. Defaults to None.
-
-    Raises:
-        ValueError: _description_
-
-    Returns:
-        float: _description_
-    """
-    if com:
-        return 1 / (1 + com)
-    if span:
-        return 2 / (span + 1)
-    if halflife:
-        return 1 - np.exp(-np.log(2) / halflife)
-
-    return 0.0
 
 
 @overload
@@ -640,3 +701,114 @@ def to_exponential_correlation_matrix(
                 pri_return.iloc[:, [i, j]].ewm(span=span).corr().iloc[-1].iloc[0]
             )
     return pd.DataFrame(S, columns=assets, index=assets)
+
+
+@overload
+def to_1m(prices: pd.DataFrame) -> pd.Series:
+    ...
+
+
+@overload
+def to_1m(prices: pd.Series) -> float:
+    ...
+
+
+def to_1m(prices: Union[pd.DataFrame, pd.Series]) -> Union[pd.Series, float]:
+    return to_momentum(prices=prices, months=1)
+
+
+@overload
+def to_2m(prices: pd.DataFrame) -> pd.Series:
+    ...
+
+
+@overload
+def to_2m(prices: pd.Series) -> float:
+    ...
+
+
+def to_2m(prices: Union[pd.DataFrame, pd.Series]) -> Union[pd.Series, float]:
+    return to_momentum(prices=prices, months=2)
+
+
+@overload
+def to_3m(prices: pd.DataFrame) -> pd.Series:
+    ...
+
+
+@overload
+def to_3m(prices: pd.Series) -> float:
+    ...
+
+
+def to_3m(prices: Union[pd.DataFrame, pd.Series]) -> Union[pd.Series, float]:
+    return to_momentum(prices=prices, months=3)
+
+
+@overload
+def to_6m(prices: pd.DataFrame) -> pd.Series:
+    ...
+
+
+@overload
+def to_6m(prices: pd.Series) -> float:
+    ...
+
+
+def to_6m(prices: Union[pd.DataFrame, pd.Series]) -> Union[pd.Series, float]:
+    return to_momentum(prices=prices, months=6)
+
+
+@overload
+def to_1y(prices: pd.DataFrame) -> pd.Series:
+    ...
+
+
+@overload
+def to_1y(prices: pd.Series) -> float:
+    ...
+
+
+def to_1y(prices: Union[pd.DataFrame, pd.Series]) -> Union[pd.Series, float]:
+    return to_momentum(prices=prices, months=12)
+
+
+@overload
+def to_calmar_ratio(prices: pd.Series) -> float:
+    ...
+
+
+@overload
+def to_calmar_ratio(prices: pd.DataFrame) -> pd.Series:
+    ...
+
+
+def to_calmar_ratio(prices: Union[pd.DataFrame, pd.Series]) -> Union[pd.Series, float]:
+
+    if isinstance(prices, pd.DataFrame):
+        return prices.aggregate(to_calmar_ratio)
+
+    return to_ann_return(prices=prices) / abs(to_max_drawdown(prices=prices))
+
+
+
+
+def to_tracking_error(prices: Union[pd.DataFrame, pd.Series], prices_bm: pd.Series) -> Union[pd.Series, float]:
+
+    pass
+
+def to_information_ratio(prices: Union[pd.DataFrame, pd.Series], prices_bm: pd.Series) -> Union[pd.Series, float]:
+    """
+    Calculates the Information Ratio.
+
+    The Information Ratio measures the excess return of a strategy per unit of tracking error
+    relative to a benchmark.
+
+    Args:
+        returns (np.ndarray): Array of strategy returns.
+        benchmark_returns (np.ndarray): Array of benchmark returns.
+
+    Returns:
+        float: The calculated Information Ratio.
+    """
+    pass
