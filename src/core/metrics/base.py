@@ -4,6 +4,7 @@ from typing import Union, Optional
 from typing import overload
 import numpy as np
 import pandas as pd
+from sklearn.linear_model import LinearRegression
 from ..ext.periods import AnnFactor
 
 
@@ -376,7 +377,6 @@ def to_sortino_ratio(
     )
 
 
-
 @overload
 def to_tail_ratio(prices: pd.DataFrame, alpha: float = 0.05) -> pd.Series:
     ...
@@ -388,8 +388,7 @@ def to_tail_ratio(prices: pd.Series, alpha: float = 0.05) -> float:
 
 
 def to_tail_ratio(
-    prices: Union[pd.DataFrame, pd.Series],
-    alpha: float = 0.05
+    prices: Union[pd.DataFrame, pd.Series], alpha: float = 0.05
 ) -> Union[pd.Series, float]:
     """
     Calculates the tail ratio for a given set of prices.
@@ -412,7 +411,6 @@ def to_tail_ratio(
     return prices.dropna().quantile(q=alpha) / prices.dropna().quantile(q=1 - alpha)
 
 
-
 @overload
 def to_skewness(prices: pd.DataFrame, log_return: bool = False) -> pd.Series:
     ...
@@ -424,8 +422,7 @@ def to_skewness(prices: pd.Series, log_return: bool = False) -> float:
 
 
 def to_skewness(
-    prices: Union[pd.DataFrame, pd.Series],
-    log_return: bool = False
+    prices: Union[pd.DataFrame, pd.Series], log_return: bool = False
 ) -> Union[pd.Series, float]:
     """
     Calculates the skewness of returns for a given set of prices.
@@ -473,8 +470,7 @@ def to_kurtosis(prices: pd.Series, log_return: bool = False) -> float:
 
 
 def to_kurtosis(
-    prices: Union[pd.DataFrame, pd.Series],
-    log_return: bool = False
+    prices: Union[pd.DataFrame, pd.Series], log_return: bool = False
 ) -> Union[pd.Series, float]:
     """
     Calculates the kurtosis of returns for a given set of prices.
@@ -508,7 +504,6 @@ def to_kurtosis(
     kurtosis = (1 / n) * ((pri_return - mean) / std).pow(4).sum()
 
     return float(kurtosis)
-
 
 
 @overload
@@ -664,6 +659,7 @@ def to_correlation_matrix(
 ) -> pd.DataFrame:
     if span:
         return to_exponential_correlation_matrix(prices=prices, span=span)
+
     return to_pri_return(prices=prices).corr()
 
 
@@ -784,20 +780,86 @@ def to_calmar_ratio(prices: pd.DataFrame) -> pd.Series:
 
 
 def to_calmar_ratio(prices: Union[pd.DataFrame, pd.Series]) -> Union[pd.Series, float]:
-
     if isinstance(prices, pd.DataFrame):
         return prices.aggregate(to_calmar_ratio)
 
     return to_ann_return(prices=prices) / abs(to_max_drawdown(prices=prices))
 
 
+@overload
+def to_expost_tracking_error(
+    prices: pd.DataFrame,
+    prices_bm: pd.Series,
+    ann_factor: Union[int, float] = AnnFactor.daily,
+) -> pd.Series:
+    ...
 
 
-def to_tracking_error(prices: Union[pd.DataFrame, pd.Series], prices_bm: pd.Series) -> Union[pd.Series, float]:
+@overload
+def to_expost_tracking_error(
+    prices: pd.Series,
+    prices_bm: pd.Series,
+    ann_factor: Union[int, float] = AnnFactor.daily,
+) -> float:
+    ...
 
-    pass
 
-def to_information_ratio(prices: Union[pd.DataFrame, pd.Series], prices_bm: pd.Series) -> Union[pd.Series, float]:
+def to_expost_tracking_error(
+    prices: Union[pd.DataFrame, pd.Series],
+    prices_bm: pd.Series,
+    ann_factor: Union[int, float] = AnnFactor.daily,
+) -> Union[pd.Series, float]:
+    if isinstance(prices, pd.DataFrame):
+        return prices.aggregate(
+            to_expost_tracking_error, prices_bm=prices_bm, ann_factor=ann_factor
+        )
+    prices_bm = prices_bm.reindex(prices.dropna().index).ffill()
+    excess_return = to_pri_return(prices=prices) - to_pri_return(prices=prices_bm)
+    excess_return = excess_return.dropna()
+    return float(np.std(excess_return)) * (ann_factor**0.5)
+
+
+def to_exante_tracking_error(
+    weights: pd.Series,
+    weights_bm: pd.Series,
+    prices: Optional[pd.DataFrame] = None,
+    covariance_matrix: Optional[pd.DataFrame] = None,
+) -> float:
+    if covariance_matrix is None:
+        if prices is None:
+            raise ValueError("You must pass in one of prices or covariance matrix.")
+        covariance_matrix = to_covariance_matrix(prices=prices)
+    active_weights = weights.subtract(weights_bm, fill_value=0)
+    tracking_variance = np.dot(
+        np.dot(active_weights, covariance_matrix), active_weights
+    )
+    tracking_error = np.sqrt(tracking_variance)
+    return tracking_error
+
+
+@overload
+def to_information_ratio(
+    prices: pd.DataFrame,
+    prices_bm: pd.Series,
+    ann_factor: Union[int, float] = AnnFactor.daily,
+) -> pd.Series:
+    ...
+
+
+@overload
+def to_information_ratio(
+    prices: pd.Series,
+    prices_bm: pd.Series,
+    ann_factor: Union[int, float] = AnnFactor.daily,
+) -> float:
+    ...
+
+
+def to_information_ratio(
+    prices: Union[pd.DataFrame, pd.Series],
+    prices_bm: pd.Series,
+    ann_factor: Union[int, float] = AnnFactor.daily,
+) -> Union[pd.Series, float]:
     """
     Calculates the Information Ratio.
 
@@ -811,4 +873,104 @@ def to_information_ratio(prices: Union[pd.DataFrame, pd.Series], prices_bm: pd.S
     Returns:
         float: The calculated Information Ratio.
     """
-    pass
+    if isinstance(prices, pd.DataFrame):
+        return prices.aggregate(
+            to_information_ratio, prices_bm=prices_bm, ann_factor=ann_factor
+        )
+
+    excess_return = to_ann_return(prices=prices, ann_factor=ann_factor) - to_ann_return(
+        prices=prices_bm, ann_factor=ann_factor
+    )
+
+    return excess_return / to_expost_tracking_error(
+        prices=prices, prices_bm=prices_bm, ann_factor=ann_factor
+    )
+
+
+@overload
+def to_hurst_exponent(prices: pd.DataFrame, lags: int = 20) -> pd.Series:
+    ...
+
+
+@overload
+def to_hurst_exponent(prices: pd.Series, lags: int = 20) -> float:
+    ...
+
+
+def to_hurst_exponent(
+    prices: Union[pd.DataFrame, pd.Series], lags: int = 20
+) -> Union[pd.Series, float]:
+    """
+    Calculates the Hurst exponent for a given set of prices.
+
+    The Hurst exponent is a measure of the long-term memory of a time series. It quantifies
+    the degree of persistence or trendiness in the data. A value between 0.5 and 1 indicates
+    positive autocorrelation and a trend that is likely to persist, while a value between 0 and
+    0.5 indicates negative autocorrelation and a trend that is likely to reverse.
+
+    Args:
+        prices (Union[pd.DataFrame, pd.Series]): The price data used to calculate the Hurst exponent.
+            It can be either a DataFrame with multiple price series or a single Series.
+        lags (Optional[int], optional): The number of lags used to calculate the Hurst exponent.
+            If not specified, the maximum number of lags possible will be used. Default is None.
+
+    Returns:
+        Union[pd.Series, float]: The Hurst exponent as a single value or a Series of Hurst exponents
+        if multiple price series are provided.
+
+    References:
+        - Hurst, H. E. (1951). Long-term storage capacity of reservoirs.
+          Transactions of the American Society of Civil Engineers, 116, 770-799.
+        - Lo, A. W. (1991). Long-term memory in stock market prices.
+          Econometrica: Journal of the Econometric Society, 1279-1313.
+
+    """
+    if isinstance(prices, pd.DataFrame):
+        return prices.aggregate(to_hurst_exponent, lags=lags)
+
+    ts = prices.dropna().values
+
+    # variances of the lagged differences
+    tau = [np.std(np.subtract(ts[lag:], ts[:-lag])) for lag in range(2, lags)]
+
+    # calculate the slope of the log plot -> the Hurst Exponent
+    reg = np.polyfit(np.log(range(2, lags)), np.log(tau), 1)
+
+    return reg[0]
+
+
+def to_beta(
+    prices: Union[pd.DataFrame, pd.Series], prices_bm: pd.Series
+) -> Union[pd.Series, float]:
+    if isinstance(prices, pd.DataFrame):
+        return prices.aggregate(to_beta, prices_bm=prices_bm)
+    model = LinearRegression()
+
+    itx = prices.dropna().index.intersection(prices_bm.dropna().index)
+    model.fit(
+        X=to_pri_return(prices=prices.loc[itx].to_frame()),
+        y=to_pri_return(prices=prices_bm.loc[itx]),
+    )
+    return model.coef_[0]
+
+
+def to_treynor_ratio(
+    prices: Union[pd.DataFrame, pd.Series],
+    prices_bm: pd.Series,
+    risk_free: Union[int, float] = 0.0,
+) -> Union[pd.Series, float]:
+    return (to_ann_return(prices=prices) - risk_free) / to_beta(
+        prices=prices, prices_bm=prices_bm
+    )
+
+
+def to_jensens_alpha(
+    prices: Union[pd.DataFrame, pd.Series],
+    prices_bm: pd.Series,
+    risk_free: Union[int, float] = 0.0,
+) -> Union[pd.Series, float]:
+    return to_ann_return(prices=prices) / (
+        risk_free
+        - to_beta(prices=prices, prices_bm=prices_bm)
+        * (to_ann_return(prices=prices_bm) - risk_free)
+    )

@@ -1,5 +1,5 @@
 import warnings
-from typing import Optional, Callable, Dict, List
+from typing import Optional, Callable, Union, Dict, List
 from functools import partial
 from scipy.optimize import minimize
 from scipy.cluster.hierarchy import linkage, to_tree
@@ -342,6 +342,31 @@ class Optimizer:
                 ),
             }
         )
+
+    def set_custom_feature_constraints(
+        self,
+        features: pd.Series,
+        min_value: Optional[Union[int, float]] = None,
+        max_value: Optional[Union[int, float]] = None,
+    ) -> "Optimizer":
+        if min_value:
+            self.constraints.append(
+                {
+                    "type": "ineq",
+                    "fun": lambda w: np.dot(
+                        w, features.reindex(self.assets, fill_value=0) - min_value
+                    ),
+                }
+            )
+        if max_value:
+            self.constraints.append(
+                {
+                    "type": "ineq",
+                    "fun": lambda w: max_value
+                    - np.dot(w, features.reindex(self.assets, fill_value=0)),
+                }
+            )
+        return self
 
     def solve(
         self, objective: Callable, extra_constraints: Optional[List[Dict]] = None

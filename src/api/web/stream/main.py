@@ -1,6 +1,5 @@
 import streamlit as st
-import plotly.graph_objects as go
-import database as db
+from core.strategies import BacktestManager
 
 
 st.set_page_config(
@@ -12,17 +11,15 @@ st.set_page_config(
 )
 
 
-st.write("Robert's Website")
+st.write("test")
 
-data = db.data.get_us_pce().pct_change(12)
-fig = go.Figure(data=go.Scatter(x=data.index, y=data.iloc[:, 0], mode='lines'))
-st.plotly_chart(fig)
-
-
-data = db.data.get_us_cpi_all_urban().pct_change(12)
-fig = go.Figure(data=go.Scatter(x=data.index, y=data.iloc[:, 0], mode='lines'))
-st.plotly_chart(fig)
-
-data = db.data.get_oecd_us_leading_indicator() - 100
-fig = go.Figure(data=go.Scatter(x=data.index, y=data.iloc[:, 0], mode='lines'))
-st.plotly_chart(fig)
+bt = BacktestManager.from_universe(start="2005-1-1", commission=10, shares_frac=0)
+# bt.EqualWeight()
+# bt.MinCorr()
+# bt.RegimeRotation(signal=signal)
+# bt.EqualWeight(prices=yf.download("SPY")["Adj Close"].to_frame())
+# bt.RegimeRotationMinCorr(signal=signal)
+# bt.RegimeRotationMinCorr(signal=signal, span=21*3)
+# bt.MinVol(span=21*12)
+# bt.MMM()
+bt.MeanReversion()

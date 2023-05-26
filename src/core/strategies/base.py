@@ -68,6 +68,7 @@ class Strategy:
         initial_investment: float = 10_000.0,
         commission: int = 10,
         shares_frac: Optional[int] = None,
+        prices_bm: Optional[pd.Series] = None,
     ) -> None:
         self.total_prices: pd.DataFrame = prices.ffill()
         self.date: pd.Timestamp = pd.Timestamp(str(self.total_prices.index[0]))
@@ -81,6 +82,28 @@ class Strategy:
             start=start or str(self.total_prices.index[0]),
             end=end or str(self.total_prices.index[-1]),
             freq=frequency,
+        )
+        if prices_bm is None:
+            self.prices_bm = self.calculate_benchmark()
+        else:
+            self.prices_bm = prices_bm
+
+        self.prices_bm = self.prices_bm.reindex(self.value.index).ffill().dropna()
+        self.prices_bm = self.prices_bm / self.prices_bm.iloc[0] * initial_investment
+
+    def calculate_benchmark(self) -> pd.Series:
+        return (
+            self.prices.pct_change()
+            .fillna(0)
+            .multiply(
+                self.prices.isna()
+                .multiply(-1)
+                .add(1)
+                .divide(self.prices.isna().multiply(-1).add(1).sum(axis=1), axis=0)
+            )
+            .sum(axis=1)
+            .add(1)
+            .cumprod()
         )
 
     ################################################################################
@@ -108,6 +131,11 @@ class Strategy:
     def allocations(self) -> pd.DataFrame:
         """strategy cash"""
         return pd.DataFrame(self.data.get("allocations")).T
+
+    @property
+    def weights(self) -> pd.DataFrame:
+        """strategy cash"""
+        return pd.DataFrame(self.data.get("weights")).T
 
     ################################################################################
     @staticmethod
@@ -141,13 +169,13 @@ class Strategy:
         rebalance_dates = self.generate_rebalance_dates(start=start, end=end, freq=freq)
         rebalance_date = next(rebalance_dates)
         for self.date in self.total_prices.loc[start:end].index:
-
-            capitals = shares.multiply(self.total_prices.loc[self.date])
-            value = capitals.sum() + cash
+            capitals = shares.multiply(self.total_prices.loc[self.date]).dropna()
+            value = sum(capitals) + cash
             weights = capitals.divide(value)
 
             if self.date > rebalance_date:
                 allocations = self.rebalance(strategy=self)
+
                 if not isinstance(allocations, pd.Series):
                     allocations = pd.Series(allocations, dtype=float)
                 if not allocations.empty:
@@ -158,6 +186,7 @@ class Strategy:
                         rebalance_date = None
 
                     # Make trades here
+
                     target_capials = value * allocations
                     target_shares = target_capials.divide(
                         self.total_prices.loc[self.date]
@@ -174,7 +203,6 @@ class Strategy:
                     trade_capitals += trade_capitals.multiply(self.commission / 1_000)
                     cash -= trade_capitals.sum()
                     shares = target_shares
-
             self.data["value"][self.date] = value
             self.data["shares"][self.date] = shares
             self.data["cash"][self.date] = cash

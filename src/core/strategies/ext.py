@@ -149,6 +149,17 @@ class BacktestManager:
         ).hierarchical_risk_parity()
 
     @Backtest()
+    def MeanReversion(self, strategy: Strategy, threshold: float = 0.20) -> pd.Series:
+        sma = strategy.prices.rolling(50).mean()
+        deviation = strategy.prices / sma
+        rr = deviation.iloc[-1] - deviation.quantile(q=threshold)
+        rr = rr[rr < 0]
+        if len(rr) == 0:
+            return pd.Series(dtype=float)
+        rr.iloc[:] = 1 / rr.count()
+        return rr
+
+    @Backtest()
     def MMM(self, strategy: Strategy) -> pd.Series:
         momentums = (
             pd.concat(
@@ -178,3 +189,4 @@ class BacktestManager:
         return pd.DataFrame(
             {name: strategy.analytics for name, strategy in self.strategies.items()}
         )
+    
