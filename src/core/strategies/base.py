@@ -182,27 +182,26 @@ class Strategy:
                     self.data["allocations"][self.date] = allocations
                     try:
                         rebalance_date = next(rebalance_dates)
+                        # Make trades here
+
+                        target_capials = value * allocations
+                        target_shares = target_capials.divide(
+                            self.total_prices.loc[self.date]
+                        )
+                        if self.shares_frac is not None:
+                            target_shares = target_shares.round(self.shares_frac)
+
+                        trade_shares = target_shares.subtract(shares, fill_value=0)
+                        trade_shares = trade_shares[trade_shares != 0]
+                        self.data["trades"][self.date] = trade_shares
+                        trade_capitals = trade_shares.multiply(
+                            self.total_prices.loc[self.date]
+                        )
+                        trade_capitals += trade_capitals.multiply(self.commission / 1_000)
+                        cash -= trade_capitals.sum()
+                        shares = target_shares
                     except StopIteration:
                         rebalance_date = None
-
-                    # Make trades here
-
-                    target_capials = value * allocations
-                    target_shares = target_capials.divide(
-                        self.total_prices.loc[self.date]
-                    )
-                    if self.shares_frac is not None:
-                        target_shares = target_shares.round(self.shares_frac)
-
-                    trade_shares = target_shares.subtract(shares, fill_value=0)
-                    trade_shares = trade_shares[trade_shares != 0]
-                    self.data["trades"][self.date] = trade_shares
-                    trade_capitals = trade_shares.multiply(
-                        self.total_prices.loc[self.date]
-                    )
-                    trade_capitals += trade_capitals.multiply(self.commission / 1_000)
-                    cash -= trade_capitals.sum()
-                    shares = target_shares
             self.data["value"][self.date] = value
             self.data["shares"][self.date] = shares
             self.data["cash"][self.date] = cash

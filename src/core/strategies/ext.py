@@ -1,5 +1,5 @@
 """ROBERT"""
-from typing import Optional, Callable, Dict
+from typing import Optional, Callable, Union, Dict, List
 from functools import partial
 import pandas as pd
 from .base import Strategy
@@ -115,10 +115,37 @@ class BacktestManager:
         ).uniform_allocation()
 
     @Backtest()
-    def Momentum1Y(self, strategy: Strategy) -> pd.Series:
-        mom = metrics.to_momentum(strategy.prices, years=1)
-        index = mom.dropna().nlargest(5).index
-        return Optimizer.from_prices(prices=strategy.prices[index]).uniform_allocation()
+    def Momentum(
+        self,
+        strategy: Strategy,
+        target_score: float = 0.8,
+        months: Union[int, List[int]] = 12,
+        objective: str = "uniform_allocation",
+    ) -> pd.Series:
+
+        if isinstance(months, list):
+            mom = (
+                pd.concat(
+                    [
+                        metrics.to_momentum(prices=strategy.prices, months=m)
+                        for m in months
+                    ],
+                    axis=1,
+                )
+                .rank(ascending=False, pct=True)
+                .mean(axis=1)
+                .rank(pct=True, ascending=False)
+            )
+        else:
+            mom = metrics.to_momentum(prices=strategy.prices, months=months).rank(
+                pct=True, ascending=False
+            )
+        opt = Optimizer.from_prices(
+            prices=strategy.prices
+        ).set_custom_feature_constraints(
+            features=mom, min_value=target_score, max_value=target_score
+        )
+        return getattr(opt, objective)()
 
     @Backtest()
     def MinCorr(self, strategy: Strategy, **kwargs) -> pd.Series:
@@ -189,4 +216,3 @@ class BacktestManager:
         return pd.DataFrame(
             {name: strategy.analytics for name, strategy in self.strategies.items()}
         )
-    

@@ -1,6 +1,6 @@
 """ROBERT"""
 import warnings
-from typing import Union, Optional
+from typing import Union, Optional, List
 from typing import overload
 import numpy as np
 import pandas as pd
@@ -549,22 +549,23 @@ def to_conditional_value_at_risk(
 
 
 @overload
-def to_momentum(prices: pd.DataFrame, **kwargs) -> pd.Series:
+def to_momentum(prices: pd.DataFrame, months: int = 12) -> pd.Series:
     ...
 
 
 @overload
-def to_momentum(prices: pd.Series, **kwargs) -> float:
+def to_momentum(prices: pd.Series, months: int = 12) -> float:
     ...
 
 
 def to_momentum(
-    prices: Union[pd.DataFrame, pd.Series], **kwargs
+    prices: Union[pd.DataFrame, pd.Series],
+    months: int = 12,
 ) -> Union[pd.Series, float]:
     if isinstance(prices, pd.DataFrame):
-        return prices.aggregate(to_momentum, **kwargs)
+        return prices.aggregate(to_momentum, months=months)
     start = pd.Timestamp(str(prices.index[-1]))
-    start -= pd.tseries.offsets.DateOffset(**kwargs)
+    start -= pd.tseries.offsets.DateOffset(months=months)
     return prices.resample("d").last().ffill().loc[start] / prices.iloc[-1] - 1
 
 
