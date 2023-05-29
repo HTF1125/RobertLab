@@ -1,4 +1,5 @@
 """ROBERT"""
+import warnings
 from typing import Optional, Callable, Union, Dict, List
 from functools import partial
 import pandas as pd
@@ -23,20 +24,24 @@ def dict_to_signature_string(data):
 class Backtest:
     def __call__(self, func) -> Callable:
         def wrapper(cls, **kwargs):
+            name = (
+                func.__name__ + "(" + dict_to_signature_string(kwargs) + ")"
+                if kwargs
+                else func.__name__
+            )
+            if name in cls.strategies:
+                warnings.warn(message=f"{name} already backtested.")
+                return
             strategy = Strategy(
                 prices=kwargs.pop("prices", cls.prices),
                 start=kwargs.pop("start", cls.start),
                 end=kwargs.pop("end", cls.end),
                 frequency=kwargs.pop("frequency", cls.frequency),
                 commission=kwargs.pop("commission", cls.commission),
-                rebalance=partial(func, cls, **kwargs),
                 shares_frac=kwargs.pop("shares_frac", cls.shares_frac),
+                rebalance=partial(func, cls, **kwargs),
             )
-            name = (
-                func.__name__ + "(" + dict_to_signature_string(kwargs) + ")"
-                if kwargs
-                else func.__name__
-            )
+
             cls.strategies[name] = strategy
             return strategy
 
@@ -56,7 +61,6 @@ class BacktestManager:
     ) -> "BacktestManager":
         try:
             from core import data
-
             if name == "USSECTORETF":
                 prices = data.get_prices(
                     tickers="XLC, XLY, XLP, XLE, XLF, XLV, XLI, XLB, XLRE, XLK, XLU, GLD, BIL",
@@ -123,7 +127,7 @@ class BacktestManager:
         objective: str = "uniform_allocation",
     ) -> pd.Series:
         if isinstance(months, list):
-            mom = (
+            rank = (
                 pd.concat(
                     [
                         metrics.to_momentum(prices=strategy.prices, months=m)
@@ -131,18 +135,17 @@ class BacktestManager:
                     ],
                     axis=1,
                 )
-                .rank(ascending=False, pct=True)
+                .rank(ascending=True, pct=True)
                 .mean(axis=1)
-                .rank(pct=True, ascending=False)
+                .rank(pct=True, ascending=True)
             )
         else:
-            mom = metrics.to_momentum(prices=strategy.prices, months=months).rank(
-                pct=True, ascending=False
-            )
+            mom = metrics.to_momentum(prices=strategy.prices, months=months)
+            rank = mom.rank(pct=True, ascending=True)
         opt = Optimizer.from_prices(
             prices=strategy.prices
         ).set_custom_feature_constraints(
-            features=mom, min_value=target_score, max_value=target_score
+            features=rank, min_value=target_score, max_value=target_score
         )
         return getattr(opt, objective)()
 
@@ -184,25 +187,6 @@ class BacktestManager:
             return pd.Series(dtype=float)
         rr.iloc[:] = 1 / rr.count()
         return rr
-
-    @Backtest()
-    def MMM(self, strategy: Strategy) -> pd.Series:
-        momentums = (
-            pd.concat(
-                [
-                    metrics.to_momentum(strategy.prices, months=months)
-                    for months in [1, 3, 6, 12]
-                ],
-                axis=1,
-            )
-            .rank(ascending=False)
-            .mean(axis=1)
-            .nlargest(5)
-        )
-
-        return Optimizer.from_prices(
-            prices=strategy.prices[momentums.index],
-        ).uniform_allocation()
 
     @property
     def values(self) -> pd.DataFrame:
