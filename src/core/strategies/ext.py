@@ -55,14 +55,14 @@ class BacktestManager:
         shares_frac: Optional[int] = None,
     ) -> "BacktestManager":
         try:
-            import yfinance as yf
+            from core import data
 
             if name == "USSECTORETF":
-                prices = yf.download(
-                    tickers="XLC, XLY, XLP, XLE, XLF, XLV, XLI, XLB, XLRE, XLK, XLU, GLD, BIL"
-                )["Adj Close"]
+                prices = data.get_prices(
+                    tickers="XLC, XLY, XLP, XLE, XLF, XLV, XLI, XLB, XLRE, XLK, XLU, GLD, BIL",
+                )
             else:
-                prices = yf.download("ACWI, BND")["Adj Close"]
+                prices = data.get_prices("ACWI, BND")
             return cls(
                 prices=prices,
                 start=start,
@@ -122,7 +122,6 @@ class BacktestManager:
         months: Union[int, List[int]] = 12,
         objective: str = "uniform_allocation",
     ) -> pd.Series:
-
         if isinstance(months, list):
             mom = (
                 pd.concat(

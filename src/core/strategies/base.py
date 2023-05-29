@@ -70,6 +70,20 @@ class Strategy:
         shares_frac: Optional[int] = None,
         prices_bm: Optional[pd.Series] = None,
     ) -> None:
+        """
+        Initialize a Strategy object.
+
+        Args:
+            prices (pd.DataFrame): Price data for the strategy.
+            rebalance (Callable): Callable object for rebalancing the strategy.
+            frequency (str, optional): Frequency of rebalancing. Defaults to "M".
+            start (str, optional): Start date for the simulation. Defaults to None.
+            end (str, optional): End date for the simulation. Defaults to None.
+            initial_investment (float, optional): Initial investment amount. Defaults to 10_000.0.
+            commission (int, optional): Commission amount for trades. Defaults to 10.
+            shares_frac (int, optional): Number of decimal places for rounding shares. Defaults to None.
+            prices_bm (pd.Series, optional): Benchmark price data. Defaults to None.
+        """
         self.total_prices: pd.DataFrame = prices.ffill()
         self.date: pd.Timestamp = pd.Timestamp(str(self.total_prices.index[0]))
         self.commission = commission
@@ -91,7 +105,15 @@ class Strategy:
         self.prices_bm = self.prices_bm.reindex(self.value.index).ffill().dropna()
         self.prices_bm = self.prices_bm / self.prices_bm.iloc[0] * initial_investment
 
+
+
     def calculate_benchmark(self) -> pd.Series:
+        """
+        Calculate the benchmark returns.
+
+        Returns:
+            pd.Series: Benchmark returns.
+        """
         return (
             self.prices.pct_change()
             .fillna(0)
@@ -110,7 +132,12 @@ class Strategy:
 
     @property
     def prices(self) -> pd.DataFrame:
-        """prices"""
+        """
+        Get the price data for the strategy.
+
+        Returns:
+            pd.DataFrame: Price data.
+        """
         if self.date is None:
             return pd.DataFrame()
         return self.total_prices[self.total_prices.index < self.date].dropna(
@@ -119,22 +146,42 @@ class Strategy:
 
     @property
     def value(self) -> pd.Series:
-        """strategy value"""
+        """
+        Get the value of the strategy.
+
+        Returns:
+            pd.Series: Strategy value.
+        """
         return pd.Series(self.data.get("value"))
 
     @property
     def cash(self) -> pd.Series:
-        """strategy cash"""
+        """
+        Get the cash holdings of the strategy.
+
+        Returns:
+            pd.Series: Cash holdings.
+        """
         return pd.Series(self.data.get("cash"))
 
     @property
     def allocations(self) -> pd.DataFrame:
-        """strategy cash"""
+        """
+        Get the asset allocations of the strategy.
+
+        Returns:
+            pd.DataFrame: Asset allocations.
+        """
         return pd.DataFrame(self.data.get("allocations")).T
 
     @property
     def weights(self) -> pd.DataFrame:
-        """strategy cash"""
+        """
+        Get the asset weights of the strategy.
+
+        Returns:
+            pd.DataFrame: Asset weights.
+        """
         return pd.DataFrame(self.data.get("weights")).T
 
     ################################################################################
@@ -161,6 +208,14 @@ class Strategy:
             yield rebalance_date
 
     def simulate(self, start: str, end: str, freq: str = "M") -> None:
+        """
+        Simulate the strategy.
+
+        Args:
+            start (str): Start date for the simulation.
+            end (str): End date for the simulation.
+            freq (str, optional): Frequency of rebalancing. Defaults to "M".
+        """
         cash = self.initial_investment
         shares = pd.Series(dtype=float)
         allocations = pd.Series(dtype=float)
@@ -197,7 +252,9 @@ class Strategy:
                         trade_capitals = trade_shares.multiply(
                             self.total_prices.loc[self.date]
                         )
-                        trade_capitals += trade_capitals.multiply(self.commission / 1_000)
+                        trade_capitals += trade_capitals.multiply(
+                            self.commission / 1_000
+                        )
                         cash -= trade_capitals.sum()
                         shares = target_shares
                     except StopIteration:
@@ -209,7 +266,12 @@ class Strategy:
 
     @property
     def analytics(self) -> pd.Series:
-        """analytics"""
+        """
+        Get the analytics of the strategy.
+
+        Returns:
+            pd.Series: Strategy analytics.
+        """
         return pd.Series(
             data={
                 "Start": metrics.to_start(self.value).strftime("%Y-%m-%d"),
@@ -220,11 +282,12 @@ class Strategy:
                 "SortinoRatio": metrics.to_sortino_ratio(self.value),
                 "CalmarRatio": metrics.to_calmar_ratio(self.value),
                 "TailRatio": metrics.to_tail_ratio(self.value),
+                "JensensAlpha": metrics.to_jensens_alpha(self.value, self.prices_bm),
+                "TreynorRatio": metrics.to_treynor_ratio(self.value, self.prices_bm),
                 "MaxDrawdown": metrics.to_max_drawdown(self.value),
                 "Skewness": metrics.to_skewness(self.value),
                 "Kurtosis": metrics.to_kurtosis(self.value),
                 "VaR": metrics.to_value_at_risk(self.value),
                 "CVaR": metrics.to_conditional_value_at_risk(self.value),
-                # "Turnover(M)": self.data.trades.resample("M").sum().sum(axis=1).mean(),
             }
         )
