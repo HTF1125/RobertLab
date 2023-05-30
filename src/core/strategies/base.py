@@ -105,8 +105,6 @@ class Strategy:
         self.prices_bm = self.prices_bm.reindex(self.value.index).ffill().dropna()
         self.prices_bm = self.prices_bm / self.prices_bm.iloc[0] * initial_investment
 
-
-
     def calculate_benchmark(self) -> pd.Series:
         """
         Calculate the benchmark returns.
@@ -276,18 +274,22 @@ class Strategy:
             data={
                 "Start": metrics.to_start(self.value).strftime("%Y-%m-%d"),
                 "End": metrics.to_end(self.value).strftime("%Y-%m-%d"),
-                "AnnReturn": metrics.to_ann_return(self.value),
-                "AnnVolatility": metrics.to_ann_volatility(self.value),
-                "SharpeRatio": metrics.to_sharpe_ratio(self.value),
-                "SortinoRatio": metrics.to_sortino_ratio(self.value),
-                "CalmarRatio": metrics.to_calmar_ratio(self.value),
-                "TailRatio": metrics.to_tail_ratio(self.value),
-                "JensensAlpha": metrics.to_jensens_alpha(self.value, self.prices_bm),
-                "TreynorRatio": metrics.to_treynor_ratio(self.value, self.prices_bm),
-                "MaxDrawdown": metrics.to_max_drawdown(self.value),
-                "Skewness": metrics.to_skewness(self.value),
-                "Kurtosis": metrics.to_kurtosis(self.value),
-                "VaR": metrics.to_value_at_risk(self.value),
-                "CVaR": metrics.to_conditional_value_at_risk(self.value),
+                "AnnReturn": round(metrics.to_ann_return(self.value), 4),
+                "AnnVolatility": round(metrics.to_ann_volatility(self.value), 4),
+                "SharpeRatio": round(metrics.to_sharpe_ratio(self.value), 4),
+                "SortinoRatio": round(metrics.to_sortino_ratio(self.value), 4),
+                "CalmarRatio": round(metrics.to_calmar_ratio(self.value), 4),
+                "TailRatio": round(metrics.to_tail_ratio(self.value), 4),
+                "JensensAlpha": round(
+                    metrics.to_jensens_alpha(self.value, self.prices_bm), 4
+                ),
+                "TreynorRatio": round(
+                    metrics.to_treynor_ratio(self.value, self.prices_bm), 4
+                ),
+                "MaxDrawdown": round(metrics.to_max_drawdown(self.value), 4),
+                "Skewness": round(metrics.to_skewness(self.value), 4),
+                "Kurtosis": round(metrics.to_kurtosis(self.value), 4),
+                "VaR": round(metrics.to_value_at_risk(self.value), 4),
+                "CVaR": round(metrics.to_conditional_value_at_risk(self.value), 4),
             }
         )

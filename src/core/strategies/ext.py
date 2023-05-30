@@ -94,7 +94,7 @@ class BacktestManager:
                 )
             else:
                 self.prices = data.get_prices("ACWI, BND")
-            self.strategies = {}
+            # self.strategies = {}
         except ImportError as exc:
             raise ImportError() from exc
 
