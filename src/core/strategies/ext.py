@@ -6,6 +6,7 @@ import pandas as pd
 from .base import Strategy
 from .. import metrics
 from ..portfolios import Optimizer
+from ..signals import Signal
 
 
 def dict_to_signature_string(data):
@@ -61,6 +62,7 @@ class BacktestManager:
     ) -> "BacktestManager":
         try:
             from core import data
+
             if name == "USSECTORETF":
                 prices = data.get_prices(
                     tickers="XLC, XLY, XLP, XLE, XLF, XLV, XLI, XLB, XLRE, XLK, XLU, GLD, BIL",
@@ -77,6 +79,26 @@ class BacktestManager:
             )
         except ImportError as exc:
             raise ImportError() from exc
+
+    def reset_strategies(self) -> None:
+        del self.strategies
+        self.strategies = {}
+
+    def set_universe(self, name="USSECTORETF") -> "BacktestManager":
+        try:
+            from core import data
+
+            if name == "USSECTORETF":
+                self.prices = data.get_prices(
+                    tickers="XLC, XLY, XLP, XLE, XLF, XLV, XLI, XLB, XLRE, XLK, XLU, GLD, BIL",
+                )
+            else:
+                self.prices = data.get_prices("ACWI, BND")
+            self.strategies = {}
+        except ImportError as exc:
+            raise ImportError() from exc
+
+        return self
 
     def __init__(
         self,
@@ -96,56 +118,53 @@ class BacktestManager:
         self.strategies: Dict[str, Strategy] = dict()
 
     @Backtest()
-    def RegimeRotation(self, strategy: Strategy, signal) -> pd.Series:
+    def Signal(
+        self,
+        strategy: Strategy,
+        signal: Signal,
+        regime_window: int = 10 * 252,
+        objective: str = "uniform_allocation",
+        target_percentile=0.80,
+    ) -> pd.Series:
         state = signal.get_state(str(strategy.date))
-        exp_ret = signal.expected_returns_by_states(strategy.prices.iloc[-10 * 252 :])
-        index = exp_ret.loc[state].nlargest(5).index
-        return Optimizer.from_prices(prices=strategy.prices[index]).uniform_allocation()
+        exp_ret = signal.expected_returns_by_states(
+            strategy.prices.iloc[-regime_window:]
+        ).loc[state]
+        target_value = exp_ret.quantile(q=target_percentile)
+        opt = Optimizer.from_prices(
+            prices=strategy.prices
+        ).set_custom_feature_constraints(
+            features=exp_ret, min_value=target_value, max_value=target_value
+        )
+        return getattr(opt, objective)()
 
     @Backtest()
-    def RegimeRotationMinCorr(self, strategy: Strategy, signal, **kwargs) -> pd.Series:
-        state = signal.get_state(str(strategy.date))
-        exp_ret = signal.expected_returns_by_states(strategy.prices.iloc[-10 * 252 :])
-        index = exp_ret.loc[state].nlargest(5).index
-        return Optimizer.from_prices(
-            prices=strategy.prices[index], **kwargs
-        ).minimized_correlation()
-
-    @Backtest()
-    def EqualWeight(self, strategy: Strategy, **kwargs) -> pd.Series:
-        """equal"""
-        return Optimizer.from_prices(
-            prices=strategy.prices, **kwargs
-        ).uniform_allocation()
+    def Base(
+        self, strategy: Strategy, objective: str = "uniform_allocation"
+    ) -> pd.Series:
+        opt = Optimizer.from_prices(prices=strategy.prices)
+        if not hasattr(opt, objective):
+            warnings.warn(message="check you allocation objective")
+            return opt.uniform_allocation()
+        return getattr(opt, objective)()
 
     @Backtest()
     def Momentum(
         self,
         strategy: Strategy,
-        target_score: float = 0.8,
-        months: Union[int, List[int]] = 12,
+        target_percentile=0.80,
+        months: int = 12,
         objective: str = "uniform_allocation",
+        absolute: bool = False,
     ) -> pd.Series:
-        if isinstance(months, list):
-            rank = (
-                pd.concat(
-                    [
-                        metrics.to_momentum(prices=strategy.prices, months=m)
-                        for m in months
-                    ],
-                    axis=1,
-                )
-                .rank(ascending=True, pct=True)
-                .mean(axis=1)
-                .rank(pct=True, ascending=True)
-            )
-        else:
-            mom = metrics.to_momentum(prices=strategy.prices, months=months)
-            rank = mom.rank(pct=True, ascending=True)
+        mom = metrics.to_momentum(prices=strategy.prices, months=months).fillna(0)
+        if absolute:
+            mom = mom.abs()
+        target_value = mom.quantile(q=target_percentile)
         opt = Optimizer.from_prices(
             prices=strategy.prices
         ).set_custom_feature_constraints(
-            features=rank, min_value=target_score, max_value=target_score
+            features=mom, min_value=target_value, max_value=target_value
         )
         return getattr(opt, objective)()
 

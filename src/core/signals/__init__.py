@@ -1,1 +1,1 @@
-from .base import OECDUSLEIHP
+from .base import OECDUSLEIHP, Signal
