@@ -1,10 +1,18 @@
+
+
+import os
+import sys
+path = os.path.dirname(os.path.abspath(__file__))
+while os.path.basename(path) != "src":
+    path = os.path.abspath(os.path.join(path, "../"))
+    break
+sys.path.append(path)
 from datetime import datetime, timedelta
 import pandas as pd
 import streamlit as st
 from core.strategies import BacktestManager
 from core import data
 from core import metrics
-
 from web import components
 
 st.set_page_config(
