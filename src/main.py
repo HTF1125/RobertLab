@@ -1,5 +1,6 @@
 """ROBERT"""
 import os
+import sys
 from datetime import date
 from dotenv import load_dotenv
 import click
@@ -28,18 +29,16 @@ def start(task: str, reload: bool, asofdate: str):
     if task == "api":
         try:
             import uvicorn
-
             uvicorn.run(app="api.main:app", reload=reload)
         except ImportError as exc:
             raise ImportError() from exc
 
     elif task == "web":
-        import sys
         from streamlit.web import cli as stcli
 
         file = os.path.join(
             os.path.dirname(os.path.abspath(__file__)), "web/main.py"
         )
 
-        sys.argv = ["streamlit", "run", file]
+        sys.argv = ["streamlit", "run", file, ]
         sys.exit(stcli.main())
