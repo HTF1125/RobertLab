@@ -1,1 +1,1 @@
-from .base import OECDUSLEIHP, Signal
+from .base import OECDUSLEIHP, Signal, VIX

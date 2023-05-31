@@ -54,3 +54,9 @@ def get_macro(tickers: Union[str, List, Set, Tuple]) -> pd.DataFrame:
     )
     return pd.concat([fred_data(ticker) for ticker in tickers], axis=1)
 
+def get_oecd_us_leading_indicator() -> pd.DataFrame:
+    return get_macro(tickers="USALOLITONOSTSAM")
+
+
+def get_vix_index() -> pd.DataFrame:
+    return get_prices(tickers="^VIX")

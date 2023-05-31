@@ -1,12 +1,18 @@
 """ROBERT"""
 import warnings
-from typing import Optional, Callable, Union, Dict, List
+from typing import Optional, Callable, Dict
 from functools import partial
 import pandas as pd
+from scipy.stats import norm
 from .base import Strategy
 from .. import metrics
 from ..portfolios import Optimizer
 from ..signals import Signal
+
+
+def zscore_from_percentile(percentile: float) -> float:
+    zscore = norm.ppf(percentile)
+    return float(zscore)
 
 
 def dict_to_signature_string(data):
@@ -154,47 +160,21 @@ class BacktestManager:
         strategy: Strategy,
         target_percentile=0.80,
         months: int = 12,
+        skip_months: int = 0,
         objective: str = "uniform_allocation",
         absolute: bool = False,
     ) -> pd.Series:
-        mom = metrics.to_momentum(prices=strategy.prices, months=months).fillna(0)
+        mom = metrics.to_momentum(
+            prices=strategy.prices, months=months, skip_months=skip_months
+        )
+        mom = (mom - mom.mean()) / mom.std()
         if absolute:
             mom = mom.abs()
-        target_value = mom.quantile(q=target_percentile)
+        target_value = zscore_from_percentile(target_percentile)
         opt = Optimizer.from_prices(
             prices=strategy.prices
-        ).set_custom_feature_constraints(
-            features=mom, min_value=target_value, max_value=target_value
-        )
+        ).set_custom_feature_constraints(features=mom, target=target_value)
         return getattr(opt, objective)()
-
-    @Backtest()
-    def MinCorr(self, strategy: Strategy, **kwargs) -> pd.Series:
-        return Optimizer.from_prices(
-            prices=strategy.prices, **kwargs
-        ).minimized_correlation()
-
-    @Backtest()
-    def MinVol(self, strategy: Strategy, **kwargs) -> pd.Series:
-        return Optimizer.from_prices(
-            prices=strategy.prices, **kwargs
-        ).minimized_volatility()
-
-    @Backtest()
-    def MaxSharpe(self, strategy: Strategy, **kwargs) -> pd.Series:
-        return Optimizer.from_prices(
-            prices=strategy.prices, **kwargs
-        ).maximized_sharpe_ratio()
-
-    @Backtest()
-    def RiskParity(self, strategy: Strategy, **kwargs) -> pd.Series:
-        return Optimizer.from_prices(prices=strategy.prices, **kwargs).risk_parity()
-
-    @Backtest()
-    def HRiskParity(self, strategy: Strategy, **kwargs) -> pd.Series:
-        return Optimizer.from_prices(
-            prices=strategy.prices, **kwargs
-        ).hierarchical_risk_parity()
 
     @Backtest()
     def MeanReversion(self, strategy: Strategy, threshold: float = 0.20) -> pd.Series:
@@ -218,3 +198,9 @@ class BacktestManager:
         return pd.DataFrame(
             {name: strategy.analytics for name, strategy in self.strategies.items()}
         )
+
+    def drop_strategy(self, name: str) -> None:
+        if name not in self.strategies:
+            warnings.warn(message=f"no strategy named {name}")
+            return
+        del self.strategies[name]

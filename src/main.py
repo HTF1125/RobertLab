@@ -33,12 +33,12 @@ def start(task: str, reload: bool, asofdate: str):
         except ImportError as exc:
             raise ImportError() from exc
 
-    elif task == "streamlit":
+    elif task == "web":
         import sys
         from streamlit.web import cli as stcli
 
         file = os.path.join(
-            os.path.dirname(os.path.abspath(__file__)), "api/web/stream/main.py"
+            os.path.dirname(os.path.abspath(__file__)), "web/main.py"
         )
 
         sys.argv = ["streamlit", "run", file]

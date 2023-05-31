@@ -344,28 +344,24 @@ class Optimizer:
         )
 
     def set_custom_feature_constraints(
-        self,
-        features: pd.Series,
-        min_value: Optional[Union[int, float]] = None,
-        max_value: Optional[Union[int, float]] = None,
+        self, features: pd.Series, target: float = 0.5
     ) -> "Optimizer":
-        if min_value:
-            self.constraints.append(
-                {
-                    "type": "ineq",
-                    "fun": lambda w: np.dot(
-                        w, features.reindex(self.assets, fill_value=0) - min_value
-                    ),
-                }
-            )
-        if max_value:
-            self.constraints.append(
-                {
-                    "type": "ineq",
-                    "fun": lambda w: max_value
-                    - np.dot(w, features.reindex(self.assets, fill_value=0)),
-                }
-            )
+        self.constraints.append(
+            {
+                "type": "ineq",
+                "fun": lambda w: np.dot(
+                    w, features.reindex(self.assets, fill_value=0) - target + 0.10
+                ),
+            }
+        )
+        self.constraints.append(
+            {
+                "type": "ineq",
+                "fun": lambda w: target
+                + 0.10
+                - np.dot(w, features.reindex(self.assets, fill_value=0)),
+            }
+        )
         return self
 
     def solve(

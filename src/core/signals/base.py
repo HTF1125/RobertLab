@@ -9,6 +9,9 @@ class Signal:
 
     __regime__ = {}
 
+    def __repr__(self):
+        return "Signal"
+
     def __init__(self) -> None:
         self.states: pd.Series = pd.Series(dtype=str)
         self.process()
@@ -42,13 +45,13 @@ class OECDUSLEIHP(Signal):
     """OECD US Leading Economic Indicator Signal"""
 
     @classmethod
-    def from_fred_data(cls, **kwargs) -> "OECDUSLEIHP":
+    def from_fred_data(cls, **kwargs) -> Signal:
         """get the data from fred"""
         try:
-            from database.data import fred
+            from core import data
         except ImportError as exc:
             raise ImportError() from exc
-        return cls(data=fred.get_oecd_us_leading_indicator(), **kwargs)
+        return cls(data=data.get_oecd_us_leading_indicator(), **kwargs)
 
     def __init__(
         self,
@@ -98,3 +101,36 @@ class OECDUSLEIHP(Signal):
                 raise ValueError("???")
 
             self.states.loc[date] = state
+
+
+class VIX(Signal):
+    """
+    VIX is a measure of expected volatilityof the S&P 500 Index over the next 30 days.
+    It is a weightedaverage of implied volatilities of SPX options that is calculated using the
+    bid/ask price quotationsof the appropriate options. It is widely followed by market
+    participants and has become the de-facto measure of market sentiment (investor fear/complacency)
+    though over shortperiods VIX can move for technical reasons. While the level of VIX matters,
+    it is the direction of VIX (rising or falling) that appears to be more predictive for the
+    direction of asset valuationsincluding that of styles.A priori one should expect “risky”
+    styles (what is riskyis not always easy to define) to underperform when VIX is
+    rising and outperform when VIX is falling.
+    """
+
+    def __init__(
+        self,
+        data: pd.DataFrame,
+    ) -> None:
+        self.data = data
+        super().__init__()
+
+    @classmethod
+    def from_fred_data(cls, **kwargs) -> Signal:
+        """get the data from fred"""
+        try:
+            from core import data
+        except ImportError as exc:
+            raise ImportError() from exc
+        return cls(data=data.get_vix_index(), **kwargs)
+
+    def process(self) -> None:
+        pass

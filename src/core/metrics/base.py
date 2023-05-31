@@ -251,12 +251,12 @@ def to_ann_semi_volatility(
 
 
 @overload
-def to_drawdown(prices: pd.DataFrame, min_periods: int) -> pd.DataFrame:
+def to_drawdown(prices: pd.DataFrame, min_periods: int = 0) -> pd.DataFrame:
     ...
 
 
 @overload
-def to_drawdown(prices: pd.Series, min_periods: int) -> pd.Series:
+def to_drawdown(prices: pd.Series, min_periods: int = 0) -> pd.Series:
     ...
 
 
@@ -549,24 +549,36 @@ def to_conditional_value_at_risk(
 
 
 @overload
-def to_momentum(prices: pd.DataFrame, months: int = 12) -> pd.Series:
+def to_momentum(
+    prices: pd.DataFrame,
+    months: int = 12,
+    skip_months: int = 0,
+) -> pd.Series:
     ...
 
 
 @overload
-def to_momentum(prices: pd.Series, months: int = 12) -> float:
+def to_momentum(
+    prices: pd.Series,
+    months: int = 12,
+    skip_months: int = 0,
+) -> float:
     ...
 
 
 def to_momentum(
     prices: Union[pd.DataFrame, pd.Series],
     months: int = 12,
+    skip_months: int = 0,
 ) -> Union[pd.Series, float]:
-    if isinstance(prices, pd.DataFrame):
-        return prices.aggregate(to_momentum, months=months)
-    start = pd.Timestamp(str(prices.index[-1]))
-    start -= pd.tseries.offsets.DateOffset(months=months)
-    return prices.resample("d").last().ffill().loc[start] / prices.iloc[-1] - 1
+    end = pd.Timestamp(str(prices.index[-1]))
+    start = end - pd.tseries.offsets.DateOffset(months=months)
+    start += pd.tseries.offsets.DateOffset(days=1)
+    end -= pd.tseries.offsets.DateOffset(months=skip_months)
+    pri_return = to_pri_return(prices=prices)
+    if isinstance(pri_return, pd.DataFrame):
+        return pri_return.loc[start:end].add(1).prod().subtract(1)
+    return float(np.prod(pri_return.loc[start:end].add(1))) - 1
 
 
 @overload
@@ -599,13 +611,10 @@ def to_monthly_return(prices: pd.Series) -> pd.Series:
 def to_monthly_return(
     prices: Union[pd.DataFrame, pd.Series]
 ) -> Union[pd.DataFrame, pd.Series]:
-    def agg_ret(x):
-        return x.add(1).prod() - 1
-
     return (
         to_pri_return(prices=prices)
         .groupby([lambda x: x.year, lambda x: x.month])
-        .apply(agg_ret)
+        .apply(lambda p: p.add(1).prod() - 1)
     )
 
 
