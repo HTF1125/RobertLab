@@ -1,8 +1,8 @@
 import pandas as pd
 import streamlit as st
-from src.core.strategies import BacktestManager
-from src.core import data
-from src.core import metrics
+from pkg.src.core.strategies import BacktestManager
+from pkg.src.core import data
+from pkg.src.core import metrics
 from web import components
 
 st.set_page_config(

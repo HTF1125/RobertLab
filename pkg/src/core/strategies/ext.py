@@ -92,7 +92,7 @@ class BacktestManager:
 
     def set_universe(self, name="USSECTORETF") -> "BacktestManager":
         try:
-            from core import data
+            from ...core import data
 
             if name == "USSECTORETF":
                 self.prices = data.get_prices(
