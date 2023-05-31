@@ -293,3 +293,10 @@ class Strategy:
                 "CVaR": round(metrics.to_conditional_value_at_risk(self.value), 4),
             }
         )
+
+
+
+
+    @property
+    def drawdown(self) -> pd.Series:
+        return metrics.to_drawdown(self.value)

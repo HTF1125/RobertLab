@@ -194,6 +194,14 @@ class BacktestManager:
         )
 
     @property
+    def drawdowns(self) -> pd.DataFrame:
+
+        return pd.DataFrame(
+            {name: strategy.drawdown for name, strategy in self.strategies.items()}
+        )
+
+
+    @property
     def analytics(self) -> pd.DataFrame:
         return pd.DataFrame(
             {name: strategy.analytics for name, strategy in self.strategies.items()}
