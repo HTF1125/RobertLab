@@ -1,18 +1,8 @@
-
-
-import os
-import sys
-path = os.path.dirname(os.path.abspath(__file__))
-while os.path.basename(path) != "src":
-    path = os.path.abspath(os.path.join(path, "../"))
-    break
-sys.path.append(path)
-from datetime import datetime, timedelta
 import pandas as pd
 import streamlit as st
-from core.strategies import BacktestManager
-from core import data
-from core import metrics
+from src.core.strategies import BacktestManager
+from src.core import data
+from src.core import metrics
 from web import components
 
 st.set_page_config(
@@ -112,7 +102,6 @@ with momentum_tab:
                 )
 
 
-
 if not get_backtestmanager().values.empty:
 
     st.write(get_backtestmanager().analytics.T)
@@ -124,10 +113,12 @@ if not get_backtestmanager().values.empty:
         # Add line chart for prices to the first subplot
         val = strategy.value.resample("M").last()
         price_trace = go.Scatter(
-            x=val.index, y=val.values, name=name, hovertemplate="Date: %{x}<br>Price: %{y}"
+            x=val.index,
+            y=val.values,
+            name=name,
+            hovertemplate="Date: %{x}<br>Price: %{y}",
         )
         fig.add_trace(price_trace)
-
 
     fig.update_layout(
         title="Performance",
@@ -140,7 +131,8 @@ if not get_backtestmanager().values.empty:
     fig.update_layout(
         xaxis=dict(title="Date", tickformat="%Y-%m-%d"),  # Customize the date format
         yaxis=dict(
-            title="Price", tickprefix="$"  # Add a currency symbol to the y-axis tick labels
+            title="Price",
+            tickprefix="$",  # Add a currency symbol to the y-axis tick labels
         ),
     )
 
