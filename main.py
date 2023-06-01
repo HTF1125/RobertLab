@@ -1,7 +1,7 @@
-import pandas as pd
 import streamlit as st
+from plotly.graph_objects import Scatter
+from plotly.subplots import make_subplots
 from pkg.src.core.strategies import BacktestManager
-# from pkg.src.core import data
 from pkg.src.core import metrics
 from web import components
 
@@ -106,13 +106,15 @@ if not get_backtestmanager().values.empty:
 
     st.write(get_backtestmanager().analytics.T)
 
-    import plotly.graph_objects as go
-
-    fig = go.Figure()
+    fig = make_subplots(
+        rows=1,
+        cols=1,
+        shared_xaxes=True,
+    )
     for name, strategy in get_backtestmanager().strategies.items():
         # Add line chart for prices to the first subplot
         val = strategy.value.resample("M").last()
-        price_trace = go.Scatter(
+        price_trace = Scatter(
             x=val.index,
             y=val.values,
             name=name,
@@ -147,15 +149,87 @@ for name, strategy in get_backtestmanager().strategies.items():
             on_click=get_backtestmanager().drop_strategy,
             kwargs={"name": name},
         )
-
-        st.line_chart(
-            pd.concat(
-                [
-                    strategy.value,
-                    strategy.prices_bm,
-                ],
-                axis=1,
-            )
+        fig = make_subplots(
+            rows=1,
+            cols=1,
+            shared_xaxes=True,
         )
-        st.line_chart(metrics.to_drawdown(strategy.value))
-        st.bar_chart(strategy.allocations)
+        price_trace = Scatter(
+            x=strategy.value.index,
+            y=strategy.value.values,
+            name="Strategy",
+            hovertemplate="Date: %{x}<br>Price: %{y}",
+        )
+        price_bm_trace = Scatter(
+            x=strategy.prices_bm.index,
+            y=strategy.prices_bm.values,
+            name="Benchmark",
+            hovertemplate="Date: %{x}<br>Price: %{y}",
+        )
+        fig.add_trace(price_trace, row=1, col=1)
+        fig.add_trace(price_bm_trace, row=1, col=1)
+        # strategy_dd = metrics.to_drawdown(strategy.value)
+        # benchmark_dd = metrics.to_drawdown(strategy.prices_bm)
+        # price_trace = Scatter(
+        #     x=strategy_dd.index,
+        #     y=strategy_dd.values,
+        #     name="Strategy",
+        #     hovertemplate="Date: %{x}<br>Price: %{y}",
+        # )
+        # price_bm_trace = Scatter(
+        #     x=benchmark_dd.index,
+        #     y=benchmark_dd.values,
+        #     name="Benchmark",
+        #     hovertemplate="Date: %{x}<br>Price: %{y}",
+        # )
+
+        # fig.add_trace(strategy_dd, row=2, col=1)
+        # fig.add_trace(benchmark_dd, row=2, col=1)
+        fig.update_layout(
+            title="Performance",
+            xaxis_title="Date",
+            yaxis_title="Price",
+            hovermode="x",
+            legend=dict(orientation="h", yanchor="top", y=1.1, xanchor="left", x=0),
+        )
+
+        fig.update_layout(
+            xaxis=dict(
+                title="Date", tickformat="%Y-%m-%d"
+            ),  # Customize the date format
+            yaxis=dict(
+                title="Price",
+                tickprefix="$",  # Add a currency symbol to the y-axis tick labels
+            ),
+        )
+
+        st.plotly_chart(fig, use_container_width=True)
+
+
+
+m = st.markdown("""
+<style>
+div.stButton > button:first-child {
+    background-color: #ce1126;
+    color: white;
+    height: 2em;
+    border-radius:10px;
+    border:3px solid #000000;
+    font-size:20px;
+    font-weight: bold;
+    margin: auto;
+    display: block;
+}
+
+div.stButton > button:hover {
+	background:linear-gradient(to bottom, #ce1126 5%, #ff5a5a 100%);
+	background-color:#ce1126;
+}
+
+div.stButton > button:active {
+	position:relative;
+	top:3px;
+}
+
+</style>""", unsafe_allow_html=True)
+

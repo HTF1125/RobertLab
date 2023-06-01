@@ -8,19 +8,19 @@ import pandas_datareader as pdr
 
 
 def get_prices(tickers: Union[str, List, Set, Tuple]) -> pd.DataFrame:
-    if isinstance(tickers, dict):
-        out = get_prices(tickers=list(tickers.keys()))
-        out = out.rename(columns=tickers)
-        return out
+
     # create ticker list
     tickers = (
         tickers
         if isinstance(tickers, (list, set, tuple))
         else tickers.replace(",", " ").split()
     )
-
-    out = pd.concat([get_price(ticker) for ticker in tickers], axis=1)
-    return out
+    out = []
+    for ticker in tickers:
+        price = get_price(ticker)
+        if price is not None:
+            out.append(price)
+    return pd.concat(out, axis=1)
 
 
 @lru_cache()
@@ -53,6 +53,7 @@ def get_macro(tickers: Union[str, List, Set, Tuple]) -> pd.DataFrame:
         else tickers.replace(",", " ").split()
     )
     return pd.concat([fred_data(ticker) for ticker in tickers], axis=1)
+
 
 def get_oecd_us_leading_indicator() -> pd.DataFrame:
     return get_macro(tickers="USALOLITONOSTSAM")
