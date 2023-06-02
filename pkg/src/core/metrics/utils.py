@@ -27,7 +27,7 @@ def recursive_bisection(sorted_tree) -> List[Tuple[List[int], List[int]]]:
     Returns:
         List[Tuple[List[int], List[int]]]: _description_
     """
-    if len(sorted_tree) < 3:
+    if len(sorted_tree) < 2:
         return
 
     left = sorted_tree[0 : int(len(sorted_tree) / 2)]

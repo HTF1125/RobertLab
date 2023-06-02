@@ -1,5 +1,5 @@
 import warnings
-from typing import Optional, Callable, Union, Dict, List
+from typing import Optional, Callable, Dict, List
 from functools import partial
 from scipy.optimize import minimize
 from scipy.cluster.hierarchy import linkage, to_tree
@@ -8,7 +8,7 @@ import numpy as np
 import pandas as pd
 from . import objectives
 from .. import metrics
-from ..metrics.utils import cov_to_corr, recursive_bisection
+from ..metrics.utils import cov_to_corr
 
 
 class OptimizerMetrics:
@@ -386,7 +386,6 @@ class Optimizer:
             constraints=constraints,
             x0=np.ones(shape=self.num_assets) / self.num_assets,
         )
-
         if problem.success:
             data = problem.x + 1e-16
             return pd.Series(data=data, index=self.assets, name="weights").round(6)
@@ -458,9 +457,7 @@ class Optimizer:
         dist = np.sqrt((1 - self.correlation_matrix).round(5) / 2)
         clusters = linkage(squareform(dist), method=linkage_method)
         sorted_tree = list(to_tree(clusters, rd=False).pre_order())
-        cluster_sets = metrics.recursive_bisection(sorted_tree)
-        if not isinstance(cluster_sets, List):
-            cluster_sets = [cluster_sets]
+        cluster_sets = self.recursive_bisection(sorted_tree)
         weights = self.solve(
             objective=lambda w: objectives.l2_norm(
                 np.array(
@@ -487,6 +484,30 @@ class Optimizer:
 
         return weights
 
+    def recursive_bisection(self, sorted_tree):
+        """_summary_
+
+        Args:
+            sorted_tree (_type_): _description_
+
+        Returns:
+            List[Tuple[List[int], List[int]]]: _description_
+        """
+
+        left = sorted_tree[0 : int(len(sorted_tree) / 2)]
+        right = sorted_tree[int(len(sorted_tree) / 2) :]
+
+        # if len(sorted_tree) <= 3:
+        #     return [(left, right)]
+
+        cache = [(left, right)]
+        if len(left) > 2:
+            cache.extend(self.recursive_bisection(left))
+        if len(right) > 2:
+            cache.extend(self.recursive_bisection(right))
+        return cache
+
+
     def hierarchical_risk_parity(self, linkage_method: str = "single") -> pd.Series:
         """calculate herc weights"""
         if self.num_assets <= 2:
@@ -502,7 +523,7 @@ class Optimizer:
         dist = np.sqrt((1 - self.correlation_matrix).round(5) / 2)
         clusters = linkage(squareform(dist), method=linkage_method)
         sorted_tree = list(to_tree(clusters, rd=False).pre_order())
-        cluster_sets = recursive_bisection(sorted_tree)
+        cluster_sets = self.recursive_bisection(sorted_tree)
         if not isinstance(cluster_sets, List):
             cluster_sets = [cluster_sets]
         return self.solve(

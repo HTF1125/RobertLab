@@ -661,7 +661,7 @@ def to_covariance_matrix(
         return to_exponential_covariance_matrix(
             prices=prices, span=span, ann_factor=ann_factor
         )
-    return to_pri_return(prices=prices).cov()
+    return to_pri_return(prices=prices).cov() * ann_factor
 
 
 def to_correlation_matrix(
