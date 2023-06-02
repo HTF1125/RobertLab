@@ -2,6 +2,7 @@
 from datetime import datetime, timedelta
 import streamlit as st
 
+
 def get_date_range():
     left, right = st.columns([1, 1])
     with left:
@@ -70,17 +71,11 @@ def get_objective(default: str = "uniform_allocation") -> str:
     )
 
 
-def get_universe() -> str:
+def get_universe():
 
-    options = [
-        "USSECTORETF",
-        "GENERAL",
-    ]
+    options = ["USSECTORETF", "GENERAL"]
 
-    return st.selectbox(
-        label="Investment Universe",
-        options=options,
-    )
+    return st.selectbox(label="Investment Universe", options=options)
 
 
 def get_strategy_general_params():

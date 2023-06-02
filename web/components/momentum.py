@@ -1,6 +1,9 @@
 import streamlit as st
+from pkg.src.core import data
 from .base import get_strategy_general_params
 from ..state import get_backtestmanager
+
+
 
 def get_startegy_momentum_params():
 
@@ -25,18 +28,16 @@ def get_startegy_momentum_params():
 
 
 def main():
-
-
-    (
-        universe,
-        objective,
-        start,
-        end,
-        frequency,
-        commission,
-    ) = get_strategy_general_params()
+    
     with st.form(key="momentum"):
-
+        (
+            universe,
+            objective,
+            start,
+            end,
+            frequency,
+            commission,
+        ) = get_strategy_general_params()
         (
             months,
             skip_months,
@@ -49,7 +50,8 @@ def main():
 
 
         if submitted:
-            get_backtestmanager().set_universe(name=universe)
+            prices = data.get_prices("XLC, XLY, XLP, XLE, XLF, XLV, XLI, XLB, XLRE, XLK, XLU")
+            get_backtestmanager().prices = prices
             get_backtestmanager().commission = int(commission)
             get_backtestmanager().start = str(start)
             get_backtestmanager().end = str(end)
@@ -61,5 +63,5 @@ def main():
                     skip_months=skip_months,
                     objective=objective,
                     absolute=absolute,
-                    target_percentile=target_percentile / 100.,
+                    target_percentile=int(target_percentile) / 100.,
                 )
