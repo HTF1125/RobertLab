@@ -350,18 +350,11 @@ class Optimizer:
             {
                 "type": "ineq",
                 "fun": lambda w: np.dot(
-                    w, features.reindex(self.assets, fill_value=0) - target + 0.10
+                    w, features.reindex(self.assets, fill_value=0) - target
                 ),
             }
         )
-        self.constraints.append(
-            {
-                "type": "ineq",
-                "fun": lambda w: target
-                + 0.10
-                - np.dot(w, features.reindex(self.assets, fill_value=0)),
-            }
-        )
+
         return self
 
     def solve(

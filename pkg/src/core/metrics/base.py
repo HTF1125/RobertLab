@@ -888,13 +888,9 @@ def to_information_ratio(
             to_information_ratio, prices_bm=prices_bm, ann_factor=ann_factor
         )
 
-    excess_return = to_ann_return(prices=prices, ann_factor=ann_factor) - to_ann_return(
-        prices=prices_bm, ann_factor=ann_factor
-    )
-
-    return excess_return / to_expost_tracking_error(
-        prices=prices, prices_bm=prices_bm, ann_factor=ann_factor
-    )
+    excess_return = to_pri_return(prices=prices) - to_pri_return(prices=prices_bm)
+    excess_prices = excess_return.add(1).cumprod()
+    return to_ann_return(excess_prices) / to_ann_volatility(excess_prices)
 
 
 @overload

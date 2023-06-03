@@ -272,8 +272,6 @@ class Strategy:
         """
         return pd.Series(
             data={
-                "Start": metrics.to_start(self.value).strftime("%Y-%m-%d"),
-                "End": metrics.to_end(self.value).strftime("%Y-%m-%d"),
                 "AnnReturn": round(metrics.to_ann_return(self.value), 4),
                 "AnnVolatility": round(metrics.to_ann_volatility(self.value), 4),
                 "SharpeRatio": round(metrics.to_sharpe_ratio(self.value), 4),
