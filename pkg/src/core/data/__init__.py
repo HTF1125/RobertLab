@@ -1,14 +1,14 @@
 """ROBERT"""
-from typing import Union, List, Set, Tuple
+from typing import Union, List, Set, Tuple, Dict
 from datetime import datetime
 from functools import lru_cache
 import pandas as pd
 import yfinance as yf
 import pandas_datareader as pdr
+from .. import metrics
 
 
 def get_prices(tickers: Union[str, List, Set, Tuple]) -> pd.DataFrame:
-
     # create ticker list
     tickers = (
         tickers
@@ -61,3 +61,11 @@ def get_oecd_us_leading_indicator() -> pd.DataFrame:
 
 def get_vix_index() -> pd.DataFrame:
     return get_prices(tickers="^VIX")
+
+
+def get_universe() -> pd.DataFrame:
+    import os
+    dirname = os.path.dirname(os.path.abspath(__file__))
+    filename = os.path.join(dirname, "universe.csv")
+    # Load JSON from a file
+    return pd.read_csv(filename)

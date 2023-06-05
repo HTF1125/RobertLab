@@ -1,18 +1,15 @@
 """ROBERT"""
-from datetime import datetime, timedelta
+
 import streamlit as st
 from streamlit_option_menu import option_menu
-from web import components
-from web import state
-from web import utils
-from pkg.src.core.strategies import BacktestManager
-
+from pkg.src.web import components
+from pkg.src.web.pages import asset_allocation
 
 st.set_page_config(
     page_title="ROBERT'S WEBSITE",
     page_icon="https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f440.png",
     layout="wide",
-    initial_sidebar_state="collapsed",
+    initial_sidebar_state="expanded",
     menu_items=None,
 )
 
@@ -21,7 +18,7 @@ st.set_page_config(
 selected = option_menu(
     menu_title="Robert",
     menu_icon="diagram-3",
-    options=["Dashboard", "Strategy"],
+    options=["Dashboard", "Strategy", "AssetAllocation"],
     # icons=['house', 'stars'],
     default_index=0,
     orientation="horizontal",
@@ -38,7 +35,6 @@ selected = option_menu(
 )
 
 
-
 if selected == "Strategy":
     components.momentum.main()
     components.performances.main()
@@ -53,3 +49,6 @@ if selected == "Dashboard":
         components.macro.make_inflation_linked()
 
 
+
+if selected == "AssetAllocation":
+    asset_allocation.main()

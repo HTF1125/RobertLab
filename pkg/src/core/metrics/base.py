@@ -4,6 +4,7 @@ from typing import Union, Optional, List
 from typing import overload
 import numpy as np
 import pandas as pd
+from scipy.stats import norm
 from sklearn.linear_model import LinearRegression
 from ..ext.periods import AnnFactor
 
@@ -979,4 +980,30 @@ def to_jensens_alpha(
         risk_free
         - to_beta(prices=prices, prices_bm=prices_bm)
         * (to_ann_return(prices=prices_bm) - risk_free)
+    )
+
+
+def to_standard_scalar(factors: pd.Series) -> pd.Series:
+    scalar = (factors - factors.mean()) / factors.std()
+    return scalar
+
+
+def to_standard_percentile(factors: pd.Series) -> pd.Series:
+    return to_standard_scalar(factors=factors).aggregate(norm.cdf)
+
+
+def to_minmax_scalar(factors: pd.Series) -> pd.Series:
+    max_scalar = factors.max()
+    min_scalar = factors.min()
+    std = (factors - min_scalar) / (max_scalar - min_scalar)
+    return std * (max_scalar - min_scalar) + min_scalar
+
+
+def to_multi_factor(factors: List[pd.DataFrame]) -> pd.DataFrame:
+    if len(factors) == 1:
+        return factors[0]
+    return (
+        pd.concat(objs=[factor.stack() for factor in factors], axis=1)
+        .mean(axis=1).unstack()
+        .apply(func=to_standard_percentile, axis=1)
     )

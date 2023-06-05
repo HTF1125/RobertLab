@@ -1,58 +1,8 @@
 """ROBERT"""
 from typing import Optional, Callable, Iterator
 import pandas as pd
+from ..ext.store import DataStore
 from .. import metrics
-
-
-class DataStore(dict):
-    def __missing__(self, key):
-        value = self[key] = type(self)()
-        return value
-
-    def flatten(self):
-        """
-        Flatten the nested data structure into a single-level dictionary.
-        Returns:
-            dict: A flattened dictionary.
-        """
-        flattened = {}
-
-        def _flatten(dictionary, prefix=""):
-            for key, value in dictionary.items():
-                if isinstance(value, DataStore):
-                    _flatten(value, prefix + key + ".")
-                else:
-                    flattened[prefix + key] = value
-
-        _flatten(self)
-        return flattened
-
-    def load(self, data):
-        """
-        Load data into the DataStore.
-        Args:
-            data (dict): The data to be loaded.
-        """
-        for key, value in data.items():
-            if isinstance(value, dict):
-                self[key] = DataStore()
-                self[key].load(value)
-            else:
-                self[key] = value
-
-    def to_dict(self):
-        """
-        Convert the DataStore into a regular nested dictionary.
-        Returns:
-            dict: The nested dictionary representing the DataStore.
-        """
-        result = {}
-        for key, value in self.items():
-            if isinstance(value, DataStore):
-                result[key] = value.to_dict()
-            else:
-                result[key] = value
-        return result
 
 
 class Strategy:
@@ -85,18 +35,22 @@ class Strategy:
             prices_bm (pd.Series, optional): Benchmark price data. Defaults to None.
         """
         self.total_prices: pd.DataFrame = prices.ffill()
-        self.date: pd.Timestamp = pd.Timestamp(str(self.total_prices.index[0]))
         self.commission = commission
         self.rebalance: Callable = rebalance
         self.shares_frac = shares_frac
         self.initial_investment = initial_investment
         self.data = DataStore()
-
+        self.start = start or str(self.total_prices.index[0])
+        self.end = end or str(self.total_prices.index[-1])
+        self.date: pd.Timestamp = pd.Timestamp(
+            str(self.total_prices.loc[: self.start].index[-1])
+        )
         self.simulate(
-            start=start or str(self.total_prices.index[0]),
-            end=end or str(self.total_prices.index[-1]),
+            start=self.start,
+            end=self.end,
             freq=frequency,
         )
+
         if prices_bm is None:
             self.prices_bm = self.calculate_benchmark()
         else:
@@ -138,9 +92,7 @@ class Strategy:
         """
         if self.date is None:
             return pd.DataFrame()
-        return self.total_prices[self.total_prices.index < self.date].dropna(
-            how="all", axis=1
-        )
+        return self.total_prices.loc[: self.date].dropna(how="all", axis=1)
 
     @property
     def value(self) -> pd.Series:
@@ -217,38 +169,36 @@ class Strategy:
         cash = self.initial_investment
         shares = pd.Series(dtype=float)
         allocations = pd.Series(dtype=float)
-
         # generate rebalance dates
         rebalance_dates = self.generate_rebalance_dates(start=start, end=end, freq=freq)
         rebalance_date = next(rebalance_dates)
-        for self.date in self.total_prices.loc[start:end].index:
-            capitals = shares.multiply(self.total_prices.loc[self.date]).dropna()
+        for date in self.total_prices.loc[start:end].index:
+            capitals = shares.multiply(self.total_prices.loc[date]).dropna()
             value = sum(capitals) + cash
             weights = capitals.divide(value)
 
-            if self.date > rebalance_date:
+            if date > rebalance_date:
                 allocations = self.rebalance(strategy=self)
-
                 if not isinstance(allocations, pd.Series):
                     allocations = pd.Series(allocations, dtype=float)
+
                 if not allocations.empty:
-                    self.data["allocations"][self.date] = allocations
+                    self.data["allocations"][date] = allocations
                     try:
                         rebalance_date = next(rebalance_dates)
-                        # Make trades here
 
                         target_capials = value * allocations
                         target_shares = target_capials.divide(
-                            self.total_prices.loc[self.date]
+                            self.total_prices.loc[date]
                         )
                         if self.shares_frac is not None:
                             target_shares = target_shares.round(self.shares_frac)
 
                         trade_shares = target_shares.subtract(shares, fill_value=0)
                         trade_shares = trade_shares[trade_shares != 0]
-                        self.data["trades"][self.date] = trade_shares
+                        self.data["trades"][date] = trade_shares
                         trade_capitals = trade_shares.multiply(
-                            self.total_prices.loc[self.date]
+                            self.total_prices.loc[date]
                         )
                         trade_capitals += trade_capitals.multiply(
                             self.commission / 1_000
@@ -257,6 +207,7 @@ class Strategy:
                         shares = target_shares
                     except StopIteration:
                         rebalance_date = None
+            self.date = date
             self.data["value"][self.date] = value
             self.data["shares"][self.date] = shares
             self.data["cash"][self.date] = cash
@@ -291,9 +242,6 @@ class Strategy:
                 "CVaR": round(metrics.to_conditional_value_at_risk(self.value), 4),
             }
         )
-
-
-
 
     @property
     def drawdown(self) -> pd.Series:

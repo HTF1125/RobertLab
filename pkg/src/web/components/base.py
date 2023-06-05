@@ -1,8 +1,20 @@
 """ROBERT"""
+from typing import List, Dict, Any, Tuple
 from datetime import datetime, timedelta
+import pandas as pd
 import streamlit as st
+from pkg.src.core import data
 from .. import state
 
+def get_universe() -> pd.DataFrame:
+    universe = data.get_universe()
+
+    selected =  st.selectbox(
+        label="Select Investment Universe",
+        options=universe.universe.unique(),
+        help="Select strategy's investment universe.",
+    )
+    return universe[universe.universe == selected]
 
 def get_date_range():
     left, right = st.columns([1, 1])
@@ -14,10 +26,9 @@ def get_date_range():
 
 
 def get_start() -> str:
-
     return str(
         st.date_input(
-            label="Start Date",
+            label="Start",
             value=datetime.today() - timedelta(days=3650),
             help="Start date of the strategy backtest.",
         )
@@ -25,10 +36,9 @@ def get_start() -> str:
 
 
 def get_end() -> str:
-
     return str(
         st.date_input(
-            label="End Date",
+            label="End",
             value=datetime.today(),
             help="End date of the strategy backtest.",
         )
@@ -39,7 +49,7 @@ def get_frequency() -> str:
     options = ["D", "M", "Q", "Y"]
     return str(
         st.selectbox(
-            label="Rebalancing Frequency",
+            label="Freq",
             options=options,
             index=options.index("M"),
             help="Select strategy's rebalancing frequency.",
@@ -48,10 +58,9 @@ def get_frequency() -> str:
 
 
 def get_commission() -> int:
-
     return int(
         st.number_input(
-            label="Commission (bps)",
+            label="Comm",
             min_value=0,
             max_value=100,
             step=10,
@@ -62,7 +71,6 @@ def get_commission() -> int:
 
 
 def get_objective() -> str:
-
     options = [
         "uniform_allocation",
         "risk_parity",
@@ -75,7 +83,7 @@ def get_objective() -> str:
     ]
     return str(
         st.selectbox(
-            label="Allocation Objective",
+            label="Obj",
             options=options,
             index=options.index("uniform_allocation"),
             format_func=lambda x: x.replace("_", " ").title().replace(" ", ""),
@@ -84,20 +92,7 @@ def get_objective() -> str:
     )
 
 
-def get_universe():
-
-    options = ["USSECTORETF", "GENERAL"]
-
-    return st.selectbox(
-        label="Investment Universe",
-        options=options,
-        index=options.index("USSECTORETF"),
-        help="Select strategy's investment universe.",
-    )
-
-
 def get_strategy_general_params():
-
     task = [
         get_universe,
         get_start,
@@ -112,3 +107,60 @@ def get_strategy_general_params():
         with col:
             cache[str(task[idx].__name__).replace("get_", "")] = task[idx]()
     return cache
+
+
+def get_feature() -> List[str]:
+    return st.multiselect(
+        label="Factors",
+        options=[
+            "PriceMomentum1M",
+            "PriceMomentum3M",
+        ],
+    )
+
+
+def get_percentile() -> int:
+    return int(
+        st.number_input(
+            label="Factor Percentile", min_value=0, max_value=100, step=5, value=50
+        )
+    )
+
+
+def get_name() -> str:
+    return str(st.text_input(label="Strategy Name", placeholder="Example: Strategy1"))
+
+
+def get_strategy_params() -> Dict[str, Any]:
+    cache = {}
+    c1, c2, c3, c4, c5 = st.columns([1] * 5)
+    with c1:
+        cache["start"] = get_start()
+    with c2:
+        cache["end"] = get_end()
+    with c3:
+        cache["frequency"] = get_frequency()
+    with c4:
+        cache["commission"] = get_commission()
+    with c5:
+        cache["objective"] = get_objective()
+
+    c1, c2 = st.columns([5, 1])
+
+    with c1:
+        cache["feature"] = get_feature()
+
+    with c2:
+        cache["percentile"] = get_percentile()
+
+    return cache
+
+
+
+def get_name() -> str:
+    return str(st.text_input(
+        label="Name",
+        value=f"Strategy-{len(state.strategy.get_backtestmanager().strategies)}",
+    ))
+
+

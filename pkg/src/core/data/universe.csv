@@ -1,0 +1,24 @@
+﻿universe,ticker,assetclass,name
+GLOBALAA,SPY,Equity,U.S. Stocks (S&P500)
+GLOBALAA,EZU,Equity,Europe Stocks (FTSE Europe)
+GLOBALAA,VPL,Equity,Asia Pacific Stocks (MSCI Asic Pacific)
+GLOBALAA,EEM,Equity,Emerging Market Stocks (MSCI Emerging)
+GLOBALAA,RWR,RealEstate,Global REITs
+GLOBALAA,GLD,Alternative,Gold
+GLOBALAA,GSG,Alternative,Commodities
+GLOBALAA,IEF,FixedIncome,Intermediate Treasuries (7-10Y)
+GLOBALAA,TLT,FixedIncome,Long-Term Treasuries (20+Y)
+GLOBALAA,EMB,FixedIncome,Emerging Bond (USD)
+GLOBALAA,IGOV,FixedIncome,International Treasury
+GLOBALAA,TIP,FixedIncome,Long-Term Inflation Hedged
+USSECTOR,XLC,Equity,Communication Services Select Sector SPDR Fund
+USSECTOR,XLY,Equity,Consumer Discretionary Select Sector SPDR Fund
+USSECTOR,XLP,Equity,Consumer Staples Select Sector SPDR Fund
+USSECTOR,XLE,Equity,Energy Select Sector SPDR Fund
+USSECTOR,XLF,Equity,Financial Select Sector SPDR Fund
+USSECTOR,XLV,Equity,Health Care Select Sector SPDR Fund
+USSECTOR,XLI,Equity,Industrial Select Sector SPDR Fund
+USSECTOR,XLB,Equity,Materials Select Sector SPDR Fund
+USSECTOR,XLRE,Equity,Real Estate Select Sector SPDR Fund
+USSECTOR,XLK,Equity,Technology Select Sector SPDR Fund
+USSECTOR,XLU,Equity,Utilities Select Sector SPDR Fund

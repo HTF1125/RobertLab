@@ -3,16 +3,10 @@ import warnings
 from typing import Optional, Callable, Dict
 from functools import partial
 import pandas as pd
-from scipy.stats import norm
 from .base import Strategy
-from .. import metrics
 from ..portfolios import Optimizer
-from ..signals import Signal
 
 
-def zscore_from_percentile(percentile: float) -> float:
-    zscore = norm.ppf(percentile)
-    return float(zscore)
 
 
 def dict_to_signature_string(data):
@@ -31,11 +25,7 @@ def dict_to_signature_string(data):
 class Backtest:
     def __call__(self, func) -> Callable:
         def wrapper(cls, **kwargs):
-            name = (
-                func.__name__ + "(" + dict_to_signature_string(kwargs) + ")"
-                if kwargs
-                else func.__name__
-            )
+            name = kwargs.pop("name", f"Strategy-{len(cls.strategies)}")
             if name in cls.strategies:
                 warnings.warn(message=f"{name} already backtested.")
                 return
@@ -123,69 +113,32 @@ class BacktestManager:
         self.shares_frac = shares_frac
         self.strategies: Dict[str, Strategy] = dict()
 
-    @Backtest()
-    def Signal(
-        self,
-        strategy: Strategy,
-        signal: Signal,
-        regime_window: int = 10 * 252,
-        objective: str = "uniform_allocation",
-        target_percentile=0.80,
-    ) -> pd.Series:
-        state = signal.get_state(str(strategy.date))
-        exp_ret = signal.expected_returns_by_states(
-            strategy.prices.iloc[-regime_window:]
-        ).loc[state]
-        target_value = exp_ret.quantile(q=target_percentile)
-        opt = Optimizer.from_prices(
-            prices=strategy.prices
-        ).set_custom_feature_constraints(
-            features=exp_ret, min_value=target_value, max_value=target_value
-        )
-        return getattr(opt, objective)()
 
     @Backtest()
     def Base(
-        self, strategy: Strategy, objective: str = "uniform_allocation"
+        self,
+        strategy: Strategy,
+        objective: str = "uniform_allocation",
+        features: Optional[pd.DataFrame] = None,
+        percentile: Optional[float] = None,
     ) -> pd.Series:
+        # print(strategy.prices)
         opt = Optimizer.from_prices(prices=strategy.prices)
         if not hasattr(opt, objective):
             warnings.warn(message="check you allocation objective")
             return opt.uniform_allocation()
-        return getattr(opt, objective)()
 
-    @Backtest()
-    def Momentum(
-        self,
-        strategy: Strategy,
-        target_percentile=0.80,
-        months: int = 12,
-        skip_months: int = 0,
-        objective: str = "uniform_allocation",
-        absolute: bool = False,
-    ) -> pd.Series:
-        mom = metrics.to_momentum(
-            prices=strategy.prices, months=months, skip_months=skip_months
-        )
-        mom = (mom - mom.mean()) / mom.std()
-        if absolute:
-            mom = mom.abs()
-        target_value = zscore_from_percentile(target_percentile)
-        opt = Optimizer.from_prices(
-            prices=strategy.prices
-        ).set_custom_feature_constraints(features=mom, target=target_value)
-        return getattr(opt, objective)()
+        if features is not None:
+            if percentile is None:
+                warnings.warn("Must specify percentile when feature is passed.")
+            current_features = features.loc[strategy.date]
+            current_features = current_features.reindex(index=opt.assets, fill_value=0).fillna(0)
+            opt.set_custom_feature_constraints(features=current_features, target=percentile)
 
-    @Backtest()
-    def MeanReversion(self, strategy: Strategy, threshold: float = 0.20) -> pd.Series:
-        sma = strategy.prices.rolling(50).mean()
-        deviation = strategy.prices / sma
-        rr = deviation.iloc[-1] - deviation.quantile(q=threshold)
-        rr = rr[rr < 0]
-        if len(rr) == 0:
-            return pd.Series(dtype=float)
-        rr.iloc[:] = 1 / rr.count()
-        return rr
+        weight = getattr(opt, objective)()
+        print(weight)
+        return weight
+
 
     @property
     def values(self) -> pd.DataFrame:
@@ -195,11 +148,9 @@ class BacktestManager:
 
     @property
     def drawdowns(self) -> pd.DataFrame:
-
         return pd.DataFrame(
             {name: strategy.drawdown for name, strategy in self.strategies.items()}
         )
-
 
     @property
     def analytics(self) -> pd.DataFrame:
