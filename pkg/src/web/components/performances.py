@@ -46,9 +46,8 @@ def main():
                 kwargs={"name": name},
             )
 
-            # cols = st.columns([1, 2])
 
-            st.json(strategy.analytics.to_dict())
+            st.json(strategy.analytics.to_dict(), expanded=False)
 
             performance, histo = st.tabs([
                 "Performance", "Hist.Allocations",

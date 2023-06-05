@@ -18,7 +18,9 @@ def price_momentum(
     )
     if normalize == "standard_percentile":
         return momentum.apply(metrics.to_standard_percentile, axis=1)
-    return momentum.apply(metrics.to_standard_scalar, axis=1)
+    return momentum.apply(metrics.to_standard_percentile, axis=1).apply(
+        metrics.to_minmax_scalar, axis=1
+    )
 
 
 def price_momentum_1m(

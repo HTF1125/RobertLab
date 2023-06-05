@@ -136,7 +136,6 @@ class BacktestManager:
             opt.set_custom_feature_constraints(features=current_features, target=percentile)
 
         weight = getattr(opt, objective)()
-        print(weight)
         return weight
 
 

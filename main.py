@@ -18,7 +18,7 @@ st.set_page_config(
 selected = option_menu(
     menu_title="Robert",
     menu_icon="diagram-3",
-    options=["Dashboard", "Strategy", "AssetAllocation"],
+    options=["Dashboard", "AssetAllocation"],
     # icons=['house', 'stars'],
     default_index=0,
     orientation="horizontal",
@@ -35,9 +35,6 @@ selected = option_menu(
 )
 
 
-if selected == "Strategy":
-    components.momentum.main()
-    components.performances.main()
 
 if selected == "Dashboard":
     start, end = components.get_date_range()
@@ -47,8 +44,6 @@ if selected == "Dashboard":
         components.macro.make_yield_curve2()
     with right:
         components.macro.make_inflation_linked()
-
-
 
 if selected == "AssetAllocation":
     asset_allocation.main()

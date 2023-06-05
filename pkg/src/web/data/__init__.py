@@ -10,6 +10,6 @@ def get_prices(*args, **kwargs) -> pd.DataFrame:
     return data.get_prices(*args, **kwargs)
 
 
-@st.cache_resource()
+@st.cache_data()
 def get_factors(*args, **kwargs) -> pd.DataFrame:
     return feature.multi.multi_factors(tickers=kwargs.get("tickers"), features=args)

@@ -4,15 +4,12 @@ from .. import components, data, state
 from pkg.src.core import feature, metrics
 
 
-def main():
-    universe = components.get_universe()
-
-    prices = data.get_prices(tickers=universe.ticker.tolist())
+def get_features_percentile():
 
     c1, c2 = st.columns([5, 1])
     with c1:
         selected_features = st.multiselect(
-        
+
             label="Select Features",
             options=[
                 func for func in dir(feature)
@@ -35,21 +32,21 @@ def main():
             )
             / 100
         )
-    st.write(selected_features)
-    if selected_features:
-        with st.spinner("Computing asset features"):
-            features = data.get_factors(
-                *selected_features, tickers=universe.ticker.tolist(),
-            )
-    else:
-        features = None
+
+    return selected_features, percentile
+
+
+def main():
+    universe = components.get_universe()
+
+    prices = data.get_prices(tickers=universe.ticker.tolist())
+
+
     with st.expander(label="See universe details:"):
         st.markdown("Universe:")
         st.dataframe(universe, height=150, use_container_width=True)
         st.markdown("Prices:")
         st.dataframe(prices, height=150, use_container_width=True)
-        st.markdown("Factors")
-        st.dataframe(features, height=150, use_container_width=True)
 
     with st.form("AssetAllocationForm"):
         basic_calls = [
@@ -67,6 +64,9 @@ def main():
         for col, call in zip(basic_cols, basic_calls):
             with col:
                 basic_kwargs[call.__name__[4:]] = call()
+
+        selected_features, percentile = get_features_percentile()
+
 
         with st.expander("Asset Class Constraints"):
             asset_class_constraints = []
@@ -98,6 +98,15 @@ def main():
         submitted = st.form_submit_button(label="Backtest", type="primary")
 
         if submitted:
+
+            if selected_features:
+                features = data.get_factors(
+                    *selected_features, tickers=universe.ticker.tolist(),
+                )
+            else:
+                features = None
+
+
             with st.spinner(text="Backtesting in progress..."):
                 state.strategy.get_backtestmanager().Base(
                     **basic_kwargs,

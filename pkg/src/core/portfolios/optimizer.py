@@ -348,7 +348,7 @@ class Optimizer:
     ) -> "Optimizer":
         self.constraints.append(
             {
-                "type": "ineq",
+                "type": "eq",
                 "fun": lambda w: np.dot(
                     w, features.reindex(self.assets, fill_value=0) - target
                 ),
@@ -585,5 +585,5 @@ class Optimizer:
         """
         target_allocations = np.ones(shape=self.num_assets) / self.num_assets
         return self.solve(
-            objective=lambda w: objectives.l1_norm(np.subtract(w, target_allocations))
+            objective=lambda w: objectives.l2_norm(np.subtract(w, target_allocations))
         )
