@@ -1,12 +1,10 @@
 """ROBERT"""
 import warnings
-from typing import Optional, Callable, Dict
+from typing import Optional, Callable, Tuple, Dict
 from functools import partial
 import pandas as pd
 from .base import Strategy
 from ..portfolios import Optimizer
-
-
 
 
 def dict_to_signature_string(data):
@@ -113,14 +111,13 @@ class BacktestManager:
         self.shares_frac = shares_frac
         self.strategies: Dict[str, Strategy] = dict()
 
-
     @Backtest()
     def Base(
         self,
         strategy: Strategy,
         objective: str = "uniform_allocation",
-        features: Optional[pd.DataFrame] = None,
-        percentile: Optional[float] = None,
+        feature_values: Optional[pd.DataFrame] = None,
+        feature_bounds: Tuple[Optional[float], Optional[float]] = (0.0, 1.0),
     ) -> pd.Series:
         # print(strategy.prices)
         opt = Optimizer.from_prices(prices=strategy.prices)
@@ -128,16 +125,20 @@ class BacktestManager:
             warnings.warn(message="check you allocation objective")
             return opt.uniform_allocation()
 
-        if features is not None:
-            if percentile is None:
+        if feature_values is not None:
+            if feature_bounds is None:
                 warnings.warn("Must specify percentile when feature is passed.")
-            current_features = features.loc[strategy.date]
-            current_features = current_features.reindex(index=opt.assets, fill_value=0).fillna(0)
-            opt.set_custom_feature_constraints(features=current_features, target=percentile)
+            current_feature_values = (
+                feature_values.loc[strategy.date]
+                .reindex(index=opt.assets, fill_value=0)
+                .fillna(0)
+            )
+            opt.set_custom_feature_constraints(
+                values=current_feature_values, bounds=feature_bounds
+            )
 
         weight = getattr(opt, objective)()
         return weight
-
 
     @property
     def values(self) -> pd.DataFrame:

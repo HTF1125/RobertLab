@@ -1,5 +1,6 @@
+import logging
 import warnings
-from typing import Optional, Callable, Dict, List
+from typing import Optional, Callable, Dict, List, Tuple, Union
 from functools import partial
 from scipy.optimize import minimize
 from scipy.cluster.hierarchy import linkage, to_tree
@@ -9,6 +10,9 @@ import pandas as pd
 from . import objectives
 from .. import metrics
 from ..metrics.utils import cov_to_corr
+
+
+logger = logging.getLogger(__name__)
 
 
 class OptimizerMetrics:
@@ -31,16 +35,16 @@ class Optimizer:
         risk_free: float = 0.0,
         prices_bm: Optional[pd.Series] = None,
         weights_bm: Optional[pd.Series] = None,
-        min_weight: float = 0.0,
-        max_weight: float = 1.0,
-        sum_weight: float = 1.0,
-        min_return: Optional[float] = None,
-        max_return: Optional[float] = None,
-        min_volatility: Optional[float] = None,
-        max_volatility: Optional[float] = None,
-        max_active_weight: Optional[float] = None,
-        max_exante_tracking_error: Optional[float] = None,
-        max_expost_tracking_error: Optional[float] = None,
+        weight_bounds: Optional[Tuple[Optional[float], Optional[float]]] = (0.0, 1.0),
+        return_bounds: Optional[Tuple[Optional[float], Optional[float]]] = None,
+        risk_bounds: Optional[Tuple[Optional[float], Optional[float]]] = None,
+        active_weight_bounds: Optional[Tuple[Optional[float], Optional[float]]] = None,
+        exante_tracking_error_bounds: Optional[
+            Tuple[Optional[float], Optional[float]]
+        ] = None,
+        expost_tracking_error_bounds: Optional[
+            Tuple[Optional[float], Optional[float]]
+        ] = None,
     ) -> "Optimizer":
         """_summary_
 
@@ -57,16 +61,12 @@ class Optimizer:
             risk_free=risk_free,
             prices_bm=prices_bm,
             weights_bm=weights_bm,
-            min_weight=min_weight,
-            max_weight=max_weight,
-            sum_weight=sum_weight,
-            min_return=min_return,
-            max_return=max_return,
-            min_volatility=min_volatility,
-            max_volatility=max_volatility,
-            max_active_weight=max_active_weight,
-            max_exante_tracking_error=max_exante_tracking_error,
-            max_expost_tracking_error=max_expost_tracking_error,
+            weight_bounds=weight_bounds,
+            return_bounds=return_bounds,
+            risk_bounds=risk_bounds,
+            active_weight_bounds=active_weight_bounds,
+            exante_tracking_error_bounds=exante_tracking_error_bounds,
+            expost_tracking_error_bounds=expost_tracking_error_bounds,
         )
 
     def __init__(
@@ -78,16 +78,16 @@ class Optimizer:
         prices: Optional[pd.DataFrame] = None,
         prices_bm: Optional[pd.Series] = None,
         weights_bm: Optional[pd.Series] = None,
-        min_weight: float = 0.0,
-        max_weight: float = 1.0,
-        sum_weight: float = 1.0,
-        min_return: Optional[float] = None,
-        max_return: Optional[float] = None,
-        min_volatility: Optional[float] = None,
-        max_volatility: Optional[float] = None,
-        max_active_weight: Optional[float] = None,
-        max_exante_tracking_error: Optional[float] = None,
-        max_expost_tracking_error: Optional[float] = None,
+        weight_bounds: Optional[Tuple[Optional[float], Optional[float]]] = (0.0, 1.0),
+        return_bounds: Optional[Tuple[Optional[float], Optional[float]]] = None,
+        risk_bounds: Optional[Tuple[Optional[float], Optional[float]]] = None,
+        active_weight_bounds: Optional[Tuple[Optional[float], Optional[float]]] = None,
+        exante_tracking_error_bounds: Optional[
+            Tuple[Optional[float], Optional[float]]
+        ] = None,
+        expost_tracking_error_bounds: Optional[
+            Tuple[Optional[float], Optional[float]]
+        ] = None,
     ) -> None:
         """initialization"""
         self.metrics = OptimizerMetrics()
@@ -99,25 +99,93 @@ class Optimizer:
         self.prices_bm = prices_bm
         self.weights_bm = weights_bm
         self.constraints: List = []
+        self.set_sum_weight(sum_weight=1)
 
-        self.set_min_weight(min_weight=min_weight)
-        self.set_max_weight(max_weight=max_weight)
-        self.set_sum_weight(sum_weight=sum_weight)
+        if weight_bounds is not None:
+            min_weight, max_weight = weight_bounds
+            if min_weight is not None:
+                self.set_min_weight(min_weight=min_weight)
+            if max_weight is not None:
+                self.set_max_weight(max_weight=max_weight)
 
-        if min_return:
-            self.set_min_return(min_return)
-        if max_return:
-            self.set_max_return(max_return)
-        if min_volatility:
-            self.set_min_volatility(min_volatility)
-        if max_volatility:
-            self.set_max_volatility(max_volatility)
-        if max_active_weight:
-            self.set_max_active_weight(max_active_weight)
-        if max_exante_tracking_error:
-            self.set_max_exante_tracking_error(max_exante_tracking_error)
-        if max_expost_tracking_error:
-            self.set_max_expost_tracking_error(max_expost_tracking_error)
+        if return_bounds is not None:
+            min_return, max_return = return_bounds
+            if min_return is not None:
+                self.set_min_return(min_return)
+            if max_return is not None:
+                self.set_max_return(max_return)
+
+        if risk_bounds is not None:
+            min_risk, max_risk = risk_bounds
+            if min_risk is not None:
+                self.set_min_risk(min_risk)
+            if max_risk is not None:
+                self.set_max_risk(max_risk)
+        if active_weight_bounds:
+            min_active_weight, max_active_weight = active_weight_bounds
+            if min_active_weight is not None:
+                self.set_min_active_weight(min_active_weight)
+            if max_active_weight is not None:
+                self.set_max_active_weight(max_active_weight)
+
+        if exante_tracking_error_bounds:
+            (
+                min_exante_tracking_error,
+                max_exante_tracking_error,
+            ) = exante_tracking_error_bounds
+            if min_exante_tracking_error is not None:
+                self.set_min_exante_tracking_error(min_exante_tracking_error)
+            if max_exante_tracking_error is not None:
+                self.set_max_exante_tracking_error(max_exante_tracking_error)
+
+        if expost_tracking_error_bounds:
+            (
+                min_expost_tracking_error,
+                max_expost_tracking_error,
+            ) = expost_tracking_error_bounds
+            if min_expost_tracking_error is not None:
+                self.set_min_expost_tracking_error(min_expost_tracking_error)
+            if max_expost_tracking_error is not None:
+                self.set_max_expost_tracking_error(max_expost_tracking_error)
+
+    def set_risk_bounds(
+        self, bounds: Union[float, Tuple[Optional[float], Optional[float]]]
+    ) -> "Optimizer":
+        if isinstance(bounds, float):
+            self.constraints.append(
+                {
+                    "type": "eq",
+                    "fun": lambda w: objectives.expected_volatility(
+                        weights=w, covariance_matrix=np.array(self.covariance_matrix)
+                    )
+                    - bounds,
+                }
+            )
+            return self
+        _min, _max = bounds
+
+        if _min:
+            self.constraints.append(
+                {
+                    "type": "ineq",
+                    "fun": lambda w: objectives.expected_volatility(
+                        weights=w, covariance_matrix=np.array(self.covariance_matrix)
+                    )
+                    - _min,
+                }
+            )
+        if _max:
+            self.constraints.append(
+                {
+                    "type": "ineq",
+                    "fun": lambda w: _max
+                    - objectives.expected_volatility(
+                        weights=w, covariance_matrix=np.array(self.covariance_matrix)
+                    ),
+                }
+            )
+
+        return self
 
     @property
     def expected_returns(self) -> Optional[pd.Series]:
@@ -249,7 +317,7 @@ class Optimizer:
             }
         )
 
-    def set_min_volatility(self, min_volatility: float = 0.05) -> None:
+    def set_min_risk(self, min_risk: float = 0.05) -> None:
         """set minimum volatility constraint"""
         if self.covariance_matrix is None:
             warnings.warn("unable to set minimum volatility constraint.")
@@ -261,11 +329,11 @@ class Optimizer:
                 "fun": lambda w: objectives.expected_volatility(
                     weights=w, covariance_matrix=np.array(self.covariance_matrix)
                 )
-                - min_volatility,
+                - min_risk,
             }
         )
 
-    def set_max_volatility(self, max_volatility: float = 0.05) -> None:
+    def set_max_risk(self, max_risk: float = 0.05) -> None:
         """set maximum volatility constraint"""
         if self.covariance_matrix is None:
             warnings.warn("unable to set maximum volatility constraint.")
@@ -274,10 +342,24 @@ class Optimizer:
         self.constraints.append(
             {
                 "type": "ineq",
-                "fun": lambda w: max_volatility
+                "fun": lambda w: max_risk
                 - objectives.expected_volatility(
                     weights=w, covariance_matrix=np.array(self.covariance_matrix)
                 ),
+            }
+        )
+
+    def set_min_active_weight(self, min_active_weight: float = 0.10) -> None:
+        """set maximum active weight against benchmark"""
+        if self.weights_bm is None:
+            warnings.warn("unable to set maximum active weight constraint.")
+            warnings.warn("benchmark weights is null.")
+            return
+        self.constraints.append(
+            {
+                "type": "ineq",
+                "fun": lambda w: np.sum(np.abs(w - np.array(self.weights_bm)))
+                - min_active_weight,
             }
         )
 
@@ -292,6 +374,26 @@ class Optimizer:
                 "type": "ineq",
                 "fun": lambda w: max_active_weight
                 - np.sum(np.abs(w - np.array(self.weights_bm))),
+            }
+        )
+
+    def set_min_exante_tracking_error(
+        self, min_exante_tracking_error: float = 0.02
+    ) -> None:
+        """set maximum exante tracking error constraint"""
+        if self.weights_bm is None:
+            warnings.warn("unable to set maximum active weight constraint.")
+            warnings.warn("benchmark weights is null.")
+            return
+        self.constraints.append(
+            {
+                "type": "ineq",
+                "fun": lambda w: objectives.exante_tracking_error(
+                    weights=w,
+                    weights_bm=np.array(self.weights_bm),
+                    covariance_matrix=np.array(self.covariance_matrix),
+                )
+                - min_exante_tracking_error,
             }
         )
 
@@ -312,6 +414,34 @@ class Optimizer:
                     weights_bm=np.array(self.weights_bm),
                     covariance_matrix=np.array(self.covariance_matrix),
                 ),
+            }
+        )
+
+    def set_min_expost_tracking_error(
+        self, min_expost_tracking_error: float = 0.02
+    ) -> None:
+        """set maximum expost tracking error constraint"""
+        if self.prices is None:
+            warnings.warn("unable to set maximum active weight constraint.")
+            warnings.warn("benchmark weights is null.")
+            raise ValueError("prices must not be none.")
+        if self.prices_bm is None:
+            warnings.warn("unable to set maximum active weight constraint.")
+            warnings.warn("benchmark weights is null.")
+            raise ValueError("prices_bm must not be none.")
+        itx = self.prices.dropna().index.intersection(self.prices_bm.dropna().index)
+        pri_returns_assets = self.prices.loc[itx].pct_change().fillna(0)
+        pri_returns_bm = self.prices_bm.loc[itx].pct_change().fillna(0)
+
+        self.constraints.append(
+            {
+                "type": "ineq",
+                "fun": lambda w: objectives.expost_tracking_error(
+                    weights=w,
+                    pri_returns_assets=np.array(pri_returns_assets),
+                    pri_returns_bm=np.array(pri_returns_bm),
+                )
+                - min_expost_tracking_error,
             }
         )
 
@@ -344,16 +474,30 @@ class Optimizer:
         )
 
     def set_custom_feature_constraints(
-        self, features: pd.Series, target: float = 0.5
+        self,
+        values: pd.Series,
+        bounds: Tuple[Optional[float], Optional[float]] = (0.0, 1.0),
     ) -> "Optimizer":
-        self.constraints.append(
-            {
-                "type": "eq",
-                "fun": lambda w: np.dot(
-                    w, features.reindex(self.assets, fill_value=0) - target
-                ),
-            }
-        )
+        l_bound, u_bound = bounds
+
+        if l_bound is not None:
+            self.constraints.append(
+                {
+                    "type": "ineq",
+                    "fun": lambda w: np.dot(
+                        w, values.reindex(self.assets, fill_value=0) - l_bound
+                    ),
+                }
+            )
+
+        if u_bound is not None:
+            self.constraints.append(
+                {
+                    "type": "eq",
+                    "fun": lambda w: u_bound
+                    - np.dot(w, values.reindex(self.assets, fill_value=0)),
+                }
+            )
 
         return self
 
@@ -499,7 +643,6 @@ class Optimizer:
         if len(right) > 2:
             cache.extend(self.recursive_bisection(right))
         return cache
-
 
     def hierarchical_risk_parity(self, linkage_method: str = "single") -> pd.Series:
         """calculate herc weights"""
