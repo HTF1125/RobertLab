@@ -1,2 +1,4 @@
 """ROBERT"""
-from . import asset_allocation
+from . import allocation
+from . import simulation
+from . import regime

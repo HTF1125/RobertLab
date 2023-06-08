@@ -3,7 +3,7 @@
 import streamlit as st
 from streamlit_option_menu import option_menu
 from pkg.src.web import components
-from pkg.src.web.pages import asset_allocation
+from pkg.src.web.pages import allocation, simulation, regime
 
 st.set_page_config(
     page_title="ROBERT'S WEBSITE",
@@ -18,7 +18,7 @@ st.set_page_config(
 selected = option_menu(
     menu_title="Robert",
     menu_icon="diagram-3",
-    options=["Dashboard", "AssetAllocation"],
+    options=["Dashboard", "Regime", "Allocation", "Simulation"],
     # icons=['house', 'stars'],
     default_index=0,
     orientation="horizontal",
@@ -45,5 +45,11 @@ if selected == "Dashboard":
     with right:
         components.macro.make_inflation_linked()
 
-if selected == "AssetAllocation":
-    asset_allocation.main()
+if selected == "Allocation":
+    allocation.main()
+
+if selected == "Simulation":
+    simulation.main()
+
+if selected == "Regime":
+    regime.main()

@@ -1,6 +1,7 @@
 
 from . import metrics
-from . import feature
+from . import factors
+from . import simulations
 from .portfolios import Optimizer
 from .strategies import Strategy, BacktestManager
 from . import data

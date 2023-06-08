@@ -4,15 +4,15 @@ import numpy as np
 import pandas as pd
 import streamlit as st
 from .. import components, data, state
-from pkg.src.core import feature, metrics
+from pkg.src.core import factors
 
 
-def get_features_percentile():
+def get_factor_constraints():
     params = {}
 
-    params["names"] = st.multiselect(
+    params["factors"] = st.multiselect(
         label="Factor List",
-        options=[func for func in dir(feature) if callable(getattr(feature, func))],
+        options=[func for func in dir(factors) if callable(getattr(factors, func))],
         format_func=lambda x: "".join(word.capitalize() for word in x.split("_")),
     )
     params["bounds"] = get_bounds(
@@ -27,7 +27,7 @@ def get_features_percentile():
     return params
 
 
-def get_base_parameters():
+def get_strategy_parameters():
     basic_calls = [
         components.get_name,
         components.get_start,
@@ -70,7 +70,7 @@ def get_bounds(
     )
 
 
-def get_general_constraints():
+def get_optimizer_constraints():
     constraints = {}
     kwargs = [
         {
@@ -149,7 +149,7 @@ def get_general_constraints():
     return constraints
 
 
-def get_asset_constraints(universe: pd.DataFrame, num_columns: int = 5) -> List[Dict]:
+def get_specific_constraints(universe: pd.DataFrame, num_columns: int = 5) -> List[Dict]:
     constraints = []
     asset_classes = universe["assetclass"].unique()
     num_columns = min(num_columns, len(asset_classes))
@@ -166,7 +166,7 @@ def get_asset_constraints(universe: pd.DataFrame, num_columns: int = 5) -> List[
             if bounds == (None, None):
                 continue
             constraint = {
-                "asset": universe[
+                "assets": universe[
                     universe["assetclass"] == asset_class
                 ].ticker.to_list(),
                 "bounds": bounds,
@@ -190,7 +190,7 @@ def get_asset_constraints(universe: pd.DataFrame, num_columns: int = 5) -> List[
             if bounds == (None, None):
                 continue
             constraint = {
-                "asset": ticker,
+                "assets": ticker,
                 "bounds": bounds,
             }
             constraints.append(constraint)
@@ -211,37 +211,38 @@ def main():
 
 
         # Backtest Parameters
-        backtest_parameters = get_base_parameters()
+        backtest_parameters = get_strategy_parameters()
 
 
         # Asset Allocation Constraints
         with st.expander(label="Asset Allocation Constraints:"):
-            general_constraints = get_general_constraints()
+            st.subheader("Optimizer Constraints")
+            optimizer_constraints = get_optimizer_constraints()
             st.markdown("---")
-            specific_constraints = get_asset_constraints(universe=universe)
+            st.subheader("Specific Constraints")
+            specific_constraints = get_specific_constraints(universe=universe)
             st.markdown("---")
 
         # Factor Implementation
         with st.expander(label="Factor Implementation:"):
-            feature_constraints = get_features_percentile()
+            factor_constraints = get_factor_constraints()
 
 
-        
         submitted = st.form_submit_button(label="Backtest", type="primary")
         signature = {
                 "strategy": backtest_parameters,
                 "constraints" : {
-                    "feature": feature_constraints,
-                    "general": general_constraints,
-                    "asset" : specific_constraints
+                    "optimizer": optimizer_constraints,
+                    "factor": factor_constraints,
+                    "specific" : specific_constraints
                 }
             }
 
         st.json(signature, expanded=False)
         if submitted:
-            if feature_constraints["names"]:
+            if factor_constraints["factors"]:
                 feature_values = data.get_factors(
-                    *feature_constraints["names"],
+                    *factor_constraints["factors"],
                     tickers=universe.ticker.tolist(),
                 )
             else:
@@ -250,9 +251,12 @@ def main():
             with st.spinner(text="Backtesting in progress..."):
                 state.strategy.get_backtestmanager().Base(
                     **backtest_parameters,
+                    optimizer_constraints=optimizer_constraints,
+                    specific_constraints=specific_constraints,
                     prices=prices,
                     feature_values=feature_values,
-                    feature_bounds=feature_constraints["bounds"],
+                    feature_bounds=factor_constraints["bounds"],
+
                 )
 
     st.button(

@@ -4,7 +4,7 @@ import pandas as pd
 from pkg.src.core import metrics
 from . import base
 
-def multi_factors(
+def multi_factor(
     tickers: Union[str, List, Set, Tuple],
     features: List[Callable],
     normalize: str = "standard_percentile",

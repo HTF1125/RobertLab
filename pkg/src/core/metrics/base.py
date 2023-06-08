@@ -20,7 +20,20 @@ def to_start(prices: pd.DataFrame) -> pd.Series:
 
 
 def to_start(prices: Union[pd.DataFrame, pd.Series]) -> Union[pd.Series, pd.Timestamp]:
-    """get the start of the data"""
+    """
+    The function `to_start` returns the start of the data, either as a `pd.Timestamp` or a `pd.Series`,
+    depending on the input type.
+
+    Args:
+        prices (Union[pd.DataFrame, pd.Series]): It is a parameter that can accept either a pandas
+    DataFrame or a pandas Series containing financial prices data.
+
+    Returns:
+        The function `to_start` returns either a `pd.Series` or a `pd.Timestamp` depending on the input
+    type. If the input is a `pd.DataFrame`, it returns a `pd.Series` with the start time for each
+    column. If the input is a `pd.Series`, it returns a `pd.Timestamp` with the start time of the
+    series.
+    """
     if isinstance(prices, pd.DataFrame):
         result = prices.apply(to_start)
         if isinstance(result, pd.Series):
@@ -43,6 +56,19 @@ def to_end(prices: pd.DataFrame) -> pd.Series:
 
 
 def to_end(prices: Union[pd.DataFrame, pd.Series]) -> Union[pd.Series, pd.Timestamp]:
+    """
+    This function returns the end date of a given DataFrame or Series.
+
+    Args:
+      prices (Union[pd.DataFrame, pd.Series]): The input data that can be either a pandas DataFrame or
+    Series containing prices.
+
+    Returns:
+      either a pandas Series object or a pandas Timestamp object, depending on the input type. If the
+    input is a pandas DataFrame, the function applies the to_end function to each column of the
+    DataFrame and returns a pandas Series object. If the input is a pandas Series, the function returns
+    the last non-null index value as a pandas Timestamp object.
+    """
     """get the start of the data"""
     if isinstance(prices, pd.DataFrame):
         result = prices.apply(to_end)
@@ -68,7 +94,7 @@ def to_pri_return(prices: pd.DataFrame) -> pd.DataFrame:
 def to_pri_return(
     prices: Union[pd.DataFrame, pd.Series]
 ) -> Union[pd.DataFrame, pd.Series]:
-    """calculate prices return series"""
+
     if isinstance(prices, pd.DataFrame):
         return prices.apply(to_pri_return)
 
@@ -1000,6 +1026,16 @@ def to_minmax_scalar(factors: pd.Series) -> pd.Series:
 
 
 def to_multi_factor(factors: List[pd.DataFrame]) -> pd.DataFrame:
+    """
+    The function takes a list of pandas dataframes, stacks them, takes the mean, unstacks them, and
+    applies a percentile function to each row.
+
+    :param factors: A list of pandas DataFrames representing different factors
+    :type factors: List[pd.DataFrame]
+    :return: The function `to_multi_factor` returns a pandas DataFrame that is the result of
+    concatenating and averaging the input factors, and then applying the `to_standard_percentile`
+    function to each row of the resulting DataFrame.
+    """
     if len(factors) == 1:
         return factors[0]
     return (

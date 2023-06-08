@@ -1,6 +1,6 @@
 """ROBERT"""
 import warnings
-from typing import Optional, Callable, Tuple, Dict
+from typing import Optional, Callable, Tuple, Dict, Any, List
 from functools import partial
 import pandas as pd
 from .base import Strategy
@@ -118,13 +118,12 @@ class BacktestManager:
         objective: str = "uniform_allocation",
         feature_values: Optional[pd.DataFrame] = None,
         feature_bounds: Tuple[Optional[float], Optional[float]] = (0.0, 1.0),
+        optimizer_constraints: Dict[str, Tuple] = {},
+        specific_constraints: List[Dict[str, Any]] = [],
     ) -> pd.Series:
-        # print(strategy.prices)
-        opt = Optimizer.from_prices(prices=strategy.prices)
-        if not hasattr(opt, objective):
-            warnings.warn(message="check you allocation objective")
-            return opt.uniform_allocation()
-
+        opt = Optimizer.from_prices(
+            prices=strategy.prices, **optimizer_constraints
+        ).set_specific_constraints(specific_constraints=specific_constraints)
         if feature_values is not None:
             if feature_bounds is None:
                 warnings.warn("Must specify percentile when feature is passed.")
@@ -133,10 +132,12 @@ class BacktestManager:
                 .reindex(index=opt.assets, fill_value=0)
                 .fillna(0)
             )
-            opt.set_custom_feature_constraints(
+            opt.set_factor_constraints(
                 values=current_feature_values, bounds=feature_bounds
             )
-
+        if not hasattr(opt, objective):
+            warnings.warn(message="check you allocation objective")
+            return opt.uniform_allocation()
         weight = getattr(opt, objective)()
         return weight
 

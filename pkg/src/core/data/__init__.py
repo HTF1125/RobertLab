@@ -20,7 +20,7 @@ def get_prices(tickers: Union[str, List, Set, Tuple]) -> pd.DataFrame:
         price = get_price(ticker)
         if price is not None:
             out.append(price)
-    return pd.concat(out, axis=1)
+    return pd.concat(out, axis=1).sort_index()
 
 
 @lru_cache()

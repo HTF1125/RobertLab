@@ -1,6 +1,6 @@
 import logging
 import warnings
-from typing import Optional, Callable, Dict, List, Tuple, Union
+from typing import Optional, Callable, Dict, List, Tuple, Union, Any
 from functools import partial
 from scipy.optimize import minimize
 from scipy.cluster.hierarchy import linkage, to_tree
@@ -473,7 +473,7 @@ class Optimizer:
             }
         )
 
-    def set_custom_feature_constraints(
+    def set_factor_constraints(
         self,
         values: pd.Series,
         bounds: Tuple[Optional[float], Optional[float]] = (0.0, 1.0),
@@ -499,6 +499,33 @@ class Optimizer:
                 }
             )
 
+        return self
+
+    def set_specific_constraints(
+        self, specific_constraints: List[Dict[str, Any]]
+    ) -> "Optimizer":
+        for specific_constraint in specific_constraints:
+            self.set_specific_constraint(**specific_constraint)
+        return self
+
+    def set_specific_constraint(self, assets: List, bounds: Tuple) -> "Optimizer":
+        assert self.assets is not None
+        specific_assets = np.in1d(self.assets.values, assets)
+        l_bound, u_bound = bounds
+        if l_bound is not None:
+            self.constraints.append(
+                {
+                    "type": "ineq",
+                    "fun": lambda w: np.dot(w, specific_assets) - l_bound,
+                }
+            )
+        if u_bound is not None:
+            self.constraints.append(
+                {
+                    "type": "ineq",
+                    "fun": lambda w: u_bound - np.dot(w, specific_assets),
+                }
+            )
         return self
 
     def solve(

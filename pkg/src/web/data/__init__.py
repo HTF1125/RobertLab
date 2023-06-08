@@ -1,7 +1,7 @@
 """ROBERT"""
 import pandas as pd
 import streamlit as st
-from pkg.src.core import data, feature
+from pkg.src.core import data, factors
 
 
 @st.cache_data()
@@ -12,4 +12,4 @@ def get_prices(*args, **kwargs) -> pd.DataFrame:
 
 @st.cache_data()
 def get_factors(*args, **kwargs) -> pd.DataFrame:
-    return feature.multi.multi_factors(tickers=kwargs.get("tickers"), features=args)
+    return factors.multi.multi_factor(tickers=kwargs.get("tickers"), features=args)
