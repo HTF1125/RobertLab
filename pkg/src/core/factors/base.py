@@ -1,5 +1,6 @@
 """ROBERT"""
 from typing import List, Union, Set, Tuple
+import numpy as np
 import pandas as pd
 from .. import data
 from .. import metrics
@@ -168,9 +169,41 @@ def volatility_3m(
 ) -> pd.DataFrame:
     prices = data.get_prices(tickers=tickers)
     volatility = metrics.to_pri_return(prices=prices).rolling(21 * 3).std()
-    return volatility.apply(metrics.to_standard_percentile, axis=1)
+    if normalize == "standard_percentile":
+        return volatility.apply(metrics.to_standard_percentile, axis=1)
+    return volatility.apply(metrics.to_minmax_scalar, axis=1)
 
 
+def price_momentum_diffusion(
+    tickers: Union[str, List, Set, Tuple],
+    normalize: str = "standard_percentile",
+) -> pd.DataFrame:
+    """
+    Momentum Diffusion summarizes the net price momentum at different frequencies
+    and is constructed to fluctuate between +1 and -1.
+    When the index is +1, it implies that upward price momentum is persistent.
+    The various frequencies used are 1M, 2M, 3M, 6M, 9M, 12M. Stocks wit higher
+    persistence in momentum are allocated to the top portfolio.
+    """
+    prices = data.get_prices(tickers=tickers)
+    momentums = (
+        pd.concat(
+            objs=[
+                metrics.rolling.to_momentum(prices=prices, months=1).stack(),
+                metrics.rolling.to_momentum(prices=prices, months=2).stack(),
+                metrics.rolling.to_momentum(prices=prices, months=3).stack(),
+                metrics.rolling.to_momentum(prices=prices, months=6).stack(),
+                metrics.rolling.to_momentum(prices=prices, months=9).stack(),
+                metrics.rolling.to_momentum(prices=prices, months=12).stack(),
+            ],
+            axis=1,
+        )
+        .apply(np.sign)
+        .sum(axis=1)
+        .unstack()
+        .apply(np.sign)
+    )
+    return momentums
 
 
 __all__ = [
@@ -191,5 +224,6 @@ __all__ = [
     "price_momentum_36m",
     "price_momentum_36m_1m",
     "price_momentum_36m_2m",
+    "price_momentum_diffusion",
     "volatility_3m",
 ]

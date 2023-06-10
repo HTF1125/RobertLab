@@ -4,6 +4,7 @@ import streamlit as st
 from streamlit_option_menu import option_menu
 from pkg.src.web import components
 from pkg.src.web.pages import allocation, simulation, regime
+from pkg.src.web import utils
 
 st.set_page_config(
     page_title="ROBERT'S WEBSITE",
@@ -13,12 +14,12 @@ st.set_page_config(
     menu_items=None,
 )
 
-# utils.local_css("web/css/base.css")
+# utils.local_css("pkg/src/web/css/base.css")
 
 selected = option_menu(
     menu_title="Robert",
     menu_icon="diagram-3",
-    options=["Dashboard", "Regime", "Allocation", "Simulation"],
+    options=["Dashboard", "Simulation", "Regime", "Allocation", "Security"],
     # icons=['house', 'stars'],
     default_index=0,
     orientation="horizontal",
@@ -53,3 +54,6 @@ if selected == "Simulation":
 
 if selected == "Regime":
     regime.main()
+
+if selected == "Security":
+    pass

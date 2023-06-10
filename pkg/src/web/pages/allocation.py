@@ -152,8 +152,8 @@ def get_optimizer_constraints():
 def get_specific_constraints(universe: pd.DataFrame, num_columns: int = 5) -> List[Dict]:
     constraints = []
     asset_classes = universe["assetclass"].unique()
-    num_columns = min(num_columns, len(asset_classes))
-    cols = st.columns([1] * num_columns)
+    final_num_columns = min(num_columns, len(asset_classes))
+    cols = st.columns([1] * final_num_columns)
     for idx, asset_class in enumerate(asset_classes):
         with cols[idx % num_columns]:
             bounds = get_bounds(
@@ -173,8 +173,8 @@ def get_specific_constraints(universe: pd.DataFrame, num_columns: int = 5) -> Li
             }
             constraints.append(constraint)
     st.markdown("---")
-    num_columns = min(num_columns, len(universe))
-    cols = st.columns([1] * num_columns)
+    final_num_columns = min(num_columns, len(universe))
+    cols = st.columns([1] * final_num_columns)
     for idx, asset in enumerate(universe.to_dict("records")):
         ticker = asset["ticker"]
         name = asset["name"]

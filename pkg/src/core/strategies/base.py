@@ -180,33 +180,30 @@ class Strategy:
             if date > rebalance_date:
                 allocations = self.rebalance(strategy=self)
                 if not isinstance(allocations, pd.Series):
-                    allocations = pd.Series(allocations, dtype=float)
+                    continue
+                self.data["allocations"][date] = allocations
+                try:
+                    rebalance_date = next(rebalance_dates)
+                    target_capials = value * allocations
+                    target_shares = target_capials.divide(
+                        self.total_prices.loc[date]
+                    )
+                    if self.shares_frac is not None:
+                        target_shares = target_shares.round(self.shares_frac)
 
-                if not allocations.empty:
-                    self.data["allocations"][date] = allocations
-                    try:
-                        rebalance_date = next(rebalance_dates)
-
-                        target_capials = value * allocations
-                        target_shares = target_capials.divide(
-                            self.total_prices.loc[date]
-                        )
-                        if self.shares_frac is not None:
-                            target_shares = target_shares.round(self.shares_frac)
-
-                        trade_shares = target_shares.subtract(shares, fill_value=0)
-                        trade_shares = trade_shares[trade_shares != 0]
-                        self.data["trades"][date] = trade_shares
-                        trade_capitals = trade_shares.multiply(
-                            self.total_prices.loc[date]
-                        )
-                        trade_capitals += trade_capitals.multiply(
-                            self.commission / 1_000
-                        )
-                        cash -= trade_capitals.sum()
-                        shares = target_shares
-                    except StopIteration:
-                        rebalance_date = None
+                    trade_shares = target_shares.subtract(shares, fill_value=0)
+                    trade_shares = trade_shares[trade_shares != 0]
+                    self.data["trades"][date] = trade_shares
+                    trade_capitals = trade_shares.multiply(
+                        self.total_prices.loc[date]
+                    )
+                    trade_capitals += trade_capitals.multiply(
+                        self.commission / 1_000
+                    )
+                    cash -= trade_capitals.sum()
+                    shares = target_shares
+                except StopIteration:
+                    rebalance_date = None
             self.date = date
             self.data["value"][self.date] = value
             self.data["shares"][self.date] = shares

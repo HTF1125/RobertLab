@@ -3,8 +3,8 @@ from plotly.graph_objects import Scatter, Bar
 from plotly.subplots import make_subplots
 from .. import state
 
-def main():
 
+def main():
     if not state.strategy.get_backtestmanager().values.empty:
         analytics = state.strategy.get_backtestmanager().analytics
         st.write(analytics.T)
@@ -14,7 +14,9 @@ def main():
             # Add line chart for prices to the first subplot
             val = strategy.value.resample("M").last()
             price_trace = Scatter(
-                x=val.index, y=val.values, name=name,
+                x=val.index,
+                y=val.values,
+                name=name,
                 hovertemplate="Date: %{x} Price: %{y}",
             )
             fig.add_trace(price_trace)
@@ -46,13 +48,14 @@ def main():
                 kwargs={"name": name},
             )
 
-
             st.json(strategy.analytics.to_dict(), expanded=False)
 
-            performance, histo = st.tabs([
-                "Performance", "Hist.Allocations",
-            ])
-
+            performance, histo = st.tabs(
+                [
+                    "Performance",
+                    "Hist.Allocations",
+                ]
+            )
 
             fig = make_subplots(
                 rows=1,
@@ -79,7 +82,7 @@ def main():
                 yaxis_title="Price",
                 hovermode="x",
                 legend=dict(orientation="h", yanchor="top", y=1.1, xanchor="left", x=0),
-                height=500
+                height=500,
             )
 
             fig.update_layout(
@@ -92,27 +95,31 @@ def main():
                 ),
             )
             with performance:
-                st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
-
-
+                st.plotly_chart(
+                    fig, use_container_width=True, config={"displayModeBar": False}
+                )
 
             fig = make_subplots(rows=1, cols=1)
 
             for col in strategy.allocations.columns:
-                fig.add_trace(Bar(
-                    x=strategy.allocations.index,
-                    y=strategy.allocations[col],
-                    name=col,
-                ))
+                fig.add_trace(
+                    Bar(
+                        x=strategy.allocations.index,
+                        y=strategy.allocations[col],
+                        name=col,
+                    )
+                )
 
             fig.update_layout(
-                barmode='stack',
-                title='Stacked Bar Chart',
-                xaxis=dict(title='Date', tickformat="%Y-%m-%d"),
-                yaxis=dict(title='Values', tickformat=".0%"),
+                barmode="stack",
+                title="Stacked Bar Chart",
+                xaxis=dict(title="Date", tickformat="%Y-%m-%d"),
+                yaxis=dict(title="Values", tickformat=".0%"),
                 legend=dict(orientation="h", yanchor="top", y=1.1, xanchor="left", x=0),
                 autosize=False,
-                height=500
+                height=500,
             )
             with histo:
-                st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
+                st.plotly_chart(
+                    fig, use_container_width=True, config={"displayModeBar": False}
+                )

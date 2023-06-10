@@ -48,7 +48,7 @@ class OECDUSLEIHP(Signal):
     def from_fred_data(cls, **kwargs) -> Signal:
         """get the data from fred"""
         try:
-            from core import data
+            from .. import data
         except ImportError as exc:
             raise ImportError() from exc
         return cls(data=data.get_oecd_us_leading_indicator(), **kwargs)

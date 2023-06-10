@@ -30,3 +30,13 @@ def to_momentum(
     if absolute:
         return cache.abs()
     return cache
+
+
+
+
+def to_standard_scalar(data: pd.DataFrame, window: int = 252) -> pd.DataFrame:
+    mean = data.rolling(window=window).mean()
+    std = data.rolling(window=window).std()
+    return (data - mean) / std
+
+
