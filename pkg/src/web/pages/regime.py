@@ -1,11 +1,10 @@
 """ROBERT"""
-
+from datetime import datetime
 import pandas as pd
 import streamlit as st
-from pkg.src.core import data
 from ..components import charts
-import plotly.graph_objects as go
-
+from .. import data
+from ...core import metrics
 
 def to_macd(
     prices: pd.DataFrame,
@@ -21,35 +20,40 @@ def to_macd(
     return signal
 
 
-@st.cache_data()
-def get_vix() -> pd.DataFrame:
-    return data.get_prices(tickers="^VIX")
+def get_vix_regime(start, end):
+
+    vix = data.get_vix()
+    normalized = metrics.rolling.to_standard_scalar(vix, window=252)
+    normalized = normalized.ewm(90).mean()
+    normalized = normalized.clip(lower=-3, upper=3)
+    st.plotly_chart(
+        charts.bar(data=normalized.loc[start:end]),
+        use_container_width=True,
+    )
+
+def get_oecd_us_lei_regime(start, end):
+
+    lei = data.get_oecd_us_lei()
+    lei.index = lei.index + pd.DateOffset(months=1)
+    change = lei.resample("M").last().diff().dropna()
+    normalized = metrics.rolling.to_standard_scalar(change, window=12 * 5)
+    normalized = normalized.clip(lower=-3, upper=3)
+    st.plotly_chart(
+        charts.bar(data=normalized.dropna().loc[start:end]),
+        use_container_width=True,
+    )
+
 
 
 def main():
-    mean = get_vix().rolling(252).mean()
-    std = get_vix().rolling(252).std()
-    result = (get_vix() - mean) / std
-    result = result.ewm(90).mean()
-    result = result.clip(-3, 3)
-    # Display the plot
-    st.plotly_chart(
-        charts.bar(data=result),
-        use_container_width=True,
+    dates = pd.date_range("1990-1-1", datetime.now(), freq="D")
+    start, end = st.select_slider(
+        label="Select Date Range",
+        options=dates,
+        value=(dates[0], dates[-1]),
+        format_func=lambda x: f"{x:%Y-%m-%d}"
     )
-    df = data.get_oecd_us_leading_indicator()
-    df.index = df.index + pd.DateOffset(months=1)
-    df = df.resample("M").last().dropna()
 
-    df = df.diff()
-    mean = df.rolling(12 * 5).mean()
-    std = df.rolling(12 * 5).std()
-    normalized = (df - mean) / std
 
-    normalized = normalized.clip(-3, 3).dropna()
-
-    # Display the plot
-    st.plotly_chart(
-        charts.bar(data=normalized),
-        use_container_width=True,
-    )
+    get_vix_regime(start=start, end=end)
+    get_oecd_us_lei_regime(start=start, end=end)

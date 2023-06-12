@@ -199,13 +199,10 @@ def get_specific_constraints(universe: pd.DataFrame, num_columns: int = 5) -> Li
 
 def main():
     universe = components.get_universe()
-    prices = data.get_prices(tickers=universe.ticker.tolist())
 
     with st.expander(label="See universe details:"):
-        st.markdown("Universe:")
         st.dataframe(universe, height=150, use_container_width=True)
-        st.markdown("Prices:")
-        st.dataframe(prices, height=150, use_container_width=True)
+
 
     with st.form("AssetAllocationForm"):
 
@@ -240,6 +237,7 @@ def main():
 
         st.json(signature, expanded=False)
         if submitted:
+            prices = data.get_prices(tickers=universe.ticker.tolist())
             if factor_constraints["factors"]:
                 feature_values = data.get_factors(
                     *factor_constraints["factors"],

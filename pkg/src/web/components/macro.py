@@ -3,18 +3,18 @@
 
 import streamlit as st
 from pkg.src.core import data
-from .charts import line
+from pkg.src.misc import charts
 
 
 def make_yield_curve():
     with st.spinner(text="Loading data..."):
         yield_curve = {"T10Y2Y": "10Y-2Y", "T10Y3M": "10Y-3M"}
-
         yield_curve_data = data.get_macro(list(yield_curve.keys())).loc["2019":]
         yield_curve_data = yield_curve_data.rename(columns=yield_curve)
-        fig = line(yield_curve_data)
-
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(
+            charts.create_lineplot(yield_curve_data, yaxis_tickformat=".2f"),
+            use_container_width=True,
+        )
 
 
 def make_yield_curve2():
@@ -32,12 +32,12 @@ def make_yield_curve2():
         "DGS30": "30Y",
     }
     with st.spinner(text="Loading data..."):
-
         yield_curve_data = data.get_macro(list(yield_curve.keys()))
         yield_curve_data = yield_curve_data.rename(columns=yield_curve).loc["2019":]
-        fig = line(yield_curve_data)
-
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(
+            charts.create_lineplot(yield_curve_data, yaxis_tickformat=".2f"),
+            use_container_width=True,
+        )
 
 
 def make_inflation_linked():
@@ -49,8 +49,9 @@ def make_inflation_linked():
         "DFII30": "30Y",
     }
     with st.spinner(text="Loading data..."):
-
         yield_curve_data = data.get_macro(list(yield_curve.keys()))
         yield_curve_data = yield_curve_data.rename(columns=yield_curve).loc["2019":]
-        fig = line(yield_curve_data)
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(
+            charts.create_lineplot(yield_curve_data, yaxis_tickformat=".2f"),
+            use_container_width=True,
+        )

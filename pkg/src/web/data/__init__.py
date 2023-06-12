@@ -13,3 +13,12 @@ def get_prices(*args, **kwargs) -> pd.DataFrame:
 @st.cache_data()
 def get_factors(*args, **kwargs) -> pd.DataFrame:
     return factors.multi.multi_factor(tickers=kwargs.get("tickers"), features=args)
+
+
+@st.cache_data()
+def get_vix() -> pd.DataFrame:
+    return data.get_prices(tickers="^VIX")
+
+@st.cache_data()
+def get_oecd_us_lei():
+    return data.get_oecd_us_leading_indicator()
