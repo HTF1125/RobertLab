@@ -9,7 +9,7 @@ import numpy as np
 import pandas as pd
 from . import objectives
 from .. import metrics
-from ..metrics.utils import cov_to_corr
+from ..metrics import cov_to_corr
 
 
 logger = logging.getLogger(__name__)

@@ -1,49 +1,17 @@
 """ROBERT"""
 import warnings
-from typing import Optional, Callable, Tuple, Dict, Any, List
+from typing import Optional, Tuple, Dict, Any, List
 from functools import partial
 import pandas as pd
+from pkg.src.core.portfolios import Optimizer
+from pkg.src import data
 from .base import Strategy
-from ..portfolios import Optimizer
-
-
-def dict_to_signature_string(data):
-    # Sort dictionary by keys
-    sorted_data = sorted(data.items())
-
-    # Convert key-value pairs to a list of strings
-    pairs = [f"{key}={value}" for key, value in sorted_data]
-
-    # Join the list of strings with a delimiter
-    signature_string = "&".join(pairs)
-
-    return signature_string
-
-
-class Backtest:
-    def __call__(self, func) -> Callable:
-        def wrapper(cls, **kwargs):
-            name = kwargs.pop("name", f"Strategy-{len(cls.strategies)}")
-            if name in cls.strategies:
-                warnings.warn(message=f"{name} already backtested.")
-                return
-            strategy = Strategy(
-                prices=kwargs.pop("prices", cls.prices),
-                start=kwargs.pop("start", cls.start),
-                end=kwargs.pop("end", cls.end),
-                frequency=kwargs.pop("frequency", cls.frequency),
-                commission=kwargs.pop("commission", cls.commission),
-                shares_frac=kwargs.pop("shares_frac", cls.shares_frac),
-                rebalance=partial(func, cls, **kwargs),
-            )
-
-            cls.strategies[name] = strategy
-            return strategy
-
-        return wrapper
 
 
 class BacktestManager:
+
+    num_strategies = 1
+
     @classmethod
     def from_universe(
         cls,
@@ -54,44 +22,32 @@ class BacktestManager:
         frequency: str = "M",
         shares_frac: Optional[int] = None,
     ) -> "BacktestManager":
-        try:
-            from core import data
-
-            if name == "USSECTORETF":
-                prices = data.get_prices(
-                    tickers="XLC, XLY, XLP, XLE, XLF, XLV, XLI, XLB, XLRE, XLK, XLU, GLD, BIL",
-                )
-            else:
-                prices = data.get_prices("ACWI, BND")
-            return cls(
-                prices=prices,
-                start=start,
-                end=end,
-                commission=commission,
-                frequency=frequency,
-                shares_frac=shares_frac,
+        if name == "USSECTORETF":
+            prices = data.get_prices(
+                tickers="XLC, XLY, XLP, XLE, XLF, XLV, XLI, XLB, XLRE, XLK, XLU, GLD, BIL",
             )
-        except ImportError as exc:
-            raise ImportError() from exc
+        else:
+            prices = data.get_prices("ACWI, BND")
+        return cls(
+            prices=prices,
+            start=start,
+            end=end,
+            commission=commission,
+            frequency=frequency,
+            shares_frac=shares_frac,
+        )
 
     def reset_strategies(self) -> None:
         del self.strategies
         self.strategies = {}
 
     def set_universe(self, name="USSECTORETF") -> "BacktestManager":
-        try:
-            from ...core import data
-
-            if name == "USSECTORETF":
-                self.prices = data.get_prices(
-                    tickers="XLC, XLY, XLP, XLE, XLF, XLV, XLI, XLB, XLRE, XLK, XLU, GLD, BIL",
-                )
-            else:
-                self.prices = data.get_prices("ACWI, BND")
-            # self.strategies = {}
-        except ImportError as exc:
-            raise ImportError() from exc
-
+        if name == "USSECTORETF":
+            self.prices = data.get_prices(
+                tickers="XLC, XLY, XLP, XLE, XLF, XLV, XLI, XLB, XLRE, XLK, XLU, GLD, BIL",
+            )
+        else:
+            self.prices = data.get_prices("ACWI, BND")
         return self
 
     def __init__(
@@ -111,35 +67,79 @@ class BacktestManager:
         self.shares_frac = shares_frac
         self.strategies: Dict[str, Strategy] = dict()
 
-    @Backtest()
-    def Base(
+    def run(
         self,
+        name: Optional[str] = None,
+        objective: str = "uniform_allocation",
+        factor_values: Optional[pd.DataFrame] = None,
+        factor_bounds: Tuple[Optional[float], Optional[float]] = (0.0, 1.0),
+        optimizer_constraints: Optional[Dict[str, Tuple]] = None,
+        specific_constraints: Optional[List[Dict[str, Any]]] = None,
+        **kwargs,
+    ) -> Strategy:
+        if name is None:
+            name = f"Strategy-{self.num_strategies}"
+            if name in self.strategies:
+                raise ValueError("strategy `{name}` already backtested.")
+        if optimizer_constraints is None:
+            optimizer_constraints = {}
+        if specific_constraints is None:
+            specific_constraints = []
+
+        strategy = Strategy(
+            prices=kwargs.pop("prices", self.prices),
+            start=kwargs.pop("start", self.start),
+            end=kwargs.pop("end", self.end),
+            frequency=kwargs.pop("frequency", self.frequency),
+            commission=kwargs.pop("commission", self.commission),
+            shares_frac=kwargs.pop("shares_frac", self.shares_frac),
+            rebalance=partial(
+                self.rebalance,
+                objective=objective,
+                factor_values=factor_values,
+                factor_bounds=factor_bounds,
+                optimizer_constraints=optimizer_constraints,
+                specific_constraints=specific_constraints,
+            ),
+        )
+        self.strategies[name] = strategy
+        self.num_strategies += 1
+        return strategy
+
+    @staticmethod
+    def rebalance(
         strategy: Strategy,
         objective: str = "uniform_allocation",
-        feature_values: Optional[pd.DataFrame] = None,
-        feature_bounds: Tuple[Optional[float], Optional[float]] = (0.0, 1.0),
-        optimizer_constraints: Dict[str, Tuple] = {},
-        specific_constraints: List[Dict[str, Any]] = [],
+        factor_values: Optional[pd.DataFrame] = None,
+        factor_bounds: Tuple[Optional[float], Optional[float]] = (0.0, 1.0),
+        optimizer_constraints: Optional[Dict[str, Tuple]] = None,
+        specific_constraints: Optional[List[Dict[str, Any]]] = None,
     ) -> pd.Series:
-        opt = Optimizer.from_prices(
-            prices=strategy.prices, **optimizer_constraints
-        ).set_specific_constraints(specific_constraints=specific_constraints)
-        if feature_values is not None:
-            if feature_bounds is None:
+        """rebalance function callable"""
+
+        if optimizer_constraints is None:
+            optimizer_constraints = {}
+
+        opt = Optimizer.from_prices(prices=strategy.prices, **optimizer_constraints)
+
+        if specific_constraints is not None:
+            opt.set_specific_constraints(specific_constraints=specific_constraints)
+
+        if factor_values is not None:
+            if factor_bounds is None:
                 warnings.warn("Must specify percentile when feature is passed.")
-            current_feature_values = (
-                feature_values.loc[strategy.date]
+            curr_factor_values = (
+                factor_values.loc[strategy.date]
                 .reindex(index=opt.assets, fill_value=0)
                 .fillna(0)
             )
-            opt.set_factor_constraints(
-                values=current_feature_values, bounds=feature_bounds
-            )
+            opt.set_factor_constraints(values=curr_factor_values, bounds=factor_bounds)
         if not hasattr(opt, objective):
             warnings.warn(message="check you allocation objective")
             return opt.uniform_allocation()
         weight = getattr(opt, objective)()
         return weight
+
 
     @property
     def values(self) -> pd.DataFrame:

@@ -3,17 +3,18 @@ from typing import Dict, Tuple, List, Any, Optional, Callable
 import numpy as np
 import pandas as pd
 import streamlit as st
-from .. import components, data, state
 from pkg.src.core import factors
-
+from pkg.src.web import components, data, state
 
 def get_factor_constraints():
     params = {}
-
     params["factors"] = st.multiselect(
         label="Factor List",
-        options=[func for func in dir(factors) if callable(getattr(factors, func))],
-        format_func=lambda x: "".join(word.capitalize() for word in x.split("_")),
+        options=[
+            name
+            for name in dir(factors.single)
+            if name in getattr(factors.single, "__all__", [])
+        ]
     )
     params["bounds"] = get_bounds(
         label="Factor Weight",
@@ -21,7 +22,7 @@ def get_factor_constraints():
         max_value=1.0,
         step=0.1,
         format_func=lambda x: f"{x:.0%}",
-        help="Select range for your factor weight."
+        help="Select range for your factor weight.",
     )
 
     return params
@@ -145,11 +146,12 @@ def get_optimizer_constraints():
                 continue
             constraints[name] = bounds
 
-
     return constraints
 
 
-def get_specific_constraints(universe: pd.DataFrame, num_columns: int = 5) -> List[Dict]:
+def get_specific_constraints(
+    universe: pd.DataFrame, num_columns: int = 5
+) -> List[Dict]:
     constraints = []
     asset_classes = universe["assetclass"].unique()
     final_num_columns = min(num_columns, len(asset_classes))
@@ -203,13 +205,9 @@ def main():
     with st.expander(label="See universe details:"):
         st.dataframe(universe, height=150, use_container_width=True)
 
-
     with st.form("AssetAllocationForm"):
-
-
         # Backtest Parameters
         backtest_parameters = get_strategy_parameters()
-
 
         # Asset Allocation Constraints
         with st.expander(label="Asset Allocation Constraints:"):
@@ -224,41 +222,39 @@ def main():
         with st.expander(label="Factor Implementation:"):
             factor_constraints = get_factor_constraints()
 
-
         submitted = st.form_submit_button(label="Backtest", type="primary")
         signature = {
-                "strategy": backtest_parameters,
-                "constraints" : {
-                    "optimizer": optimizer_constraints,
-                    "factor": factor_constraints,
-                    "specific" : specific_constraints
-                }
-            }
+            "strategy": backtest_parameters,
+            "constraints": {
+                "optimizer": optimizer_constraints,
+                "factor": factor_constraints,
+                "specific": specific_constraints,
+            },
+        }
 
         st.json(signature, expanded=False)
         if submitted:
             prices = data.get_prices(tickers=universe.ticker.tolist())
             if factor_constraints["factors"]:
-                feature_values = data.get_factors(
-                    *factor_constraints["factors"],
+                factor_values = factors.multi.MultiFactors(
                     tickers=universe.ticker.tolist(),
-                )
+                    factor_list=factor_constraints["factors"],
+                ).standard_percentile
             else:
-                feature_values = None
+                factor_values = None
 
             with st.spinner(text="Backtesting in progress..."):
-                state.strategy.get_backtestmanager().Base(
+                state.get_backtestmanager().run(
                     **backtest_parameters,
                     optimizer_constraints=optimizer_constraints,
                     specific_constraints=specific_constraints,
                     prices=prices,
-                    feature_values=feature_values,
-                    feature_bounds=factor_constraints["bounds"],
-
+                    factor_values=factor_values,
+                    factor_bounds=factor_constraints["bounds"],
                 )
 
     st.button(
         label="Clear All Strategies",
-        on_click=state.strategy.get_backtestmanager().reset_strategies,
+        on_click=state.get_backtestmanager().reset_strategies,
     )
     components.performances.main()

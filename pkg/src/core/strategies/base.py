@@ -18,7 +18,6 @@ class Strategy:
         initial_investment: float = 10_000.0,
         commission: int = 10,
         shares_frac: Optional[int] = None,
-        prices_bm: Optional[pd.Series] = None,
     ) -> None:
         """
         Initialize a Strategy object.
@@ -42,43 +41,11 @@ class Strategy:
         self.data = DataStore()
         self.start = start or str(self.total_prices.index[0])
         self.end = end or str(self.total_prices.index[-1])
+        self.freq = frequency
         self.date: pd.Timestamp = pd.Timestamp(
             str(self.total_prices.loc[: self.start].index[-1])
         )
-        self.simulate(
-            start=self.start,
-            end=self.end,
-            freq=frequency,
-        )
-
-        if prices_bm is None:
-            self.prices_bm = self.calculate_benchmark()
-        else:
-            self.prices_bm = prices_bm
-
-        self.prices_bm = self.prices_bm.reindex(self.value.index).ffill().dropna()
-        self.prices_bm = self.prices_bm / self.prices_bm.iloc[0] * initial_investment
-
-    def calculate_benchmark(self) -> pd.Series:
-        """
-        Calculate the benchmark returns.
-
-        Returns:
-            pd.Series: Benchmark returns.
-        """
-        return (
-            self.prices.pct_change()
-            .fillna(0)
-            .multiply(
-                self.prices.isna()
-                .multiply(-1)
-                .add(1)
-                .divide(self.prices.isna().multiply(-1).add(1).sum(axis=1), axis=0)
-            )
-            .sum(axis=1)
-            .add(1)
-            .cumprod()
-        )
+        self.simulate()
 
     ################################################################################
 
@@ -135,80 +102,65 @@ class Strategy:
         return pd.DataFrame(self.data.get("weights")).T
 
     ################################################################################
-    @staticmethod
-    def generate_rebalance_dates(
-        start: str, end: str, freq: str
-    ) -> Iterator[pd.Timestamp]:
+    def generate_rebalance_dates(self) -> Iterator[pd.Timestamp]:
         """
         Generate rebalance dates between the given start and end dates with the specified frequency.
-
-        Args:
-            start (str): Start date in string format.
-            end (str): End date in string format.
-            freq (str): Frequency of rebalancing.
 
         Yields:
             Iterator[pd.Timestamp]: Iterator that yields rebalance dates.
         """
-        for rebalance_date in [
-            pd.Timestamp(start),
-            *pd.date_range(start=start, end=end, freq=freq, inclusive="neither"),
-            pd.Timestamp(end) - pd.tseries.offsets.DateOffset(days=1),
-        ]:
+        for rebalance_date in pd.date_range(
+            start=self.start, end=self.end, freq=self.freq
+        ):
             yield rebalance_date
 
-    def simulate(self, start: str, end: str, freq: str = "M") -> None:
+    def simulate(self) -> None:
         """
         Simulate the strategy.
-
-        Args:
-            start (str): Start date for the simulation.
-            end (str): End date for the simulation.
-            freq (str, optional): Frequency of rebalancing. Defaults to "M".
         """
         cash = self.initial_investment
         shares = pd.Series(dtype=float)
-        allocations = pd.Series(dtype=float)
         # generate rebalance dates
-        rebalance_dates = self.generate_rebalance_dates(start=start, end=end, freq=freq)
+        rebalance_dates = self.generate_rebalance_dates()
         rebalance_date = next(rebalance_dates)
-        for date in self.total_prices.loc[start:end].index:
+        for date in self.total_prices.loc[self.start : self.end].index:
             capitals = shares.multiply(self.total_prices.loc[date]).dropna()
             value = sum(capitals) + cash
             weights = capitals.divide(value)
-
-            if date > rebalance_date:
+            if date > rebalance_date or value == cash:
                 allocations = self.rebalance(strategy=self)
-                if not isinstance(allocations, pd.Series):
-                    continue
-                self.data["allocations"][date] = allocations
-                try:
-                    rebalance_date = next(rebalance_dates)
+                if isinstance(allocations, pd.Series):
+                    self.data["allocations"][self.date] = allocations
                     target_capials = value * allocations
-                    target_shares = target_capials.divide(
-                        self.total_prices.loc[date]
-                    )
+                    target_shares = target_capials.divide(self.total_prices.loc[date])
                     if self.shares_frac is not None:
                         target_shares = target_shares.round(self.shares_frac)
-
                     trade_shares = target_shares.subtract(shares, fill_value=0)
                     trade_shares = trade_shares[trade_shares != 0]
                     self.data["trades"][date] = trade_shares
-                    trade_capitals = trade_shares.multiply(
-                        self.total_prices.loc[date]
-                    )
-                    trade_capitals += trade_capitals.multiply(
-                        self.commission / 1_000
-                    )
+                    trade_capitals = trade_shares.multiply(self.total_prices.loc[date])
+                    trade_capitals += trade_capitals.multiply(self.commission / 1_000)
                     cash -= trade_capitals.sum()
                     shares = target_shares
+                try:
+                    if date > rebalance_date:
+                        rebalance_date = next(rebalance_dates)
                 except StopIteration:
-                    rebalance_date = None
+                    rebalance_date = self.total_prices.loc[: self.end].index[-2]
+
             self.date = date
             self.data["value"][self.date] = value
             self.data["shares"][self.date] = shares
             self.data["cash"][self.date] = cash
             self.data["weights"][self.date] = weights
+
+    def information_coefficient(self) -> float:
+        from scipy import stats
+
+        chg = self.allocations - self.allocations.mean()
+        fwd = self.total_prices.loc[self.allocations.index].pct_change().shift(-1)
+        joined = pd.concat([chg.stack(), fwd.stack()], axis=1).dropna()
+        return stats.spearmanr(joined.iloc[:, 0], joined.iloc[:, 1])[0]
 
     @property
     def analytics(self) -> pd.Series:
@@ -220,23 +172,19 @@ class Strategy:
         """
         return pd.Series(
             data={
-                "AnnReturn": round(metrics.to_ann_return(self.value), 4),
-                "AnnVolatility": round(metrics.to_ann_volatility(self.value), 4),
-                "SharpeRatio": round(metrics.to_sharpe_ratio(self.value), 4),
-                "SortinoRatio": round(metrics.to_sortino_ratio(self.value), 4),
-                "CalmarRatio": round(metrics.to_calmar_ratio(self.value), 4),
-                "TailRatio": round(metrics.to_tail_ratio(self.value), 4),
-                "JensensAlpha": round(
-                    metrics.to_jensens_alpha(self.value, self.prices_bm), 4
-                ),
-                "TreynorRatio": round(
-                    metrics.to_treynor_ratio(self.value, self.prices_bm), 4
-                ),
-                "MaxDrawdown": round(metrics.to_max_drawdown(self.value), 4),
-                "Skewness": round(metrics.to_skewness(self.value), 4),
-                "Kurtosis": round(metrics.to_kurtosis(self.value), 4),
-                "VaR": round(metrics.to_value_at_risk(self.value), 4),
-                "CVaR": round(metrics.to_conditional_value_at_risk(self.value), 4),
+                "AnnReturn": metrics.to_ann_return(self.value),
+                "AnnVolatility": metrics.to_ann_volatility(self.value),
+                "SharpeRatio": metrics.to_sharpe_ratio(self.value),
+                "SortinoRatio": metrics.to_sortino_ratio(self.value),
+                "CalmarRatio": metrics.to_calmar_ratio(self.value),
+                "TailRatio": metrics.to_tail_ratio(self.value),
+                # "JensensAlpha": metrics.to_jensens_alpha(self.value, self.prices_bm),
+                # "TreynorRatio": metrics.to_treynor_ratio(self.value, self.prices_bm),
+                "MaxDrawdown": metrics.to_max_drawdown(self.value),
+                "Skewness": metrics.to_skewness(self.value),
+                "Kurtosis": metrics.to_kurtosis(self.value),
+                "VaR": metrics.to_value_at_risk(self.value),
+                "CVaR": metrics.to_conditional_value_at_risk(self.value),
             }
         )
 

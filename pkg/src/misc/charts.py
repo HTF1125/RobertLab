@@ -109,7 +109,7 @@ def create_barplot(
         xaxis_title=xaxis_title,
         yaxis_title=yaxis_title,
         hovemode=hovemode,
-        # hovertemplate=hovertemplate,
+        hovertemplate=hovertemplate,
         xaxis_tickformat=xaxis_tickformat,
         yaxis_tickformat=yaxis_tickformat,
         legend_orientation=legend_orientation,

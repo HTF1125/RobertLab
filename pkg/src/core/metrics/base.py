@@ -1,6 +1,6 @@
 """ROBERT"""
 import warnings
-from typing import Union, Optional, List
+from typing import Union, Optional, List, Tuple
 from typing import overload
 import numpy as np
 import pandas as pd
@@ -94,7 +94,6 @@ def to_pri_return(prices: pd.DataFrame) -> pd.DataFrame:
 def to_pri_return(
     prices: Union[pd.DataFrame, pd.Series]
 ) -> Union[pd.DataFrame, pd.Series]:
-
     if isinstance(prices, pd.DataFrame):
         return prices.apply(to_pri_return)
 
@@ -1025,21 +1024,98 @@ def to_minmax_scalar(factors: pd.Series) -> pd.Series:
     return std * (max_scalar - min_scalar) + min_scalar
 
 
-def to_multi_factor(factors: List[pd.DataFrame]) -> pd.DataFrame:
-    """
-    The function takes a list of pandas dataframes, stacks them, takes the mean, unstacks them, and
-    applies a percentile function to each row.
+def cov_to_corr(cov: pd.DataFrame) -> pd.DataFrame:
+    """_summary_
 
-    :param factors: A list of pandas DataFrames representing different factors
-    :type factors: List[pd.DataFrame]
-    :return: The function `to_multi_factor` returns a pandas DataFrame that is the result of
-    concatenating and averaging the input factors, and then applying the `to_standard_percentile`
-    function to each row of the resulting DataFrame.
+    Args:
+        cov (pd.DataFrame): _description_
+
+    Returns:
+        pd.DataFrame: _description_
     """
-    if len(factors) == 1:
-        return factors[0]
-    return (
-        pd.concat(objs=[factor.stack() for factor in factors], axis=1)
-        .mean(axis=1).unstack()
-        .apply(func=to_standard_percentile, axis=1)
+    vol = np.sqrt(np.diag(cov))
+    corr = cov / np.outer(vol, vol)
+    corr[corr < -1], corr[corr > 1] = -1, 1
+    return corr
+
+
+def recursive_bisection(sorted_tree) -> List[Tuple[List[int], List[int]]]:
+    """_summary_
+
+    Args:
+        sorted_tree (_type_): _description_
+
+    Returns:
+        List[Tuple[List[int], List[int]]]: _description_
+    """
+    if len(sorted_tree) < 2:
+        return
+
+    left = sorted_tree[0 : int(len(sorted_tree) / 2)]
+    right = sorted_tree[int(len(sorted_tree) / 2) :]
+
+    if len(left) > 2 and len(right) > 2:
+        return [(left, right), recursive_bisection(left), recursive_bisection(right)]
+    return (left, right)
+
+
+def get_cluster_assets(clusters, node, num_assets) -> List:
+    """_summary_
+
+    Args:
+        clusters (_type_): _description_
+        node (_type_): _description_
+        num_assets (_type_): _description_
+
+    Returns:
+        List: _description_
+    """
+    if node < num_assets:
+        return [int(node)]
+    row = clusters[int(node - num_assets)]
+    return get_cluster_assets(clusters, row[0], num_assets) + get_cluster_assets(
+        clusters, row[1], num_assets
     )
+
+
+@overload
+def to_quantile(
+    data: pd.Series,
+    num_quantiles: int = 5,
+    zero_aware: bool = False,
+) -> pd.Series:
+    ...
+
+
+@overload
+def to_quantile(
+    data: pd.DataFrame,
+    num_quantiles: int = 5,
+    zero_aware: bool = False,
+) -> pd.DataFrame:
+    ...
+
+
+def to_quantile(
+    data: Union[pd.Series, pd.DataFrame],
+    num_quantiles: int = 5,
+    zero_aware: bool = False,
+) -> Union[pd.Series, pd.DataFrame]:
+    if isinstance(data, pd.DataFrame):
+        return data.apply(
+            to_quantile, axis=1, num_quantiles=num_quantiles, zero_aware=zero_aware
+        )
+    data = data.dropna()
+    if len(data) >= num_quantiles:
+        if zero_aware:
+            posnum_quantiles = (
+                pd.cut(data[data >= 0], num_quantiles // 2, labels=False)
+                + num_quantiles // 2
+                + 1
+            )
+            negnum_quantiles = (
+                pd.cut(data[data < 0], num_quantiles // 2, labels=False) + 1
+            )
+            return pd.concat([posnum_quantiles, negnum_quantiles]).sort_index()
+        return pd.qcut(x=data, q=num_quantiles, labels=False).add(1)
+    return pd.Series(dtype=float)

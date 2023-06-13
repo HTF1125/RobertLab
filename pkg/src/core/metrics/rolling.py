@@ -1,7 +1,8 @@
 """ROBERT"""
-from typing import Union
+from typing import Union, Iterable
 from typing import overload
 import pandas as pd
+from ...utils import is_iterable
 
 
 @overload
@@ -32,11 +33,27 @@ def to_momentum(
     return cache
 
 
-
-
 def to_standard_scalar(data: pd.DataFrame, window: int = 252) -> pd.DataFrame:
     mean = data.rolling(window=window).mean()
     std = data.rolling(window=window).std()
     return (data - mean) / std
 
 
+
+def to_forward_returns(
+    prices: pd.DataFrame,
+    periods: Union[int, Iterable] = 21,
+) -> pd.DataFrame:
+    if isinstance(periods, Iterable):
+        out = pd.concat(
+            objs=[
+                to_forward_returns(prices=prices, periods=int(period)).stack()
+                for period in periods
+            ],
+            axis=1,
+        )
+        out.columns = list(periods)
+        out.index.names = ["Date", "Ticker"]
+        return out
+    else:
+        return prices.pct_change(periods=periods).shift(-periods)

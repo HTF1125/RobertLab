@@ -2,7 +2,7 @@
 
 
 import streamlit as st
-from pkg.src.core import data
+from pkg.src import data
 from pkg.src.misc import charts
 
 

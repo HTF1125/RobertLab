@@ -5,12 +5,12 @@ from .. import state
 
 
 def main():
-    if not state.strategy.get_backtestmanager().values.empty:
-        analytics = state.strategy.get_backtestmanager().analytics
+    if not state.get_backtestmanager().values.empty:
+        analytics = state.get_backtestmanager().analytics
         st.write(analytics.T)
 
         fig = make_subplots(rows=1, cols=1)
-        for name, strategy in state.strategy.get_backtestmanager().strategies.items():
+        for name, strategy in state.get_backtestmanager().strategies.items():
             # Add line chart for prices to the first subplot
             val = strategy.value.resample("M").last()
             price_trace = Scatter(
@@ -39,12 +39,12 @@ def main():
 
         st.plotly_chart(fig, use_container_width=True)
 
-    for name, strategy in state.strategy.get_backtestmanager().strategies.items():
+    for name, strategy in state.get_backtestmanager().strategies.items():
         with st.expander(label=name, expanded=False):
             st.button(
                 label="Delete",
                 key=name,
-                on_click=state.strategy.get_backtestmanager().drop_strategy,
+                on_click=state.get_backtestmanager().drop_strategy,
                 kwargs={"name": name},
             )
 
@@ -68,14 +68,14 @@ def main():
                 name="Strategy",
                 hovertemplate="Date: %{x}<br>Price: %{y}",
             )
-            price_bm_trace = Scatter(
-                x=strategy.prices_bm.index,
-                y=strategy.prices_bm.values,
-                name="Benchmark",
-                hovertemplate="Date: %{x}<br>Price: %{y}",
-            )
+            # price_bm_trace = Scatter(
+            #     x=strategy.prices_bm.index,
+            #     y=strategy.prices_bm.values,
+            #     name="Benchmark",
+            #     hovertemplate="Date: %{x}<br>Price: %{y}",
+            # )
             fig.add_trace(price_trace, row=1, col=1)
-            fig.add_trace(price_bm_trace, row=1, col=1)
+            # fig.add_trace(price_bm_trace, row=1, col=1)
             fig.update_layout(
                 title="Performance",
                 xaxis_title="Date",

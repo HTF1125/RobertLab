@@ -1,20 +1,22 @@
 """ROBERT"""
-from typing import List, Dict, Any, Tuple
+from typing import List, Dict, Any
 from datetime import datetime, timedelta
 import pandas as pd
 import streamlit as st
-from pkg.src.core import data
-from .. import state
+from pkg.src import data
+from pkg.src.web import state
+
 
 def get_universe() -> pd.DataFrame:
     universe = data.get_universe()
 
-    selected =  st.selectbox(
+    selected = st.selectbox(
         label="Select Investment Universe",
         options=universe.universe.unique(),
         help="Select strategy's investment universe.",
     )
     return universe[universe.universe == selected]
+
 
 def get_date_range():
     left, right = st.columns([1, 1])
@@ -156,11 +158,10 @@ def get_strategy_params() -> Dict[str, Any]:
     return cache
 
 
-
 def get_name() -> str:
-    return str(st.text_input(
-        label="Name",
-        value=f"Strategy-{len(state.strategy.get_backtestmanager().strategies)}",
-    ))
-
-
+    return str(
+        st.text_input(
+            label="Name",
+            value=f"Strategy-{state.get_backtestmanager().num_strategies}",
+        )
+    )

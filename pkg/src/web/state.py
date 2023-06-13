@@ -1,5 +1,4 @@
 """ROBERT"""
-import time
 import streamlit as st
 from pkg.src.core.strategies import BacktestManager
 
