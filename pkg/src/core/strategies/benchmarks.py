@@ -3,6 +3,11 @@ from typing import Optional
 import pandas as pd
 from pkg.src.data import get_prices
 
+__all__ = [
+    "Global64",
+    "UnitedStates64",
+]
+
 
 class Benchmark:
 
@@ -67,3 +72,5 @@ class UnitedStates64(Benchmark):
         allocations = pd.Series({"SPY": 0.6, "AGG": 0.4})
         prices = get_prices(tickers=list(allocations.keys())).ffill().dropna()
         return cls(prices=prices, allocations=allocations, name=name)
+
+
