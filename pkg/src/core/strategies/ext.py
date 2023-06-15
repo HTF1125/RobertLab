@@ -1,15 +1,59 @@
 """ROBERT"""
 import warnings
 from typing import Optional, Tuple, Dict, Any, List
-from functools import partial
 import pandas as pd
 from pkg.src.core.portfolios import Optimizer
 from pkg.src import data
 from .base import Strategy
 
 
-class BacktestManager:
+class Rebalance:
+    def __init__(
+        self,
+        objective: str = "uniform_allocation",
+        factor_values: Optional[pd.DataFrame] = None,
+        factor_bounds: Tuple[Optional[float], Optional[float]] = (0.0, 1.0),
+        optimizer_constraints: Optional[Dict[str, Tuple]] = None,
+        specific_constraints: Optional[List[Dict[str, Any]]] = None,
+    ) -> None:
+        self.objective = objective
+        self.factor_values = factor_values
+        self.factor_bounds = factor_bounds
+        self.optimizer_constraints = optimizer_constraints or {}
+        self.specific_constraints = specific_constraints or []
 
+    def __call__(self, strategy: Strategy) -> pd.Series:
+        """Calculate portfolio allocation weights based on the Strategy instance.
+
+        Args:
+            strategy (Strategy): Strategy instance.
+
+        Returns:
+            pd.Series: portfolio allocation weights.
+        """
+        opt = Optimizer.from_prices(
+            prices=strategy.prices, **self.optimizer_constraints
+        ).set_specific_constraints(specific_constraints=self.specific_constraints)
+
+        if self.factor_values is not None:
+            if self.factor_bounds is None:
+                warnings.warn("Must specify percentile when feature is passed.")
+            curr_factor_values = (
+                self.factor_values.loc[strategy.date]
+                .reindex(index=opt.assets, fill_value=0)
+                .fillna(0)
+            )
+            opt.set_factor_constraints(
+                values=curr_factor_values, bounds=self.factor_bounds
+            )
+        if not hasattr(opt, self.objective):
+            warnings.warn(message="check you allocation objective")
+            return opt.uniform_allocation()
+        weight = getattr(opt, self.objective)()
+        return weight
+
+
+class BacktestManager:
     num_strategies = 1
 
     @classmethod
@@ -93,8 +137,7 @@ class BacktestManager:
             frequency=kwargs.pop("frequency", self.frequency),
             commission=kwargs.pop("commission", self.commission),
             shares_frac=kwargs.pop("shares_frac", self.shares_frac),
-            rebalance=partial(
-                self.rebalance,
+            rebalance=Rebalance(
                 objective=objective,
                 factor_values=factor_values,
                 factor_bounds=factor_bounds,
@@ -105,41 +148,6 @@ class BacktestManager:
         self.strategies[name] = strategy
         self.num_strategies += 1
         return strategy
-
-    @staticmethod
-    def rebalance(
-        strategy: Strategy,
-        objective: str = "uniform_allocation",
-        factor_values: Optional[pd.DataFrame] = None,
-        factor_bounds: Tuple[Optional[float], Optional[float]] = (0.0, 1.0),
-        optimizer_constraints: Optional[Dict[str, Tuple]] = None,
-        specific_constraints: Optional[List[Dict[str, Any]]] = None,
-    ) -> pd.Series:
-        """rebalance function callable"""
-
-        if optimizer_constraints is None:
-            optimizer_constraints = {}
-
-        opt = Optimizer.from_prices(prices=strategy.prices, **optimizer_constraints)
-
-        if specific_constraints is not None:
-            opt.set_specific_constraints(specific_constraints=specific_constraints)
-
-        if factor_values is not None:
-            if factor_bounds is None:
-                warnings.warn("Must specify percentile when feature is passed.")
-            curr_factor_values = (
-                factor_values.loc[strategy.date]
-                .reindex(index=opt.assets, fill_value=0)
-                .fillna(0)
-            )
-            opt.set_factor_constraints(values=curr_factor_values, bounds=factor_bounds)
-        if not hasattr(opt, objective):
-            warnings.warn(message="check you allocation objective")
-            return opt.uniform_allocation()
-        weight = getattr(opt, objective)()
-        return weight
-
 
     @property
     def values(self) -> pd.DataFrame:

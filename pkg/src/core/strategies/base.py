@@ -3,10 +3,15 @@ from typing import Optional, Callable, Iterator
 import pandas as pd
 from ..ext.store import DataStore
 from .. import metrics
-
+from . import benchmarks
 
 class Strategy:
     """base strategy"""
+
+
+    def set_benchmark(self, benchmark: benchmarks.Benchmark) -> None:
+        self.benchmakr = benchmark
+
 
     def __init__(
         self,
