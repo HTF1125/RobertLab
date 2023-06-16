@@ -5,6 +5,7 @@ import pandas as pd
 import streamlit as st
 from pkg.src import data
 from pkg.src.web import state
+from pkg.src.core import portfolios
 
 
 def get_universe() -> pd.DataFrame:
@@ -72,25 +73,23 @@ def get_commission() -> int:
     )
 
 
-def get_objective() -> str:
-    options = [
-        "uniform_allocation",
-        "risk_parity",
-        "minimized_correlation",
-        "minimized_volatility",
-        "inverse_variance",
-        "maximized_sharpe_ratio",
-        "hierarchical_risk_parity",
-        "hierarchical_equal_risk_contribution",
-    ]
-    return str(
-        st.selectbox(
-            label="Obj",
-            options=options,
-            index=options.index("uniform_allocation"),
-            format_func=lambda x: x.replace("_", " ").title().replace(" ", ""),
-            help="Select strategy's rebalancing frequency.",
-        )
+def get_objective() -> portfolios.base.BaseOptimizer:
+    return st.selectbox(
+        label="Obj",
+        options=[
+            portfolios.EqualWeight,
+            portfolios.MaxReturn,
+            portfolios.MaxSharpe,
+            portfolios.MinVolatility,
+            portfolios.MinCorrelation,
+            portfolios.InverseVariance,
+            portfolios.RiskParity,
+            portfolios.HierarchicalRiskParity,
+            portfolios.HierarchicalEqualRiskContribution,
+        ],
+        index=0,
+        format_func=lambda x: x.__name__,
+        help="Select strategy's rebalancing frequency.",
     )
 
 

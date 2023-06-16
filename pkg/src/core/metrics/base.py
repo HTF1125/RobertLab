@@ -161,7 +161,7 @@ def to_ann_return(
     prices: Union[pd.DataFrame, pd.Series],
     ann_factor: Union[int, float] = AnnFactor.daily,
 ) -> Union[pd.Series, float]:
-    return (to_log_return(prices=prices).apply(np.exp).mean() - 1) * ann_factor
+    return (np.exp(to_log_return(prices=prices).mean()) - 1) * ann_factor
 
 
 @overload

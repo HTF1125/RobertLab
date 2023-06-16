@@ -71,6 +71,9 @@ class PriceMomentum(Factors):
         )
 
 
+
+
+
 class PriceMomentum1M(PriceMomentum):
     months = 1
 

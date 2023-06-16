@@ -1,8 +1,9 @@
 """ROBERT"""
+from typing import Type
 import warnings
 from typing import Optional, Tuple, Dict, Any, List
 import pandas as pd
-from pkg.src.core.portfolios import Optimizer
+from pkg.src.core import portfolios
 from pkg.src import data
 from .base import Strategy
 
@@ -10,7 +11,7 @@ from .base import Strategy
 class Rebalance:
     def __init__(
         self,
-        objective: str = "uniform_allocation",
+        objective: Type[portfolios.base.BaseOptimizer] = portfolios.EqualWeight,
         factor_values: Optional[pd.DataFrame] = None,
         factor_bounds: Tuple[Optional[float], Optional[float]] = (0.0, 1.0),
         optimizer_constraints: Optional[Dict[str, Tuple]] = None,
@@ -31,9 +32,12 @@ class Rebalance:
         Returns:
             pd.Series: portfolio allocation weights.
         """
-        opt = Optimizer.from_prices(
-            prices=strategy.prices, **self.optimizer_constraints
-        ).set_specific_constraints(specific_constraints=self.specific_constraints)
+
+        opt = (
+            self.objective.from_prices(prices=strategy.prices)
+            .set_bounds(**self.optimizer_constraints)
+            .set_specific_constraints(specific_constraints=self.specific_constraints)
+        )
 
         if self.factor_values is not None:
             if self.factor_bounds is None:
@@ -46,10 +50,10 @@ class Rebalance:
             opt.set_factor_constraints(
                 values=curr_factor_values, bounds=self.factor_bounds
             )
-        if not hasattr(opt, self.objective):
-            warnings.warn(message="check you allocation objective")
-            return opt.uniform_allocation()
-        weight = getattr(opt, self.objective)()
+        # if not hasattr(opt, self.objective):
+        #     warnings.warn(message="check you allocation objective")
+        #     return opt.uniform_allocation()
+        weight = opt()
         return weight
 
 
@@ -129,6 +133,8 @@ class BacktestManager:
             optimizer_constraints = {}
         if specific_constraints is None:
             specific_constraints = []
+
+        print(optimizer_constraints)
 
         strategy = Strategy(
             prices=kwargs.pop("prices", self.prices),

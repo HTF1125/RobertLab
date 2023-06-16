@@ -6,15 +6,34 @@ import streamlit as st
 from pkg.src.core import factors
 from pkg.src.web import components, data, state
 
+
 def get_factor_constraints():
     params = {}
     params["factors"] = st.multiselect(
         label="Factor List",
         options=[
-            name
-            for name in dir(factors.single)
-            if name in getattr(factors.single, "__all__", [])
-        ]
+            factors.PriceMomentum1M,
+            factors.PriceMomentum2M,
+            factors.PriceMomentum3M,
+            factors.PriceMomentum6M,
+            factors.PriceMomentum9M,
+            factors.PriceMomentum12M,
+            factors.PriceMomentum24M,
+            factors.PriceMomentum36M,
+            factors.PriceMomentum6M1M,
+            factors.PriceMomentum6M2M,
+            factors.PriceMomentum9M1M,
+            factors.PriceMomentum9M2M,
+            factors.PriceMomentum12M1M,
+            factors.PriceMomentum12M2M,
+            factors.PriceMomentum24M1M,
+            factors.PriceMomentum24M2M,
+            factors.PriceMomentum36M1M,
+            factors.PriceMomentum36M2M,
+            factors.PriceVolatility1M,
+            factors.PriceVolatility3M,
+        ],
+        format_func=lambda x: x.__name__,
     )
     params["bounds"] = get_bounds(
         label="Factor Weight",
@@ -75,7 +94,7 @@ def get_optimizer_constraints():
     constraints = {}
     kwargs = [
         {
-            "name": "weights_bounds",
+            "name": "weight",
             "label": "Weight Bounds",
             "min_value": 0.0,
             "max_value": 1.0,
@@ -83,7 +102,7 @@ def get_optimizer_constraints():
             "format_func": lambda x: f"{x:.0%}",
         },
         {
-            "name": "return_bounds",
+            "name": "port_return",
             "label": "Return Bounds",
             "min_value": 0.0,
             "max_value": 0.3,
@@ -91,7 +110,7 @@ def get_optimizer_constraints():
             "format_func": lambda x: f"{x:.0%}",
         },
         {
-            "name": "risk_bounds",
+            "name": "port_risk",
             "label": "Risk Bounds",
             "min_value": 0.0,
             "max_value": 0.3,
@@ -99,7 +118,7 @@ def get_optimizer_constraints():
             "format_func": lambda x: f"{x:.0%}",
         },
         {
-            "name": "active_weight_bounds",
+            "name": "active_weight",
             "label": "Active Weight Bounds",
             "min_value": 0.0,
             "max_value": 0.3,
@@ -107,7 +126,7 @@ def get_optimizer_constraints():
             "format_func": lambda x: f"{x:.0%}",
         },
         {
-            "name": "expost_tracking_error_bounds",
+            "name": "expost_tracking_error",
             "label": "Ex-Post Tracking Error Bounds",
             "min_value": 0.0,
             "max_value": 0.1,
@@ -115,7 +134,7 @@ def get_optimizer_constraints():
             "format_func": lambda x: f"{x:.0%}",
         },
         {
-            "name": "exante_tracking_error_bounds",
+            "name": "exante_tracking_error",
             "label": "Ex-Ante Tracking Error Bounds",
             "min_value": 0.0,
             "max_value": 0.1,
@@ -238,7 +257,7 @@ def main():
             if factor_constraints["factors"]:
                 factor_values = factors.multi.MultiFactors(
                     tickers=universe.ticker.tolist(),
-                    factor_list=factor_constraints["factors"],
+                    factors=factor_constraints["factors"],
                 ).standard_percentile
             else:
                 factor_values = None

@@ -1,7 +1,7 @@
 """ROBERT"""
 import logging
 import warnings
-from typing import Optional, Callable, Dict, List, Tuple, Any
+from typing import Optional, Callable, Dict, List, Tuple, Any, TypeVar
 from functools import partial
 from scipy.optimize import minimize
 from scipy.cluster.hierarchy import linkage, to_tree
@@ -12,8 +12,22 @@ from . import objectives
 from .. import metrics
 from ..metrics import cov_to_corr
 
+OptimizerType = TypeVar('T', bound='BaseOptimizer')
+
 
 logger = logging.getLogger(__name__)
+
+__all__ = [
+    "MaxReturn",
+    "MinVolatility",
+    "MinCorrelation",
+    "MaxSharpe",
+    "RiskParity",
+    "HierarchicalRiskParity",
+    "HierarchicalEqualRiskContribution",
+    "EqualWeight",
+    "InverseVariance",
+]
 
 
 class OptimizerMetrics:
@@ -152,7 +166,7 @@ class BaseOptimizer(BaseProperty):
 
     def set_bounds(
         self,
-        weight: Optional[Tuple[Optional[float], Optional[float]]] = (0, 1),
+        weight: Optional[Tuple[Optional[float], Optional[float]]] = (0., 1.),
         active_weight: Optional[Tuple[Optional[float], Optional[float]]] = None,
         port_return: Optional[Tuple[Optional[float], Optional[float]]] = None,
         port_risk: Optional[Tuple[Optional[float], Optional[float]]] = None,
@@ -219,7 +233,7 @@ class BaseOptimizer(BaseProperty):
 
     def set_max_weight(self, max_weight: float) -> None:
         """set minimum weight constraint"""
-        self.constraints["min_weight"] = {
+        self.constraints["max_weight"] = {
             "type": "ineq",
             "fun": lambda w: max_weight - w,
         }
@@ -576,7 +590,7 @@ class Hierarchical(RiskParity):
         return cache
 
 
-class HRP(Hierarchical):
+class HierarchicalRiskParity(Hierarchical):
     def __call__(self, linkage_method: str = "single") -> pd.Series:
         if self.num_assets <= 2:
             return super().__call__()
@@ -615,7 +629,7 @@ class HRP(Hierarchical):
         )
 
 
-class HERC(Hierarchical):
+class HierarchicalEqualRiskContribution(Hierarchical):
     def __call__(self, linkage_method: str = "single") -> pd.Series:
         """calculate herc weights"""
         if self.num_assets <= 2:
@@ -658,6 +672,11 @@ class HERC(Hierarchical):
 
 
 class EqualWeight(BaseOptimizer):
+
+    def __str__(self) -> str:
+        return "EqualWeight"
+    def __repr__(self) -> str:
+        return "EqualWeight"
     def __call__(self) -> pd.Series:
         """_summary_
 
