@@ -1,7 +1,7 @@
 """ROBERT"""
 import logging
 import warnings
-from typing import Optional, Callable, Dict, List, Tuple, Any, TypeVar
+from typing import Optional, Callable, Dict, List, Tuple, Any
 from functools import partial
 from scipy.optimize import minimize
 from scipy.cluster.hierarchy import linkage, to_tree
@@ -11,9 +11,6 @@ import pandas as pd
 from . import objectives
 from .. import metrics
 from ..metrics import cov_to_corr
-
-OptimizerType = TypeVar('T', bound='BaseOptimizer')
-
 
 logger = logging.getLogger(__name__)
 

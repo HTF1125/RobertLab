@@ -1,11 +1,11 @@
 """ROBERT"""
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Type
 from datetime import datetime, timedelta
 import pandas as pd
 import streamlit as st
 from pkg.src import data
 from pkg.src.web import state
-from pkg.src.core import portfolios
+from pkg.src.core import portfolios, strategies
 
 
 def get_universe() -> pd.DataFrame:
@@ -73,9 +73,25 @@ def get_commission() -> int:
     )
 
 
-def get_objective() -> portfolios.base.BaseOptimizer:
-    return st.selectbox(
-        label="Obj",
+def get_benchmark() -> Type[strategies.benchmarks.Benchmark]:
+    benchmark = st.selectbox(
+        label="BM",
+        options=[
+            strategies.benchmarks.Global64,
+            strategies.benchmarks.UnitedStates64,
+        ],
+        format_func=lambda x: x.__name__,
+        help="Select strategy's benchmark.",
+    )
+
+    if benchmark is None:
+        raise ValueError()
+    return benchmark
+
+
+def get_optimizer() -> Type[portfolios.base.BaseOptimizer]:
+    optimizer = st.selectbox(
+        label="Opt",
         options=[
             portfolios.EqualWeight,
             portfolios.MaxReturn,
@@ -92,13 +108,17 @@ def get_objective() -> portfolios.base.BaseOptimizer:
         help="Select strategy's rebalancing frequency.",
     )
 
+    if optimizer is None:
+        raise ValueError()
+    return optimizer
+
 
 def get_strategy_general_params():
     task = [
         get_universe,
         get_start,
         get_end,
-        get_objective,
+        get_optimizer,
         get_frequency,
         get_commission,
     ]
@@ -128,10 +148,6 @@ def get_percentile() -> int:
     )
 
 
-def get_name() -> str:
-    return str(st.text_input(label="Strategy Name", placeholder="Example: Strategy1"))
-
-
 def get_strategy_params() -> Dict[str, Any]:
     cache = {}
     c1, c2, c3, c4, c5 = st.columns([1] * 5)
@@ -144,7 +160,7 @@ def get_strategy_params() -> Dict[str, Any]:
     with c4:
         cache["commission"] = get_commission()
     with c5:
-        cache["objective"] = get_objective()
+        cache["objective"] = get_optimizer()
 
     c1, c2 = st.columns([5, 1])
 
@@ -161,6 +177,6 @@ def get_name() -> str:
     return str(
         st.text_input(
             label="Name",
-            value=f"Strategy-{state.get_backtestmanager().num_strategies}",
+            value=f"Strategy-{state.get_multistrategy().num_strategies}",
         )
     )

@@ -48,22 +48,24 @@ def get_factor_constraints():
 
 
 def get_strategy_parameters():
-    basic_calls = [
-        components.get_name,
-        components.get_start,
-        components.get_end,
-        components.get_objective,
-        components.get_frequency,
-        components.get_commission,
-    ]
-    basic_cols = st.columns([1] * len(basic_calls))
+    parameter_funcs = {
+        "name": components.get_name,
+        "start": components.get_start,
+        "end": components.get_end,
+        "optimizer": components.get_optimizer,
+        "frequency": components.get_frequency,
+        "commission": components.get_commission,
+        "benchmark" : components.get_benchmark,
+    }
 
-    base_parameters = {}
+    parameter_cols = st.columns([1] * len(parameter_funcs))
 
-    for col, call in zip(basic_cols, basic_calls):
+    parameters = {}
+
+    for col, (name, func) in zip(parameter_cols, parameter_funcs.items()):
         with col:
-            base_parameters[call.__name__[4:]] = call()
-    return base_parameters
+            parameters[name] = func()
+    return parameters
 
 
 def get_bounds(
@@ -254,16 +256,18 @@ def main():
         st.json(signature, expanded=False)
         if submitted:
             prices = data.get_prices(tickers=universe.ticker.tolist())
+
             if factor_constraints["factors"]:
-                factor_values = factors.multi.MultiFactors(
-                    tickers=universe.ticker.tolist(),
-                    factors=factor_constraints["factors"],
-                ).standard_percentile
+                with st.spinner("Loading Factor Data."):
+                    factor_values = factors.multi.MultiFactors(
+                        tickers=universe.ticker.tolist(),
+                        factors=factor_constraints["factors"],
+                    ).standard_percentile
             else:
                 factor_values = None
 
             with st.spinner(text="Backtesting in progress..."):
-                state.get_backtestmanager().run(
+                state.get_multistrategy().run(
                     **backtest_parameters,
                     optimizer_constraints=optimizer_constraints,
                     specific_constraints=specific_constraints,
@@ -274,6 +278,6 @@ def main():
 
     st.button(
         label="Clear All Strategies",
-        on_click=state.get_backtestmanager().reset_strategies,
+        on_click=state.get_multistrategy().reset_strategies,
     )
     components.performances.main()

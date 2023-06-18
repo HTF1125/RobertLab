@@ -11,17 +11,17 @@ from .base import Strategy
 class Rebalance:
     def __init__(
         self,
-        objective: Type[portfolios.base.BaseOptimizer] = portfolios.EqualWeight,
+        optimizer: Type[portfolios.base.BaseOptimizer] = portfolios.EqualWeight,
         factor_values: Optional[pd.DataFrame] = None,
         factor_bounds: Tuple[Optional[float], Optional[float]] = (0.0, 1.0),
         optimizer_constraints: Optional[Dict[str, Tuple]] = None,
         specific_constraints: Optional[List[Dict[str, Any]]] = None,
     ) -> None:
-        self.objective = objective
-        self.factor_values = factor_values
-        self.factor_bounds = factor_bounds
+        self.optimizer = optimizer
         self.optimizer_constraints = optimizer_constraints or {}
         self.specific_constraints = specific_constraints or []
+        self.factor_values = factor_values
+        self.factor_bounds = factor_bounds
 
     def __call__(self, strategy: Strategy) -> pd.Series:
         """Calculate portfolio allocation weights based on the Strategy instance.
@@ -34,7 +34,7 @@ class Rebalance:
         """
 
         opt = (
-            self.objective.from_prices(prices=strategy.prices)
+            self.optimizer.from_prices(prices=strategy.prices)
             .set_bounds(**self.optimizer_constraints)
             .set_specific_constraints(specific_constraints=self.specific_constraints)
         )
@@ -57,7 +57,7 @@ class Rebalance:
         return weight
 
 
-class BacktestManager:
+class MultiStrategy:
     num_strategies = 1
 
     @classmethod
@@ -69,7 +69,7 @@ class BacktestManager:
         commission: int = 10,
         frequency: str = "M",
         shares_frac: Optional[int] = None,
-    ) -> "BacktestManager":
+    ) -> "MultiStrategy":
         if name == "USSECTORETF":
             prices = data.get_prices(
                 tickers="XLC, XLY, XLP, XLE, XLF, XLV, XLI, XLB, XLRE, XLK, XLU, GLD, BIL",
@@ -89,7 +89,7 @@ class BacktestManager:
         del self.strategies
         self.strategies = {}
 
-    def set_universe(self, name="USSECTORETF") -> "BacktestManager":
+    def set_universe(self, name="USSECTORETF") -> "MultiStrategy":
         if name == "USSECTORETF":
             self.prices = data.get_prices(
                 tickers="XLC, XLY, XLP, XLE, XLF, XLV, XLI, XLB, XLRE, XLK, XLU, GLD, BIL",
@@ -118,7 +118,7 @@ class BacktestManager:
     def run(
         self,
         name: Optional[str] = None,
-        objective: str = "uniform_allocation",
+        optimizer: Type[portfolios.base.BaseOptimizer] = portfolios.EqualWeight,
         factor_values: Optional[pd.DataFrame] = None,
         factor_bounds: Tuple[Optional[float], Optional[float]] = (0.0, 1.0),
         optimizer_constraints: Optional[Dict[str, Tuple]] = None,
@@ -134,8 +134,6 @@ class BacktestManager:
         if specific_constraints is None:
             specific_constraints = []
 
-        print(optimizer_constraints)
-
         strategy = Strategy(
             prices=kwargs.pop("prices", self.prices),
             start=kwargs.pop("start", self.start),
@@ -144,7 +142,7 @@ class BacktestManager:
             commission=kwargs.pop("commission", self.commission),
             shares_frac=kwargs.pop("shares_frac", self.shares_frac),
             rebalance=Rebalance(
-                objective=objective,
+                optimizer=optimizer,
                 factor_values=factor_values,
                 factor_bounds=factor_bounds,
                 optimizer_constraints=optimizer_constraints,

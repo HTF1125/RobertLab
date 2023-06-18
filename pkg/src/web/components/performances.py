@@ -5,12 +5,12 @@ from .. import state
 
 
 def main():
-    if not state.get_backtestmanager().values.empty:
-        analytics = state.get_backtestmanager().analytics
+    if not state.get_multistrategy().values.empty:
+        analytics = state.get_multistrategy().analytics
         st.write(analytics.T)
 
         fig = make_subplots(rows=1, cols=1)
-        for name, strategy in state.get_backtestmanager().strategies.items():
+        for name, strategy in state.get_multistrategy().strategies.items():
             # Add line chart for prices to the first subplot
             val = strategy.value.resample("M").last()
             price_trace = Scatter(
@@ -39,12 +39,12 @@ def main():
 
         st.plotly_chart(fig, use_container_width=True)
 
-    for name, strategy in state.get_backtestmanager().strategies.items():
+    for name, strategy in state.get_multistrategy().strategies.items():
         with st.expander(label=name, expanded=False):
             st.button(
                 label="Delete",
                 key=name,
-                on_click=state.get_backtestmanager().drop_strategy,
+                on_click=state.get_multistrategy().drop_strategy,
                 kwargs={"name": name},
             )
 

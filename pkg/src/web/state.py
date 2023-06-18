@@ -1,11 +1,11 @@
 """ROBERT"""
 import streamlit as st
-from pkg.src.core.strategies import BacktestManager
+from pkg.src.core.strategies import MultiStrategy
 
 
-def get_backtestmanager() -> BacktestManager:
+def get_multistrategy() -> MultiStrategy:
     # Initialization
-    if "backtestmanager" not in st.session_state:
-        st.session_state["backtestmanager"] = BacktestManager()
-    return st.session_state["backtestmanager"]
+    if "multi-strategy" not in st.session_state:
+        st.session_state["multi-strategy"] = MultiStrategy()
+    return st.session_state["multi-strategy"]
 
