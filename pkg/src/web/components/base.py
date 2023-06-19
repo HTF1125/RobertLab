@@ -1,5 +1,5 @@
 """ROBERT"""
-from typing import List, Dict, Any, Type, Optional, Callable, Tuple
+from typing import List, Dict, Any, Optional, Callable, Tuple, Union
 from datetime import datetime
 from dateutil.relativedelta import relativedelta
 import numpy as np
@@ -9,19 +9,93 @@ from pkg.src import data
 from pkg.src.core import portfolios, strategies, factors
 
 
-def add_badges():
-    tt = """
-    <div style="position: absolute; top: 0; right: 0;">
-        <a href="https://github.com/htf1125/RobertLab">
-            <img src="https://img.shields.io/badge/GitHub-htf1125-black?logo=github">
-        </a>
-        <a href="https://github.com/HTF1125/RobertLab">
-            <img src="https://img.shields.io/github/license/htf1125/robertlab">
-        </a>
-    </div>
-    """
-    st.markdown(tt, unsafe_allow_html=True)
+def add_social():
+    # Social Icons
+    social_icons = {
+        # Platform: [URL, Icon]
+        "LinkedIn": [
+            "https://www.linkedin.com/in/htf1125",
+            "https://cdn-icons-png.flaticon.com/512/174/174857.png",
+        ],
+        "GitHub": [
+            "https://github.com/htf1125",
+            "https://icon-library.com/images/github-icon-white/github-icon-white-6.jpg",
+        ],
+    }
 
+    social_icons_html = [
+        f"""
+        <a href='{social_icons[platform][0]}'>
+            <img
+                src='{social_icons[platform][1]}'
+                alt='{platform}'
+                height='25px'
+                width='25px'
+                style='margin-right: 10px; margin-left: 10px;'
+            >
+        </a>
+        """
+        for platform in social_icons
+    ]
+
+    st.write(
+        f"""
+        <div style="position: absolute; top: 0; left: 0;">
+            {''.join(social_icons_html)}
+
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+def add_badges():
+    # Social Icons
+    social_icons = {
+        # Platform: {href, src, height, width}
+        "LinkedIn": {
+            "href": "https://www.linkedin.com/in/htf1125",
+            "src": "https://cdn-icons-png.flaticon.com/512/174/174857.png",
+            "height": "25px",
+            "width": "25px",
+        },
+        "GitHub": {
+            "href": "https://github.com/htf1125",
+            "src": "https://icon-library.com/images/github-icon-white/github-icon-white-6.jpg",
+            "height": "25px",
+            "width": "25px",
+        },
+        "GitLicense": {
+            "href": "https://github.com/HTF1125/RobertLab",
+            "src": "https://img.shields.io/github/license/htf1125/robertlab",
+            "height": "25px",
+            "width": "125px",
+        }
+    }
+
+    social_icons_html = [
+        f"""
+        <a href='{platform_params["href"]}'>
+            <img
+                src='{platform_params["src"]}'
+                alt='{platform}'
+                height='{platform_params["height"]}'
+                width='{platform_params["width"]}'
+                style='margin-right: 10px; margin-left: 10px; vertical-align: middle;'
+            >
+        </a>
+        """
+        for platform, platform_params in social_icons.items()
+    ]
+
+    st.write(
+        f"""
+        <div style="position: absolute; top: 50%; right: 0; transform: translateY(-50%);">
+            {''.join(social_icons_html)}
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
 
 def get_universe(show: bool = False) -> pd.DataFrame:
@@ -39,13 +113,27 @@ def get_universe(show: bool = False) -> pd.DataFrame:
     return universe
 
 
-def get_date_range():
-    left, right = st.columns([1, 1])
-    with left:
-        s = get_start()
-    with right:
-        e = get_end()
-    return s, e
+def get_date_range() -> Tuple[str, str]:
+    end = datetime.today()
+    start = end - relativedelta(years=20)
+    date_range = pd.date_range(start=start, end=end, freq="M")
+
+    default_start = date_range[0].strftime("%Y-%m-%d")
+    default_end = date_range[-1].strftime("%Y-%m-%d")
+
+    date_strings = [date.strftime("%Y-%m-%d") for date in date_range]
+
+    selected_start, selected_end = st.select_slider(
+        "Date Range",
+        options=date_strings,
+        value=(default_start, default_end),
+        format_func=lambda x: f"{x}",
+    )
+
+    if selected_start >= selected_end:
+        st.error("Error: The start date must be before the end date.")
+
+    return selected_start, selected_end
 
 
 def get_start() -> str:
@@ -93,7 +181,7 @@ def get_commission() -> int:
     )
 
 
-def get_benchmark() -> Type[strategies.benchmarks.Benchmark]:
+def get_benchmark() -> str:
     benchmark = st.selectbox(
         label="BM",
         options=[
@@ -105,10 +193,10 @@ def get_benchmark() -> Type[strategies.benchmarks.Benchmark]:
 
     if benchmark is None:
         raise ValueError()
-    return getattr(strategies.benchmarks, benchmark)
+    return benchmark
 
 
-def get_optimizer() -> Type[portfolios.base.BaseOptimizer]:
+def get_optimizer() -> str:
     optimizer = st.selectbox(
         label="Opt",
         options=[
@@ -119,15 +207,15 @@ def get_optimizer() -> Type[portfolios.base.BaseOptimizer]:
             portfolios.MinCorrelation.__name__,
             portfolios.InverseVariance.__name__,
             portfolios.RiskParity.__name__,
-            portfolios.HierarchicalRiskParity.__name__,
-            portfolios.HierarchicalEqualRiskContribution.__name__,
+            portfolios.HRP.__name__,
+            portfolios.HERC.__name__,
         ],
         help="Select strategy's rebalancing frequency.",
     )
 
     if optimizer is None:
         raise ValueError()
-    return getattr(portfolios, optimizer)
+    return optimizer
 
 
 def get_strategy_general_params():
@@ -147,15 +235,6 @@ def get_strategy_general_params():
     return cache
 
 
-def get_feature() -> List[str]:
-    return st.multiselect(
-        label="Factors",
-        options=[
-            "PriceMomentum1M",
-            "PriceMomentum3M",
-        ],
-    )
-
 
 def get_percentile() -> int:
     return int(
@@ -163,33 +242,6 @@ def get_percentile() -> int:
             label="Factor Percentile", min_value=0, max_value=100, step=5, value=50
         )
     )
-
-
-def get_strategy_params() -> Dict[str, Any]:
-    cache = {}
-    c1, c2, c3, c4, c5 = st.columns([1] * 5)
-    with c1:
-        cache["start"] = get_start()
-    with c2:
-        cache["end"] = get_end()
-    with c3:
-        cache["frequency"] = get_frequency()
-    with c4:
-        cache["commission"] = get_commission()
-    with c5:
-        cache["objective"] = get_optimizer()
-
-    c1, c2 = st.columns([5, 1])
-
-    with c1:
-        cache["feature"] = get_feature()
-
-    with c2:
-        cache["percentile"] = get_percentile()
-
-    return cache
-
-
 
 
 
@@ -217,34 +269,33 @@ def get_bounds(
     )
 
 
-def get_factor_constraints():
+def get_factor_constraints() -> Dict:
     params = {}
-    c1, c2 = st.columns([4, 1])
+    c1, c2 = st.columns([4, 1], gap="large")
     params["factors"] = c1.multiselect(
         label="Factor List",
         options=[
-            factors.PriceMomentum1M,
-            factors.PriceMomentum2M,
-            factors.PriceMomentum3M,
-            factors.PriceMomentum6M,
-            factors.PriceMomentum9M,
-            factors.PriceMomentum12M,
-            factors.PriceMomentum24M,
-            factors.PriceMomentum36M,
-            factors.PriceMomentum6M1M,
-            factors.PriceMomentum6M2M,
-            factors.PriceMomentum9M1M,
-            factors.PriceMomentum9M2M,
-            factors.PriceMomentum12M1M,
-            factors.PriceMomentum12M2M,
-            factors.PriceMomentum24M1M,
-            factors.PriceMomentum24M2M,
-            factors.PriceMomentum36M1M,
-            factors.PriceMomentum36M2M,
-            factors.PriceVolatility1M,
-            factors.PriceVolatility3M,
+            factors.PriceMomentum1M.__name__,
+            factors.PriceMomentum2M.__name__,
+            factors.PriceMomentum3M.__name__,
+            factors.PriceMomentum6M.__name__,
+            factors.PriceMomentum9M.__name__,
+            factors.PriceMomentum12M.__name__,
+            factors.PriceMomentum24M.__name__,
+            factors.PriceMomentum36M.__name__,
+            factors.PriceMomentum6M1M.__name__,
+            factors.PriceMomentum6M2M.__name__,
+            factors.PriceMomentum9M1M.__name__,
+            factors.PriceMomentum9M2M.__name__,
+            factors.PriceMomentum12M1M.__name__,
+            factors.PriceMomentum12M2M.__name__,
+            factors.PriceMomentum24M1M.__name__,
+            factors.PriceMomentum24M2M.__name__,
+            factors.PriceMomentum36M1M.__name__,
+            factors.PriceMomentum36M2M.__name__,
+            factors.PriceVolatility1M.__name__,
+            factors.PriceVolatility3M.__name__,
         ],
-        format_func=lambda x: x.__name__,
     )
     with c2:
         params["bounds"] = get_bounds(
@@ -311,7 +362,7 @@ def get_optimizer_constraints():
         },
     ]
 
-    cols = st.columns([1] * 4)
+    cols = st.columns([1] * 4, gap="large")
 
     for idx, kwarg in enumerate(kwargs[:4]):
         assert isinstance(kwarg, dict)
@@ -322,7 +373,7 @@ def get_optimizer_constraints():
                 continue
             constraints[name] = bounds
 
-    cols = st.columns([1] * 2)
+    cols = st.columns([1] * 2, gap="large")
 
     for idx, kwarg in enumerate(kwargs[4:]):
         assert isinstance(kwarg, dict)
@@ -342,7 +393,7 @@ def get_specific_constraints(
     constraints = []
     asset_classes = universe["assetclass"].unique()
     final_num_columns = min(num_columns, len(asset_classes))
-    cols = st.columns([1] * final_num_columns)
+    cols = st.columns([1] * final_num_columns, gap="large")
     for idx, asset_class in enumerate(asset_classes):
         with cols[idx % num_columns]:
             bounds = get_bounds(
@@ -363,7 +414,7 @@ def get_specific_constraints(
             constraints.append(constraint)
     st.markdown("---")
     final_num_columns = min(num_columns, len(universe))
-    cols = st.columns([1] * final_num_columns)
+    cols = st.columns([1] * final_num_columns, gap="large")
     for idx, asset in enumerate(universe.to_dict("records")):
         ticker = asset["ticker"]
         name = asset["name"]
@@ -392,72 +443,3 @@ def get_allow_fractional_shares():
         value=False,
         help="Allow Fractional Shares Investing.",
     )
-
-
-from typing import Literal
-
-import streamlit as st
-from streamlit.components.v1 import html
-
-
-Font = Literal[
-    "Cookie",
-    "Lato",
-    "Arial",
-    "Comic",
-    "Inter",
-    "Bree",
-    "Poppins",
-]
-
-
-# # LinkedIn link
-# linkedin_url = "https://www.linkedin.com/in/your-linkedin-profile"
-# linkedin_icon = "https://content.linkedin.com/content/dam/me/business/en-us/amp/brand-site/v2/bg/LI-Logo.svg.original.svg"
-
-# # Render LinkedIn link with LinkedIn icon
-# st.markdown(f'<a href="{linkedin_url}"><img src="{linkedin_icon}" width="90"></a>', unsafe_allow_html=True)
-
-
-
-def button(
-    username: str,
-    floating: bool = True,
-    text: str = "Test",
-    emoji: str = "",
-    bg_color: str = "#FFDD00",
-    font: Font = "Cookie",
-    font_color: str = "#000000",
-    coffee_color: str = "#000000",
-    width: int = 220,
-):
-    button = f"""
-        <script type="text/javascript"
-            src="https://cdnjs.buymeacoffee.com/1.0.0/button.prod.min.js"
-            # data-name="bmc-button"
-            data-slug="{username}"
-            data-color="{bg_color}"
-            data-emoji="{emoji}"
-            data-font="{font}"
-            data-text="{text}"
-            data-outline-color="#000000"
-            data-font-color="{font_color}"
-            data-coffee-color="{coffee_color}" >
-        </script>
-    """
-
-    html(button, height=70, width=width)
-
-    if floating:
-        st.markdown(
-            f"""
-            <style>
-                iframe[width="{width}"] {{
-                    position: fixed;
-                    bottom: 60px;
-                    right: 40px;
-                }}
-            </style>
-            """,
-            unsafe_allow_html=True,
-        )

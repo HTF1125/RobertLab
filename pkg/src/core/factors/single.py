@@ -33,8 +33,7 @@ __all__ = [
 ]
 
 
-# The Factors class contains a method that returns a DataFrame of standard
-# percentiles for the factors.
+
 class Factors(object):
     factors = pd.DataFrame()
 

@@ -21,8 +21,8 @@ __all__ = [
     "MinCorrelation",
     "MaxSharpe",
     "RiskParity",
-    "HierarchicalRiskParity",
-    "HierarchicalEqualRiskContribution",
+    "HRP",
+    "HERC",
     "EqualWeight",
     "InverseVariance",
 ]
@@ -164,11 +164,9 @@ class BaseOptimizer(BaseProperty):
 
         self.exp = {}
 
-
-
     def set_bounds(
         self,
-        weight: Optional[Tuple[Optional[float], Optional[float]]] = (0., 1.),
+        weight: Optional[Tuple[Optional[float], Optional[float]]] = (0.0, 1.0),
         active_weight: Optional[Tuple[Optional[float], Optional[float]]] = None,
         port_return: Optional[Tuple[Optional[float], Optional[float]]] = None,
         port_risk: Optional[Tuple[Optional[float], Optional[float]]] = None,
@@ -453,7 +451,7 @@ class BaseOptimizer(BaseProperty):
             }
         return self
 
-    def solve(
+    def __solve__(
         self, objective: Callable, extra_constraints: Optional[List[Dict]] = None
     ) -> pd.Series:
         """_summary_
@@ -480,43 +478,44 @@ class BaseOptimizer(BaseProperty):
             weights = pd.Series(data=data, index=self.assets, name="weights").round(6)
 
             if self.expected_returns is not None:
-                self.exp['expected_return'] = self.expected_returns.dot(weights)
+                self.exp["expected_return"] = self.expected_returns.dot(weights)
             if self.covariance_matrix is not None:
-                self.exp['expected_volatility'] = self.covariance_matrix.dot(weights).dot(weights) ** 0.5
-
+                self.exp["expected_volatility"] = (
+                    float(np.dot(self.covariance_matrix.dot(weights), weights)) ** 0.5
+                )
+            weights = weights[weights != 0.0]
             return weights
         raise ValueError("Portoflio Optimization Failed.")
 
-
-
-
+    @abstractmethod
+    def solve(self):
+        raise ValueError(
+            "Must implement `solve` method for subclasses of BaseOptimizer."
+        )
 
 
 class MaxReturn(BaseOptimizer):
-    def __call__(self) -> pd.Series:
+    def solve(self) -> pd.Series:
         """calculate maximum return weights"""
         if self.expected_returns is None:
             warnings.warn("expected_returns must not be none.")
             raise ValueError("expected_returns must not be none.")
-        return self.solve(
+        return self.__solve__(
             objective=partial(
                 objectives.expected_return,
                 expected_returns=np.array(self.expected_returns) * -1,
             )
         )
 
-    @abstractmethod
-    def __call__(self, *args, **kwargs):
-        pass
 
 class MinVolatility(BaseOptimizer):
-    def __call__(self) -> pd.Series:
+    def solve(self) -> pd.Series:
         """calculate minimum volatility weights"""
         if self.covariance_matrix is None:
             warnings.warn("covariance_matrix must not be none.")
             raise ValueError("covariance_matrix must not be none.")
 
-        return self.solve(
+        return self.__solve__(
             objective=partial(
                 objectives.expected_volatility,
                 covariance_matrix=np.array(self.covariance_matrix),
@@ -525,10 +524,10 @@ class MinVolatility(BaseOptimizer):
 
 
 class MinCorrelation(BaseOptimizer):
-    def __call__(self) -> pd.Series:
+    def solve(self) -> pd.Series:
         """calculate minimum correlation weights"""
 
-        return self.solve(
+        return self.__solve__(
             objective=partial(
                 objectives.expected_correlation,
                 correlation_matrix=np.array(self.correlation_matrix),
@@ -537,13 +536,13 @@ class MinCorrelation(BaseOptimizer):
 
 
 class MaxSharpe(BaseOptimizer):
-    def __call__(self) -> pd.Series:
+    def solve(self) -> pd.Series:
         """calculate maximum sharpe ratio weights"""
         if self.expected_returns is None or self.covariance_matrix is None:
             warnings.warn("expected_returns and covariance_matrix must not be none.")
             raise ValueError("expected_returns must not be none.")
 
-        return self.solve(
+        return self.__solve__(
             objective=partial(
                 objectives.expected_sharpe,
                 expected_returns=np.array(self.expected_returns * -1),
@@ -554,7 +553,7 @@ class MaxSharpe(BaseOptimizer):
 
 
 class RiskParity(BaseOptimizer):
-    def __call__(self, budgets: Optional[np.ndarray] = None) -> pd.Series:
+    def solve(self, budgets: Optional[np.ndarray] = None) -> pd.Series:
         """_summary_
 
         Returns:
@@ -562,7 +561,7 @@ class RiskParity(BaseOptimizer):
         """
         if budgets is None:
             budgets = np.ones(self.num_assets) / self.num_assets
-        weights = self.solve(
+        weights = self.__solve__(
             objective=lambda w: objectives.l1_norm(
                 np.subtract(
                     objectives.risk_contributions(
@@ -606,10 +605,10 @@ class Hierarchical(RiskParity):
         return cache
 
 
-class HierarchicalRiskParity(Hierarchical):
-    def __call__(self, linkage_method: str = "single") -> pd.Series:
+class HRP(Hierarchical):
+    def solve(self, linkage_method: str = "single") -> pd.Series:
         if self.num_assets <= 2:
-            return super().__call__()
+            return super().solve()
         if self.correlation_matrix is None:
             if self.prices is not None:
                 self.correlation_matrix = metrics.to_correlation_matrix(self.prices)
@@ -624,7 +623,7 @@ class HierarchicalRiskParity(Hierarchical):
         cluster_sets = self.recursive_bisection(sorted_tree)
         if not isinstance(cluster_sets, List):
             cluster_sets = [cluster_sets]
-        return self.solve(
+        return self.__solve__(
             objective=lambda w: objectives.l2_norm(
                 np.array(
                     [
@@ -645,11 +644,11 @@ class HierarchicalRiskParity(Hierarchical):
         )
 
 
-class HierarchicalEqualRiskContribution(Hierarchical):
-    def __call__(self, linkage_method: str = "single") -> pd.Series:
+class HERC(Hierarchical):
+    def solve(self, linkage_method: str = "single") -> pd.Series:
         """calculate herc weights"""
         if self.num_assets <= 2:
-            return super().__call__()
+            return super().solve()
         if self.correlation_matrix is None:
             if self.covariance_matrix is not None:
                 self.correlation_matrix = metrics.cov_to_corr(self.covariance_matrix)
@@ -661,7 +660,7 @@ class HierarchicalEqualRiskContribution(Hierarchical):
         clusters = linkage(squareform(dist), method=linkage_method)
         sorted_tree = list(to_tree(clusters, rd=False).pre_order())
         cluster_sets = self.recursive_bisection(sorted_tree)
-        weights = self.solve(
+        weights = self.__solve__(
             objective=lambda w: objectives.l2_norm(
                 np.array(
                     [
@@ -688,25 +687,20 @@ class HierarchicalEqualRiskContribution(Hierarchical):
 
 
 class EqualWeight(BaseOptimizer):
-
-    def __str__(self) -> str:
-        return "EqualWeight"
-    def __repr__(self) -> str:
-        return "EqualWeight"
-    def __call__(self) -> pd.Series:
+    def solve(self) -> pd.Series:
         """_summary_
 
         Returns:
             pd.Series: _description_
         """
         target_allocations = np.ones(shape=self.num_assets) / self.num_assets
-        return self.solve(
+        return self.__solve__(
             objective=lambda w: objectives.l2_norm(np.subtract(w, target_allocations))
         )
 
 
 class InverseVariance(BaseOptimizer):
-    def __call__(self) -> pd.Series:
+    def solve(self) -> pd.Series:
         """_summary_
 
         Returns:
@@ -714,6 +708,6 @@ class InverseVariance(BaseOptimizer):
         """
         inv_var_weights = 1 / np.diag(np.array(self.covariance_matrix))
         inv_var_weights /= inv_var_weights.sum()
-        return self.solve(
+        return self.__solve__(
             objective=lambda w: objectives.l1_norm(np.subtract(w, inv_var_weights))
         )

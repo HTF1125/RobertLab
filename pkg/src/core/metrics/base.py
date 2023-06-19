@@ -4,7 +4,7 @@ from typing import Union, Optional, List, Tuple
 from typing import overload
 import numpy as np
 import pandas as pd
-from scipy.stats import norm
+from scipy.stats import norm, spearmanr
 from sklearn.linear_model import LinearRegression
 from ..ext.periods import AnnFactor
 
@@ -1133,3 +1133,15 @@ def to_macd(
     )
     signal = MACD.ewm(span=signal_window, min_periods=slow_window).mean()
     return signal
+
+
+
+def to_information_coefficient(
+    prices: pd.DataFrame,
+    allocations: pd.DataFrame,
+) -> float:
+
+    chg = allocations - allocations.mean()
+    fwd = prices.loc[allocations.index].pct_change().shift(-1)
+    joined = pd.concat([chg.stack(), fwd.stack()], axis=1).dropna()
+    return spearmanr(joined.iloc[:, 0], joined.iloc[:, 1])[0]

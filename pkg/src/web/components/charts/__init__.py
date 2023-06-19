@@ -11,7 +11,7 @@ def line(
     title: str = "",
     xaxis_title: str = "Date",
     yaxis_title: str = "",
-    hovemode: str = "x",
+    hovermode: str = "x",
     hovertemplate: str = "Date: %{x}: %{y}}",
     xaxis_tickformat: str = "%Y-%m-%d",
     yaxis_tickformat: str = ".0%",
@@ -36,7 +36,7 @@ def line(
         xaxis_tickformat=xaxis_tickformat,
         yaxis_title=yaxis_title,
         yaxis_tickformat=yaxis_tickformat,
-        hovermode=hovemode,
+        hovermode=hovermode,
         legend=dict(
             orientation=legend_orientation,
             yanchor=legend_yanchor,

@@ -1,16 +1,41 @@
 """ROBERT"""
 from typing import Optional, Callable, Iterator
 import pandas as pd
-from ..ext.store import DataStore
-from .. import metrics
-from . import benchmarks
+from pkg.src.core import metrics
 
 
-class Strategy:
+class StrategyProperty:
+    def __init__(self) -> None:
+        self.data = {
+            "value": {},
+            "cash": {},
+            "allocations": {},
+            "weights": {},
+            "shares": {},
+            "trades": {},
+        }
+
+    @property
+    def value(self) -> pd.Series:
+        return pd.Series(self.data.get("value"), name="performance")
+
+    @property
+    def cash(self) -> pd.Series:
+        return pd.Series(self.data.get("cash"), name="cash")
+
+    @property
+    def allocations(self) -> pd.DataFrame:
+        return pd.DataFrame(self.data.get("allocations")).T
+
+    @property
+    def weights(self) -> pd.DataFrame:
+        return pd.DataFrame(self.data.get("weights")).T
+
+    ################################################################################
+
+
+class Strategy(StrategyProperty):
     """base strategy"""
-
-    def set_benchmark(self, benchmark: benchmarks.Benchmark) -> None:
-        self.benchmark = benchmark
 
     def __init__(
         self,
@@ -40,21 +65,24 @@ class Strategy:
             # whether the strategy allows fractional shares or not.
             prices_bm (pd.Series, optional): Benchmark price data. Defaults to None.
         """
+        super().__init__()
+
+
+
         self.total_prices: pd.DataFrame = prices.ffill()
-        self.commission = commission
-        self.rebalance: Callable = rebalance
-        self.allow_fractional_shares = allow_fractional_shares
-        self.initial_investment = initial_investment
-        self.data = DataStore()
+        self.total_prices.index = pd.to_datetime(self.total_prices.index)
         self.start = start or str(self.total_prices.index[0])
         self.end = end or str(self.total_prices.index[-1])
-        self.freq = frequency
-        self.date: pd.Timestamp = pd.Timestamp(
-            str(self.total_prices.loc[: self.start].index[-1])
-        )
-        self.simulate()
+        self.date: pd.Timestamp = pd.Timestamp(self.start)
+        self.rebalance: Callable = rebalance
 
-    ################################################################################
+        self.commission = commission
+        self.allow_fractional_shares = allow_fractional_shares
+        self.initial_investment = initial_investment
+
+        self.freq = frequency
+
+        self.simulate()
 
     @property
     def prices(self) -> pd.DataFrame:
@@ -68,47 +96,8 @@ class Strategy:
             return pd.DataFrame()
         return self.total_prices.loc[: self.date].dropna(how="all", axis=1)
 
-    @property
-    def value(self) -> pd.Series:
-        """
-        Get the value of the strategy.
-
-        Returns:
-            pd.Series: Strategy value.
-        """
-        return pd.Series(self.data.get("value"), name="performance")
-
-    @property
-    def cash(self) -> pd.Series:
-        """
-        Get the cash holdings of the strategy.
-
-        Returns:
-            pd.Series: Cash holdings.
-        """
-        return pd.Series(self.data.get("cash"), name="cash")
-
-    @property
-    def allocations(self) -> pd.DataFrame:
-        """
-        Get the asset allocations of the strategy.
-
-        Returns:
-            pd.DataFrame: Asset allocations.
-        """
-        return pd.DataFrame(self.data.get("allocations")).T
-
-    @property
-    def weights(self) -> pd.DataFrame:
-        """
-        Get the asset weights of the strategy.
-
-        Returns:
-            pd.DataFrame: Asset weights.
-        """
-        return pd.DataFrame(self.data.get("weights")).T
-
     ################################################################################
+
     def generate_rebalance_dates(self) -> Iterator[pd.Timestamp]:
         """
         Generate rebalance dates between the given start and end dates with the specified frequency.
@@ -129,7 +118,11 @@ class Strategy:
         shares = pd.Series(dtype=float)
         # generate rebalance dates
         rebalance_dates = self.generate_rebalance_dates()
-        rebalance_date = next(rebalance_dates)
+        try:
+            rebalance_date = next(rebalance_dates)
+        except StopIteration:
+            rebalance_date = self.total_prices.loc[self.start:].index[0]
+
         for date in self.total_prices.loc[self.start : self.end].index:
             capitals = shares.multiply(self.total_prices.loc[date]).dropna()
             value = sum(capitals) + cash
@@ -161,14 +154,6 @@ class Strategy:
             self.data["shares"][self.date] = shares
             self.data["cash"][self.date] = cash
             self.data["weights"][self.date] = weights
-
-    def information_coefficient(self) -> float:
-        from scipy import stats
-
-        chg = self.allocations - self.allocations.mean()
-        fwd = self.total_prices.loc[self.allocations.index].pct_change().shift(-1)
-        joined = pd.concat([chg.stack(), fwd.stack()], axis=1).dropna()
-        return stats.spearmanr(joined.iloc[:, 0], joined.iloc[:, 1])[0]
 
     @property
     def analytics(self) -> pd.Series:

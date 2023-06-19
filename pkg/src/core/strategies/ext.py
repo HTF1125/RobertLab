@@ -1,7 +1,6 @@
 """ROBERT"""
-from typing import Type
 import warnings
-from typing import Optional, Tuple, Dict, Any, List
+from typing import Optional, Tuple, Dict, Any, List, Type
 import pandas as pd
 from pkg.src.core import portfolios
 from pkg.src import data
@@ -50,11 +49,7 @@ class Rebalance:
             opt.set_factor_constraints(
                 values=curr_factor_values, bounds=self.factor_bounds
             )
-
-        if callable(opt):
-            return opt()
-        else:
-            return pd.Series(dtype=float)
+        return opt.solve()
 
 
 class MultiStrategy:
@@ -118,7 +113,7 @@ class MultiStrategy:
     def run(
         self,
         name: Optional[str] = None,
-        optimizer: Type[portfolios.base.BaseOptimizer] = portfolios.EqualWeight,
+        optimizer: str = portfolios.EqualWeight.__name__,
         factor_values: Optional[pd.DataFrame] = None,
         factor_bounds: Tuple[Optional[float], Optional[float]] = (0.0, 1.0),
         optimizer_constraints: Optional[Dict[str, Tuple]] = None,
@@ -144,7 +139,7 @@ class MultiStrategy:
                 "allow_fractional_shares", self.allow_fractional_shares
             ),
             rebalance=Rebalance(
-                optimizer=optimizer,
+                optimizer=getattr(portfolios, optimizer),
                 factor_values=factor_values,
                 factor_bounds=factor_bounds,
                 optimizer_constraints=optimizer_constraints,

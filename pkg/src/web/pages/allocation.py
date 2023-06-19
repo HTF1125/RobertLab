@@ -4,6 +4,7 @@ from pkg.src.core import factors
 from pkg.src.web import components, data
 from pkg.src.core.strategies import MultiStrategy
 
+
 def get_name() -> str:
     return str(
         st.text_input(
@@ -11,6 +12,8 @@ def get_name() -> str:
             value=f"Strategy-{get_multistrategy().num_strategies}",
         )
     )
+
+
 def get_multistrategy() -> MultiStrategy:
     # Initialization
     if "multi-strategy" not in st.session_state:
@@ -18,26 +21,10 @@ def get_multistrategy() -> MultiStrategy:
     return st.session_state["multi-strategy"]
 
 
-def get_portfolio_parameters():
+def get_strategy_parameters():
     parameter_funcs = {
         "optimizer": components.get_optimizer,
         "benchmark": components.get_benchmark,
-    }
-
-    parameter_cols = st.columns([1] * len(parameter_funcs))
-
-    parameters = {}
-
-    for col, (name, func) in zip(parameter_cols, parameter_funcs.items()):
-        with col:
-            parameters[name] = func()
-    return parameters
-
-
-def get_strategy_parameters():
-    parameter_funcs = {
-        "start": components.get_start,
-        "end": components.get_end,
         "frequency": components.get_frequency,
         "commission": components.get_commission,
     }
@@ -50,7 +37,7 @@ def get_strategy_parameters():
         with col:
             parameters[name] = func()
 
-    parameters.update(get_portfolio_parameters())
+    parameters["start"], parameters["end"] = components.get_date_range()
 
     parameters["allow_fractional_shares"] = components.get_allow_fractional_shares()
 
@@ -96,14 +83,16 @@ def main():
                 },
             }
 
-            if factor_constraints["factors"]:
+            factor_bounds = factor_constraints["bounds"]
+
+            if factor_bounds == (None, None) or not factor_constraints["factors"]:
+                factor_values = None
+            else:
                 with st.spinner("Loading Factor Data."):
                     factor_values = factors.multi.MultiFactors(
                         tickers=universe.ticker.tolist(),
                         factors=factor_constraints["factors"],
                     ).standard_percentile
-            else:
-                factor_values = None
 
             with st.spinner(text="Backtesting in progress..."):
                 get_multistrategy().run(
@@ -113,7 +102,7 @@ def main():
                     specific_constraints=specific_constraints,
                     prices=prices,
                     factor_values=factor_values,
-                    factor_bounds=factor_constraints["bounds"],
+                    factor_bounds=factor_bounds,
                 )
                 setattr(
                     get_multistrategy().strategies[name],
@@ -146,6 +135,12 @@ def main():
 
         for name, strategy in multistrategy.strategies.items():
             with st.expander(label=name, expanded=False):
+                st.button(
+                    label=f"Delete {name}",
+                    on_click=get_multistrategy().drop_strategy,
+                    kwargs={"name": name},
+                )
+
                 st.json(getattr(strategy, "signiture"), expanded=False)
 
                 perf_tab, dd_tab, hw_tab, cw_tab = st.tabs(
@@ -185,7 +180,7 @@ def main():
                         yaxis_title="Weights",
                         yaxis_tickformat=".0%",
                         hovertemplate="Date: %{x} - Value: %{y:.2%}",
-                        title="Strategy Performance",
+                        title="Strategy Historical Weights",
                         stackgroup="stack",
                     )
                     st.plotly_chart(
@@ -193,7 +188,9 @@ def main():
                     )
 
                 with cw_tab:
-                    fig = components.charts.pie(strategy.allocations.iloc[-1].dropna())
+                    fig = components.charts.pie(
+                        strategy.allocations.iloc[-1].dropna(), title="Strategy Current Weights"
+                    )
                     st.plotly_chart(
                         fig, use_container_width=True, config={"displayModeBar": False}
                     )
