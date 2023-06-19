@@ -6,21 +6,28 @@ from pkg.src.core import portfolios
 from pkg.src import data
 from .base import Strategy
 
-
 class Rebalance:
     def __init__(
         self,
         optimizer: Type[portfolios.base.BaseOptimizer] = portfolios.EqualWeight,
         factor_values: Optional[pd.DataFrame] = None,
         factor_bounds: Tuple[Optional[float], Optional[float]] = (0.0, 1.0),
-        optimizer_constraints: Optional[Dict[str, Tuple]] = None,
+        optimizer_constraints: Optional[Dict[str, float]] = None,
         specific_constraints: Optional[List[Dict[str, Any]]] = None,
+        span: Optional[int] = None,
+        risk_free: float = 0.0,
+        prices_bm: Optional[pd.Series] = None,
+        weights_bm: Optional[pd.Series] = None,
     ) -> None:
         self.optimizer = optimizer
         self.optimizer_constraints = optimizer_constraints or {}
         self.specific_constraints = specific_constraints or []
         self.factor_values = factor_values
         self.factor_bounds = factor_bounds
+        self.span = span
+        self.risk_free = risk_free
+        self.prices_bm = prices_bm
+        self.weights_bm = weights_bm
 
     def __call__(self, strategy: Strategy) -> pd.Series:
         """Calculate portfolio allocation weights based on the Strategy instance.
@@ -31,12 +38,14 @@ class Rebalance:
         Returns:
             pd.Series: portfolio allocation weights.
         """
-
-        opt = (
-            self.optimizer.from_prices(prices=strategy.prices)
-            .set_bounds(**self.optimizer_constraints)
-            .set_specific_constraints(specific_constraints=self.specific_constraints)
-        )
+        opt = self.optimizer.from_prices(
+            prices=strategy.prices,
+            span=self.span,
+            risk_free=self.risk_free,
+            prices_bm=self.prices_bm,
+            weights_bm=self.weights_bm,
+            **self.optimizer_constraints,
+        ).set_specific_constraints(specific_constraints=self.specific_constraints)
 
         if self.factor_values is not None:
             if self.factor_bounds is None:
@@ -116,7 +125,7 @@ class MultiStrategy:
         optimizer: str = portfolios.EqualWeight.__name__,
         factor_values: Optional[pd.DataFrame] = None,
         factor_bounds: Tuple[Optional[float], Optional[float]] = (0.0, 1.0),
-        optimizer_constraints: Optional[Dict[str, Tuple]] = None,
+        optimizer_constraints: Optional[Dict[str, float]] = None,
         specific_constraints: Optional[List[Dict[str, Any]]] = None,
         **kwargs,
     ) -> Strategy:

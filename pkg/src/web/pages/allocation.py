@@ -189,7 +189,8 @@ def main():
 
                 with cw_tab:
                     fig = components.charts.pie(
-                        strategy.allocations.iloc[-1].dropna(), title="Strategy Current Weights"
+                        strategy.allocations.iloc[-1].dropna(),
+                        title="Strategy Current Weights",
                     )
                     st.plotly_chart(
                         fig, use_container_width=True, config={"displayModeBar": False}

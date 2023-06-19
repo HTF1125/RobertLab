@@ -122,6 +122,19 @@ class BaseOptimizer(BaseProperty):
         risk_free: float = 0.0,
         prices_bm: Optional[pd.Series] = None,
         weights_bm: Optional[pd.Series] = None,
+        min_weight: float = 0.0,
+        max_weight: float = 1.0,
+        sum_weight: float = 1.0,
+        min_active_weight: Optional[float] = None,
+        max_active_weight: Optional[float] = None,
+        min_return: Optional[float] = None,
+        max_return: Optional[float] = None,
+        min_volatility: Optional[float] = None,
+        max_volatility: Optional[float] = None,
+        min_exante_tracking_error: Optional[float] = None,
+        max_exante_tracking_error: Optional[float] = None,
+        min_expost_tracking_error: Optional[float] = None,
+        max_expost_tracking_error: Optional[float] = None,
     ) -> "BaseOptimizer":
         """_summary_
 
@@ -138,6 +151,19 @@ class BaseOptimizer(BaseProperty):
             risk_free=risk_free,
             prices_bm=prices_bm,
             weights_bm=weights_bm,
+            min_weight=min_weight,
+            max_weight=max_weight,
+            sum_weight=sum_weight,
+            min_active_weight=min_active_weight,
+            max_active_weight=max_active_weight,
+            min_return=min_return,
+            max_return=max_return,
+            min_volatility=min_volatility,
+            max_volatility=max_volatility,
+            min_exante_tracking_error=min_exante_tracking_error,
+            max_exante_tracking_error=max_exante_tracking_error,
+            min_expost_tracking_error=min_expost_tracking_error,
+            max_expost_tracking_error=max_expost_tracking_error,
         )
 
     def __init__(
@@ -149,6 +175,19 @@ class BaseOptimizer(BaseProperty):
         risk_free: float = 0.0,
         prices_bm: Optional[pd.Series] = None,
         weights_bm: Optional[pd.Series] = None,
+        min_weight: float = 0.0,
+        max_weight: float = 1.0,
+        sum_weight: float = 1.0,
+        min_active_weight: Optional[float] = None,
+        max_active_weight: Optional[float] = None,
+        min_return: Optional[float] = None,
+        max_return: Optional[float] = None,
+        min_volatility: Optional[float] = None,
+        max_volatility: Optional[float] = None,
+        min_exante_tracking_error: Optional[float] = None,
+        max_exante_tracking_error: Optional[float] = None,
+        min_expost_tracking_error: Optional[float] = None,
+        max_expost_tracking_error: Optional[float] = None,
     ) -> None:
         """init"""
         super().__init__()
@@ -158,64 +197,34 @@ class BaseOptimizer(BaseProperty):
         self.correlation_matrix = correlation_matrix
         self.prices = prices
         self.risk_free = risk_free
-        self.set_sum_weight(sum_weight=1.0)
         self.prices_bm = prices_bm
         self.weights_bm = weights_bm
-
         self.exp = {}
 
-    def set_bounds(
-        self,
-        weight: Optional[Tuple[Optional[float], Optional[float]]] = (0.0, 1.0),
-        active_weight: Optional[Tuple[Optional[float], Optional[float]]] = None,
-        port_return: Optional[Tuple[Optional[float], Optional[float]]] = None,
-        port_risk: Optional[Tuple[Optional[float], Optional[float]]] = None,
-        exante_tracking_error: Optional[Tuple[Optional[float], Optional[float]]] = None,
-        expost_tracking_error: Optional[Tuple[Optional[float], Optional[float]]] = None,
-    ) -> "BaseOptimizer":
-        if weight is not None:
-            min_weight, max_weight = weight
-            if min_weight is not None:
-                self.set_min_weight(min_weight)
-            if max_weight is not None:
-                self.set_max_weight(max_weight)
+        self.set_sum_weight(sum_weight=sum_weight)
+        self.set_min_weight(min_weight)
+        self.set_max_weight(max_weight)
 
-        if active_weight is not None:
-            min_active_weight, max_active_weight = active_weight
-            if min_active_weight is not None:
-                self.set_min_active_weight(min_active_weight)
-            if max_active_weight is not None:
-                self.set_max_active_weight(max_active_weight)
-
-        if port_return is not None:
-            min_port_return, max_port_return = port_return
-            if min_port_return is not None:
-                self.set_min_port_return(min_port_return)
-            if max_port_return is not None:
-                self.set_max_port_return(max_port_return)
-
-        if port_risk is not None:
-            min_port_risk, max_port_risk = port_risk
-            if min_port_risk is not None:
-                self.set_min_port_risk(min_port_risk)
-            if max_port_risk is not None:
-                self.set_max_port_risk(max_port_risk)
-
-        if exante_tracking_error is not None:
-            min_exante_tracking_error, max_exante_tracking_error = exante_tracking_error
-            if min_exante_tracking_error is not None:
-                self.set_min_exante_tracking_error(min_exante_tracking_error)
-            if max_exante_tracking_error is not None:
-                self.set_max_exante_tracking_error(max_exante_tracking_error)
-
-        if expost_tracking_error is not None:
-            min_expost_tracking_error, max_expost_tracking_error = expost_tracking_error
-            if min_expost_tracking_error is not None:
-                self.set_min_expost_tracking_error(min_expost_tracking_error)
-            if max_expost_tracking_error is not None:
-                self.set_max_expost_tracking_error(max_expost_tracking_error)
-
-        return self
+        if min_active_weight is not None:
+            self.set_min_active_weight(min_active_weight)
+        if max_active_weight is not None:
+            self.set_max_active_weight(max_active_weight)
+        if min_return is not None:
+            self.set_min_port_return(min_return)
+        if max_return is not None:
+            self.set_max_port_return(max_return)
+        if min_volatility is not None:
+            self.set_min_port_risk(min_volatility)
+        if max_volatility is not None:
+            self.set_max_port_risk(max_volatility)
+        if min_exante_tracking_error is not None:
+            self.set_min_exante_tracking_error(min_exante_tracking_error)
+        if max_exante_tracking_error is not None:
+            self.set_max_exante_tracking_error(max_exante_tracking_error)
+        if min_expost_tracking_error is not None:
+            self.set_min_expost_tracking_error(min_expost_tracking_error)
+        if max_expost_tracking_error is not None:
+            self.set_max_expost_tracking_error(max_expost_tracking_error)
 
     def set_sum_weight(self, sum_weight: float) -> None:
         """set summation weights constriant"""

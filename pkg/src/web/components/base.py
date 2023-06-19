@@ -321,7 +321,7 @@ def get_optimizer_constraints():
             "format_func": lambda x: f"{x:.0%}",
         },
         {
-            "name": "port_return",
+            "name": "return",
             "label": "Return Bounds",
             "min_value": 0.0,
             "max_value": 0.3,
@@ -329,8 +329,8 @@ def get_optimizer_constraints():
             "format_func": lambda x: f"{x:.0%}",
         },
         {
-            "name": "port_risk",
-            "label": "Risk Bounds",
+            "name": "volatility",
+            "label": "Volatility Bounds",
             "min_value": 0.0,
             "max_value": 0.3,
             "step": 0.01,
@@ -368,10 +368,11 @@ def get_optimizer_constraints():
         assert isinstance(kwarg, dict)
         name = kwarg.pop("name")
         with cols[idx]:
-            bounds = get_bounds(**kwarg)
-            if bounds == (None, None):
-                continue
-            constraints[name] = bounds
+            minimum, maximum = get_bounds(**kwarg)
+            if minimum is not None:
+                constraints[f"min_{name}"] = minimum
+            if maximum is not None:
+                constraints[f"max_{name}"] = maximum
 
     cols = st.columns([1] * 2, gap="large")
 
@@ -379,10 +380,11 @@ def get_optimizer_constraints():
         assert isinstance(kwarg, dict)
         name = kwarg.pop("name")
         with cols[idx]:
-            bounds = get_bounds(**kwarg)
-            if bounds == (None, None):
-                continue
-            constraints[name] = bounds
+            minimum, maximum = get_bounds(**kwarg)
+            if minimum is not None:
+                constraints[f"min_{name}"] = minimum
+            if maximum is not None:
+                constraints[f"max_{name}"] = maximum
 
     return constraints
 
