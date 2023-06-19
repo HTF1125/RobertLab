@@ -87,7 +87,7 @@ def main():
         if submitted:
             prices = data.get_prices(tickers=universe.ticker.tolist())
 
-            strategy_signiture[backtest_parameters["name"]] = {
+            strategy_signiture[name] = {
                 "strategy": backtest_parameters,
                 "constraints": {
                     "optimizer": optimizer_constraints,
@@ -116,7 +116,7 @@ def main():
                     factor_bounds=factor_constraints["bounds"],
                 )
                 setattr(
-                    get_multistrategy().strategies[backtest_parameters["name"]],
+                    get_multistrategy().strategies[name],
                     "signiture",
                     strategy_signiture,
                 )

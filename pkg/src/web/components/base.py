@@ -9,6 +9,21 @@ from pkg.src import data
 from pkg.src.core import portfolios, strategies, factors
 
 
+def add_badges():
+    tt = """
+    <div style="position: absolute; top: 0; right: 0;">
+        <a href="https://github.com/htf1125/RobertLab">
+            <img src="https://img.shields.io/badge/GitHub-htf1125-black?logo=github">
+        </a>
+        <a href="https://github.com/HTF1125/RobertLab">
+            <img src="https://img.shields.io/github/license/htf1125/robertlab">
+        </a>
+    </div>
+    """
+    st.markdown(tt, unsafe_allow_html=True)
+
+
+
 def get_universe(show: bool = False) -> pd.DataFrame:
     universe = data.get_universe()
     selected = st.selectbox(
@@ -82,40 +97,37 @@ def get_benchmark() -> Type[strategies.benchmarks.Benchmark]:
     benchmark = st.selectbox(
         label="BM",
         options=[
-            strategies.benchmarks.Global64,
-            strategies.benchmarks.UnitedStates64,
+            strategies.benchmarks.Global64.__name__,
+            strategies.benchmarks.UnitedStates64.__name__,
         ],
-        format_func=lambda x: x.__name__,
         help="Select strategy's benchmark.",
     )
 
     if benchmark is None:
         raise ValueError()
-    return benchmark
+    return getattr(strategies.benchmarks, benchmark)
 
 
 def get_optimizer() -> Type[portfolios.base.BaseOptimizer]:
     optimizer = st.selectbox(
         label="Opt",
         options=[
-            portfolios.EqualWeight,
-            portfolios.MaxReturn,
-            portfolios.MaxSharpe,
-            portfolios.MinVolatility,
-            portfolios.MinCorrelation,
-            portfolios.InverseVariance,
-            portfolios.RiskParity,
-            portfolios.HierarchicalRiskParity,
-            portfolios.HierarchicalEqualRiskContribution,
+            portfolios.EqualWeight.__name__,
+            portfolios.MaxReturn.__name__,
+            portfolios.MaxSharpe.__name__,
+            portfolios.MinVolatility.__name__,
+            portfolios.MinCorrelation.__name__,
+            portfolios.InverseVariance.__name__,
+            portfolios.RiskParity.__name__,
+            portfolios.HierarchicalRiskParity.__name__,
+            portfolios.HierarchicalEqualRiskContribution.__name__,
         ],
-        index=0,
-        format_func=lambda x: x.__name__,
         help="Select strategy's rebalancing frequency.",
     )
 
     if optimizer is None:
         raise ValueError()
-    return optimizer
+    return getattr(portfolios, optimizer)
 
 
 def get_strategy_general_params():

@@ -1,6 +1,7 @@
 """ROBERT"""
 import logging
 import warnings
+from abc import abstractmethod
 from typing import Optional, Callable, Dict, List, Tuple, Any
 from functools import partial
 from scipy.optimize import minimize
@@ -504,6 +505,9 @@ class MaxReturn(BaseOptimizer):
             )
         )
 
+    @abstractmethod
+    def __call__(self, *args, **kwargs):
+        pass
 
 class MinVolatility(BaseOptimizer):
     def __call__(self) -> pd.Series:

@@ -1119,3 +1119,17 @@ def to_quantile(
             return pd.concat([posnum_quantiles, negnum_quantiles]).sort_index()
         return pd.qcut(x=data, q=num_quantiles, labels=False).add(1)
     return pd.Series(dtype=float)
+
+
+def to_macd(
+    prices: pd.DataFrame,
+    fast_window: int = 12,
+    slow_window: int = 26,
+    signal_window: int = 9,
+) -> pd.DataFrame:
+    MACD = (
+        +prices.ewm(span=fast_window, min_periods=fast_window).mean()
+        - prices.ewm(span=slow_window, min_periods=slow_window).mean()
+    )
+    signal = MACD.ewm(span=signal_window, min_periods=slow_window).mean()
+    return signal

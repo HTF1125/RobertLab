@@ -5,9 +5,7 @@ from streamlit_option_menu import option_menu
 from pkg.src.web import components, pages
 
 
-
 def init():
-
     st.set_page_config(
         page_title="ROBERT'S WEBSITE",
         page_icon="	:snowflake:",
@@ -20,7 +18,13 @@ def init():
         selected = option_menu(
             menu_title="Welcome",
             menu_icon="list-stars",
-            options=["Dashboard", "Eff.Frontier", "Allocation"],
+            options=[
+                "Dashboard",
+                "Mkt.Regime",
+                "Eff.Frontier",
+                "Ivt.Strategy",
+                "Alp.Factor",
+            ],
             orientation="vertical",
             styles={
                 "container": {"padding": "5!important", "max-width": "100%"},
@@ -29,38 +33,28 @@ def init():
                     "font-size": "15px",
                     "text-align": "left",
                     "margin": "5",
-                    # "--hover-color": "#eee",
                 },
             },
         )
 
-    tt = f"""
-    [![GitHub](https://img.shields.io/badge/GitHub-htf1125-black?logo=github)](https://github.com/htf1125/RobertLab)
-    [![GitHub](https://img.shields.io/github/license/htf1125/robertlab)](https://github.com/HTF1125/RobertLab)
-    """
-    st.markdown(tt, unsafe_allow_html=True)
+    components.add_badges()
 
-    st.title(selected)
+    st.subheader(selected)
+    st.markdown(
+        '<hr style="margin-top: 0px; margin-bottom: 5px;">', unsafe_allow_html=True
+    )
 
-    # if selected == "Dashboard":
-    #     start, end = components.get_date_range()
-    #     left, right = st.columns([1, 1])
-    #     with left:
-    #         components.macro.make_yield_curve()
-    #         components.macro.make_yield_curve2()
-    #     with right:
-    #         components.macro.make_inflation_linked()
+    if selected == "Dashboard":
+        st.info("welcome to robert's dashboard.")
 
-    if selected == "Allocation":
+    if selected == "Ivt.Strategy":
         pages.allocation.main()
 
     if selected == "Eff.Frontier":
         pages.efficient_frontier.main()
 
-    # if selected == "Regime":
-    #     pages.regime.main()
+    if selected == "Mkt.Regime":
+        pages.regime.main()
 
-    # if selected == "Security":
-    #     pass
-
-
+    if selected == "Alp.Factor":
+        pass
