@@ -1,15 +1,63 @@
 """ROBERT"""
+from typing import Type
 import warnings
 from typing import Optional, Tuple, Dict, Any, List
-from functools import partial
 import pandas as pd
-from pkg.src.core.portfolios import Optimizer
+from pkg.src.core import portfolios
 from pkg.src import data
 from .base import Strategy
 
 
-class BacktestManager:
+class Rebalance:
+    def __init__(
+        self,
+        optimizer: Type[portfolios.base.BaseOptimizer] = portfolios.EqualWeight,
+        factor_values: Optional[pd.DataFrame] = None,
+        factor_bounds: Tuple[Optional[float], Optional[float]] = (0.0, 1.0),
+        optimizer_constraints: Optional[Dict[str, Tuple]] = None,
+        specific_constraints: Optional[List[Dict[str, Any]]] = None,
+    ) -> None:
+        self.optimizer = optimizer
+        self.optimizer_constraints = optimizer_constraints or {}
+        self.specific_constraints = specific_constraints or []
+        self.factor_values = factor_values
+        self.factor_bounds = factor_bounds
 
+    def __call__(self, strategy: Strategy) -> pd.Series:
+        """Calculate portfolio allocation weights based on the Strategy instance.
+
+        Args:
+            strategy (Strategy): Strategy instance.
+
+        Returns:
+            pd.Series: portfolio allocation weights.
+        """
+
+        opt = (
+            self.optimizer.from_prices(prices=strategy.prices)
+            .set_bounds(**self.optimizer_constraints)
+            .set_specific_constraints(specific_constraints=self.specific_constraints)
+        )
+
+        if self.factor_values is not None:
+            if self.factor_bounds is None:
+                warnings.warn("Must specify percentile when feature is passed.")
+            curr_factor_values = (
+                self.factor_values.loc[strategy.date]
+                .reindex(index=opt.assets, fill_value=0)
+                .fillna(0)
+            )
+            opt.set_factor_constraints(
+                values=curr_factor_values, bounds=self.factor_bounds
+            )
+
+        if callable(opt):
+            return opt()
+        else:
+            return pd.Series(dtype=float)
+
+
+class MultiStrategy:
     num_strategies = 1
 
     @classmethod
@@ -20,8 +68,8 @@ class BacktestManager:
         end: Optional[str] = None,
         commission: int = 10,
         frequency: str = "M",
-        shares_frac: Optional[int] = None,
-    ) -> "BacktestManager":
+        allow_fractional_shares: bool = False,
+    ) -> "MultiStrategy":
         if name == "USSECTORETF":
             prices = data.get_prices(
                 tickers="XLC, XLY, XLP, XLE, XLF, XLV, XLI, XLB, XLRE, XLK, XLU, GLD, BIL",
@@ -34,14 +82,14 @@ class BacktestManager:
             end=end,
             commission=commission,
             frequency=frequency,
-            shares_frac=shares_frac,
+            allow_fractional_shares=allow_fractional_shares,
         )
 
     def reset_strategies(self) -> None:
         del self.strategies
         self.strategies = {}
 
-    def set_universe(self, name="USSECTORETF") -> "BacktestManager":
+    def set_universe(self, name="USSECTORETF") -> "MultiStrategy":
         if name == "USSECTORETF":
             self.prices = data.get_prices(
                 tickers="XLC, XLY, XLP, XLE, XLF, XLV, XLI, XLB, XLRE, XLK, XLU, GLD, BIL",
@@ -57,20 +105,20 @@ class BacktestManager:
         commission: int = 10,
         start: Optional[str] = None,
         end: Optional[str] = None,
-        shares_frac: Optional[int] = None,
+        allow_fractional_shares: bool = False,
     ) -> None:
         self.prices = prices
         self.frequency = frequency
         self.commission = commission
         self.start = start
         self.end = end
-        self.shares_frac = shares_frac
+        self.allow_fractional_shares = allow_fractional_shares
         self.strategies: Dict[str, Strategy] = dict()
 
     def run(
         self,
         name: Optional[str] = None,
-        objective: str = "uniform_allocation",
+        optimizer: Type[portfolios.base.BaseOptimizer] = portfolios.EqualWeight,
         factor_values: Optional[pd.DataFrame] = None,
         factor_bounds: Tuple[Optional[float], Optional[float]] = (0.0, 1.0),
         optimizer_constraints: Optional[Dict[str, Tuple]] = None,
@@ -92,10 +140,11 @@ class BacktestManager:
             end=kwargs.pop("end", self.end),
             frequency=kwargs.pop("frequency", self.frequency),
             commission=kwargs.pop("commission", self.commission),
-            shares_frac=kwargs.pop("shares_frac", self.shares_frac),
-            rebalance=partial(
-                self.rebalance,
-                objective=objective,
+            allow_fractional_shares=kwargs.pop(
+                "allow_fractional_shares", self.allow_fractional_shares
+            ),
+            rebalance=Rebalance(
+                optimizer=optimizer,
                 factor_values=factor_values,
                 factor_bounds=factor_bounds,
                 optimizer_constraints=optimizer_constraints,
@@ -105,41 +154,6 @@ class BacktestManager:
         self.strategies[name] = strategy
         self.num_strategies += 1
         return strategy
-
-    @staticmethod
-    def rebalance(
-        strategy: Strategy,
-        objective: str = "uniform_allocation",
-        factor_values: Optional[pd.DataFrame] = None,
-        factor_bounds: Tuple[Optional[float], Optional[float]] = (0.0, 1.0),
-        optimizer_constraints: Optional[Dict[str, Tuple]] = None,
-        specific_constraints: Optional[List[Dict[str, Any]]] = None,
-    ) -> pd.Series:
-        """rebalance function callable"""
-
-        if optimizer_constraints is None:
-            optimizer_constraints = {}
-
-        opt = Optimizer.from_prices(prices=strategy.prices, **optimizer_constraints)
-
-        if specific_constraints is not None:
-            opt.set_specific_constraints(specific_constraints=specific_constraints)
-
-        if factor_values is not None:
-            if factor_bounds is None:
-                warnings.warn("Must specify percentile when feature is passed.")
-            curr_factor_values = (
-                factor_values.loc[strategy.date]
-                .reindex(index=opt.assets, fill_value=0)
-                .fillna(0)
-            )
-            opt.set_factor_constraints(values=curr_factor_values, bounds=factor_bounds)
-        if not hasattr(opt, objective):
-            warnings.warn(message="check you allocation objective")
-            return opt.uniform_allocation()
-        weight = getattr(opt, objective)()
-        return weight
-
 
     @property
     def values(self) -> pd.DataFrame:

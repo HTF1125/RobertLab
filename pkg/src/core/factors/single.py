@@ -225,3 +225,7 @@ class PriceVolatility1M(PriceVolatility):
 
 class PriceVolatility3M(PriceVolatility):
     months = 3
+
+
+class PriceMomentumScaledbyVolatility(Factors):
+    momentum_months = 1

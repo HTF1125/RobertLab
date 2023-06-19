@@ -1,27 +1,12 @@
 """ROBERT"""
-from datetime import datetime
 import pandas as pd
 import streamlit as st
 from ..components import charts
 from .. import data
 from ...core import metrics
-
-def to_macd(
-    prices: pd.DataFrame,
-    fast_window: int = 12,
-    slow_window: int = 26,
-    signal_window: int = 9,
-) -> pd.DataFrame:
-    MACD = (
-        +prices.ewm(span=fast_window, min_periods=fast_window).mean()
-        - prices.ewm(span=slow_window, min_periods=slow_window).mean()
-    )
-    signal = MACD.ewm(span=signal_window, min_periods=slow_window).mean()
-    return signal
-
+from pkg.src.web import components
 
 def get_vix_regime(start, end):
-
     vix = data.get_vix()
     normalized = metrics.rolling.to_standard_scalar(vix, window=252)
     normalized = normalized.ewm(90).mean()
@@ -31,8 +16,8 @@ def get_vix_regime(start, end):
         use_container_width=True,
     )
 
-def get_oecd_us_lei_regime(start, end):
 
+def get_oecd_us_lei_regime(start, end):
     lei = data.get_oecd_us_lei()
     lei.index = lei.index + pd.DateOffset(months=1)
     change = lei.resample("M").last().diff().dropna()
@@ -43,17 +28,31 @@ def get_oecd_us_lei_regime(start, end):
         use_container_width=True,
     )
 
+def inflation_short_yield_data(start=None, end=None) -> pd.DataFrame:
+    """
+    Get raw data for leading economic indicator regime.
+    """
+    tickers = dict(THREEFFTP10="term",
+                    T10YIE="inflation",
+                    DGS10="treasury")
 
+    start = start if start else "1900-01-01"
+    import pandas_datareader as pdr
+    dt = pdr.DataReader(list(tickers.keys()), "fred", start=start)
+    dt = dt.rename(columns=tickers)
+    dt["short_yield"] = dt['treasury'] - dt['term'] - dt['inflation']
+    dt = dt[['short_yield', 'inflation']]
+    return dt.dropna()
 
 def main():
-    dates = pd.date_range("1990-1-1", datetime.now(), freq="D")
-    start, end = st.select_slider(
-        label="Select Date Range",
-        options=dates,
-        value=(dates[0], dates[-1]),
-        format_func=lambda x: f"{x:%Y-%m-%d}"
-    )
-
-
-    get_vix_regime(start=start, end=end)
-    get_oecd_us_lei_regime(start=start, end=end)
+    with st.form("Market Regime"):
+        start, end = components.get_date_range()
+        submitted = st.form_submit_button("Submit")
+        if submitted:
+            get_vix_regime(start=start, end=end)
+            get_oecd_us_lei_regime(start=start, end=end)
+            yield_data = inflation_short_yield_data()
+            pp = metrics.to_macd(yield_data).rolling(121).corr().unstack().iloc[:,0] + 1
+            pp = pp.clip(0, 1)
+            pp.name = "fff"
+            st.plotly_chart(charts.line(pp.to_frame()), use_container_width=True)

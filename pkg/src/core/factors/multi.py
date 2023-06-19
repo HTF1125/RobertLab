@@ -1,20 +1,17 @@
 """ROBERT"""
 from typing import Union, List, Set, Tuple
 import pandas as pd
-from pkg.src.core import metrics, factors
+from pkg.src.core import metrics
+from .single import Factors
 
 
 class MultiFactors:
     def __init__(
-        self,
-        tickers: Union[str, List, Set, Tuple],
-        factor_list: List[str],
+        self, tickers: Union[str, List, Set, Tuple],
+        factors: List[Factors],
     ) -> None:
         data = [
-            getattr(factors.single, factor)(tickers=tickers).standard_percentile.stack()
-            if isinstance(factor, str)
-            else factor(tickers=tickers).standard_percentile.stack()
-            for factor in factor_list
+            factor(tickers=tickers).standard_percentile.stack() for factor in factors
         ]
         self.factors = pd.concat(data, axis=1).mean(axis=1).unstack()
 

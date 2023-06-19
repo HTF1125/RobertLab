@@ -1,250 +1,113 @@
 """ROBERT"""
-from typing import Dict, Tuple, List, Any, Optional, Callable
-import numpy as np
-import pandas as pd
 import streamlit as st
 from pkg.src.core import factors
-from pkg.src.web import components, data, state
+from pkg.src.web import components, data
+from pkg.src.core.strategies import MultiStrategy
 
-def get_factor_constraints():
-    params = {}
-    params["factors"] = st.multiselect(
-        label="Factor List",
-        options=[
-            name
-            for name in dir(factors.single)
-            if name in getattr(factors.single, "__all__", [])
-        ]
+def get_name() -> str:
+    return str(
+        st.text_input(
+            label="Name",
+            value=f"Strategy-{get_multistrategy().num_strategies}",
+        )
     )
-    params["bounds"] = get_bounds(
-        label="Factor Weight",
-        min_value=0.0,
-        max_value=1.0,
-        step=0.1,
-        format_func=lambda x: f"{x:.0%}",
-        help="Select range for your factor weight.",
-    )
+def get_multistrategy() -> MultiStrategy:
+    # Initialization
+    if "multi-strategy" not in st.session_state:
+        st.session_state["multi-strategy"] = MultiStrategy()
+    return st.session_state["multi-strategy"]
 
-    return params
+
+def get_portfolio_parameters():
+    parameter_funcs = {
+        "optimizer": components.get_optimizer,
+        "benchmark": components.get_benchmark,
+    }
+
+    parameter_cols = st.columns([1] * len(parameter_funcs))
+
+    parameters = {}
+
+    for col, (name, func) in zip(parameter_cols, parameter_funcs.items()):
+        with col:
+            parameters[name] = func()
+    return parameters
 
 
 def get_strategy_parameters():
-    basic_calls = [
-        components.get_name,
-        components.get_start,
-        components.get_end,
-        components.get_objective,
-        components.get_frequency,
-        components.get_commission,
-    ]
-    basic_cols = st.columns([1] * len(basic_calls))
+    parameter_funcs = {
+        "start": components.get_start,
+        "end": components.get_end,
+        "frequency": components.get_frequency,
+        "commission": components.get_commission,
+    }
 
-    base_parameters = {}
+    parameter_cols = st.columns([1] * len(parameter_funcs))
 
-    for col, call in zip(basic_cols, basic_calls):
+    parameters = {}
+
+    for col, (name, func) in zip(parameter_cols, parameter_funcs.items()):
         with col:
-            base_parameters[call.__name__[4:]] = call()
-    return base_parameters
+            parameters[name] = func()
 
+    parameters.update(get_portfolio_parameters())
 
-def get_bounds(
-    label: str,
-    min_value: float = 0,
-    max_value: float = 100,
-    step: float = 4,
-    format_func: Callable[[Any], Any] = str,
-    help: Optional[str] = None,
-) -> Tuple[Optional[float], Optional[float]]:
-    bounds = st.select_slider(
-        label=label,
-        options=np.arange(min_value, max_value + step, step),
-        value=(min_value, max_value),
-        format_func=format_func,
-        help=help,
-    )
-    assert isinstance(bounds, tuple)
-    low, high = bounds
+    parameters["allow_fractional_shares"] = components.get_allow_fractional_shares()
 
-    return (
-        low if low != min_value else None,
-        high if high != max_value else None,
-    )
-
-
-def get_optimizer_constraints():
-    constraints = {}
-    kwargs = [
-        {
-            "name": "weights_bounds",
-            "label": "Weight Bounds",
-            "min_value": 0.0,
-            "max_value": 1.0,
-            "step": 0.05,
-            "format_func": lambda x: f"{x:.0%}",
-        },
-        {
-            "name": "return_bounds",
-            "label": "Return Bounds",
-            "min_value": 0.0,
-            "max_value": 0.3,
-            "step": 0.01,
-            "format_func": lambda x: f"{x:.0%}",
-        },
-        {
-            "name": "risk_bounds",
-            "label": "Risk Bounds",
-            "min_value": 0.0,
-            "max_value": 0.3,
-            "step": 0.01,
-            "format_func": lambda x: f"{x:.0%}",
-        },
-        {
-            "name": "active_weight_bounds",
-            "label": "Active Weight Bounds",
-            "min_value": 0.0,
-            "max_value": 0.3,
-            "step": 0.01,
-            "format_func": lambda x: f"{x:.0%}",
-        },
-        {
-            "name": "expost_tracking_error_bounds",
-            "label": "Ex-Post Tracking Error Bounds",
-            "min_value": 0.0,
-            "max_value": 0.1,
-            "step": 0.01,
-            "format_func": lambda x: f"{x:.0%}",
-        },
-        {
-            "name": "exante_tracking_error_bounds",
-            "label": "Ex-Ante Tracking Error Bounds",
-            "min_value": 0.0,
-            "max_value": 0.1,
-            "step": 0.01,
-            "format_func": lambda x: f"{x:.0%}",
-        },
-    ]
-
-    cols = st.columns([1] * 4)
-
-    for idx, kwarg in enumerate(kwargs[:4]):
-        assert isinstance(kwarg, dict)
-        name = kwarg.pop("name")
-        with cols[idx]:
-            bounds = get_bounds(**kwarg)
-            if bounds == (None, None):
-                continue
-            constraints[name] = bounds
-
-    cols = st.columns([1] * 2)
-
-    for idx, kwarg in enumerate(kwargs[4:]):
-        assert isinstance(kwarg, dict)
-        name = kwarg.pop("name")
-        with cols[idx]:
-            bounds = get_bounds(**kwarg)
-            if bounds == (None, None):
-                continue
-            constraints[name] = bounds
-
-    return constraints
-
-
-def get_specific_constraints(
-    universe: pd.DataFrame, num_columns: int = 5
-) -> List[Dict]:
-    constraints = []
-    asset_classes = universe["assetclass"].unique()
-    final_num_columns = min(num_columns, len(asset_classes))
-    cols = st.columns([1] * final_num_columns)
-    for idx, asset_class in enumerate(asset_classes):
-        with cols[idx % num_columns]:
-            bounds = get_bounds(
-                label=asset_class,
-                min_value=0.0,
-                max_value=1.0,
-                step=0.05,
-                format_func=lambda x: f"{x:.0%}",
-            )
-            if bounds == (None, None):
-                continue
-            constraint = {
-                "assets": universe[
-                    universe["assetclass"] == asset_class
-                ].ticker.to_list(),
-                "bounds": bounds,
-            }
-            constraints.append(constraint)
-    st.markdown("---")
-    final_num_columns = min(num_columns, len(universe))
-    cols = st.columns([1] * final_num_columns)
-    for idx, asset in enumerate(universe.to_dict("records")):
-        ticker = asset["ticker"]
-        name = asset["name"]
-        with cols[idx % num_columns]:
-            bounds = get_bounds(
-                label=ticker,
-                min_value=0.0,
-                max_value=1.0,
-                step=0.05,
-                format_func=lambda x: f"{x:.0%}",
-                help=name,
-            )
-            if bounds == (None, None):
-                continue
-            constraint = {
-                "assets": ticker,
-                "bounds": bounds,
-            }
-            constraints.append(constraint)
-    return constraints
+    return parameters
 
 
 def main():
-    universe = components.get_universe()
+    strategy_signiture = {}
 
-    with st.expander(label="See universe details:"):
-        st.dataframe(universe, height=150, use_container_width=True)
+    universe = components.get_universe(show=True)
 
     with st.form("AssetAllocationForm"):
+        name = get_name()
         # Backtest Parameters
         backtest_parameters = get_strategy_parameters()
 
         # Asset Allocation Constraints
         with st.expander(label="Asset Allocation Constraints:"):
             st.subheader("Optimizer Constraints")
-            optimizer_constraints = get_optimizer_constraints()
+            optimizer_constraints = components.get_optimizer_constraints()
             st.markdown("---")
             st.subheader("Specific Constraints")
-            specific_constraints = get_specific_constraints(universe=universe)
+            specific_constraints = components.get_specific_constraints(
+                universe=universe
+            )
             st.markdown("---")
 
         # Factor Implementation
         with st.expander(label="Factor Implementation:"):
-            factor_constraints = get_factor_constraints()
+            factor_constraints = components.get_factor_constraints()
 
         submitted = st.form_submit_button(label="Backtest", type="primary")
-        signature = {
-            "strategy": backtest_parameters,
-            "constraints": {
-                "optimizer": optimizer_constraints,
-                "factor": factor_constraints,
-                "specific": specific_constraints,
-            },
-        }
 
-        st.json(signature, expanded=False)
         if submitted:
             prices = data.get_prices(tickers=universe.ticker.tolist())
+
+            strategy_signiture[name] = {
+                "strategy": backtest_parameters,
+                "constraints": {
+                    "optimizer": optimizer_constraints,
+                    "factor": factor_constraints,
+                    "specific": specific_constraints,
+                },
+            }
+
             if factor_constraints["factors"]:
-                factor_values = factors.multi.MultiFactors(
-                    tickers=universe.ticker.tolist(),
-                    factor_list=factor_constraints["factors"],
-                ).standard_percentile
+                with st.spinner("Loading Factor Data."):
+                    factor_values = factors.multi.MultiFactors(
+                        tickers=universe.ticker.tolist(),
+                        factors=factor_constraints["factors"],
+                    ).standard_percentile
             else:
                 factor_values = None
 
             with st.spinner(text="Backtesting in progress..."):
-                state.get_backtestmanager().run(
+                get_multistrategy().run(
+                    name=name,
                     **backtest_parameters,
                     optimizer_constraints=optimizer_constraints,
                     specific_constraints=specific_constraints,
@@ -252,9 +115,85 @@ def main():
                     factor_values=factor_values,
                     factor_bounds=factor_constraints["bounds"],
                 )
+                setattr(
+                    get_multistrategy().strategies[name],
+                    "signiture",
+                    strategy_signiture,
+                )
 
     st.button(
         label="Clear All Strategies",
-        on_click=state.get_backtestmanager().reset_strategies,
+        on_click=get_multistrategy().reset_strategies,
     )
-    components.performances.main()
+
+    multistrategy = get_multistrategy()
+
+    if multistrategy.strategies:
+        analytics = multistrategy.analytics
+        st.dataframe(analytics.T, use_container_width=True)
+
+        st.plotly_chart(
+            components.charts.line(
+                data=get_multistrategy().values.resample("M").last(),
+                yaxis_title="NAV",
+                yaxis_tickformat="$,.0f",
+                hovertemplate="Date: %{x} - Value: %{y:,.0f}",
+                title="Strategy Performance",
+            ),
+            use_container_width=True,
+            config={"displayModeBar": False},
+        )
+
+        for name, strategy in multistrategy.strategies.items():
+            with st.expander(label=name, expanded=False):
+                st.json(getattr(strategy, "signiture"), expanded=False)
+
+                perf_tab, dd_tab, hw_tab, cw_tab = st.tabs(
+                    ["Performance", "Drawdown", "Hist.Weights", "Curr.Weights"]
+                )
+
+                with perf_tab:
+                    fig = components.charts.line(
+                        strategy.value.to_frame(),
+                        yaxis_title="NAV",
+                        yaxis_tickformat="$,.0f",
+                        hovertemplate="Date: %{x} - Value: %{y:,.0f}",
+                        title="Strategy Performance",
+                        legend_xanchor="left",
+                        legend_y=1.1,
+                    )
+
+                    st.plotly_chart(
+                        fig, use_container_width=True, config={"displayModeBar": False}
+                    )
+                with dd_tab:
+                    fig = components.charts.line(
+                        strategy.drawdown.to_frame(),
+                        yaxis_title="Drawdwon",
+                        yaxis_tickformat=".0%",
+                        hovertemplate="Date: %{x} - Value: %{y:.2%}",
+                        title="Strategy Drawdown",
+                    )
+                    st.plotly_chart(
+                        fig, use_container_width=True, config={"displayModeBar": False}
+                    )
+                with hw_tab:
+                    fig = components.charts.line(
+                        strategy.allocations,
+                        xaxis_tickformat="%Y-%m-%d",
+                        xaxis_title="Date",
+                        yaxis_title="Weights",
+                        yaxis_tickformat=".0%",
+                        hovertemplate="Date: %{x} - Value: %{y:.2%}",
+                        title="Strategy Performance",
+                        stackgroup="stack",
+                    )
+                    st.plotly_chart(
+                        fig, use_container_width=True, config={"displayModeBar": False}
+                    )
+
+                with cw_tab:
+                    fig = components.charts.pie(strategy.allocations.iloc[-1].dropna())
+                    st.plotly_chart(
+                        fig, use_container_width=True, config={"displayModeBar": False}
+                    )

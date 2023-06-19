@@ -2,10 +2,10 @@
     // Window Editor
     "editor.rulers": [80],
     "editor.cursorStyle": "line-thin",
-    // "editor.fontFamily":"JetBrains Mono",
+    "editor.fontFamily":"JetBrains Mono",
     "editor.fontSize":15,
     "editor.fontLigatures":true,
-    // "editor.codeLensFontFamily": "JetBrains Mono",
+    "editor.codeLensFontFamily": "JetBrains Mono",
 
     // Git
     "git.autofetch": true,
@@ -21,7 +21,7 @@
     "python.analysis.typeCheckingMode": "basic",
 
     // Terminal
-    // "terminal.integrated.fontFamily":"JetBrains Mono",
+    "terminal.integrated.fontFamily":"JetBrains Mono",
     "terminal.integrated.fontSize":15,
     "editor.minimap.enabled":true,
 
