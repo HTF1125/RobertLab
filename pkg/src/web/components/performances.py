@@ -1,59 +1,33 @@
 import streamlit as st
-from plotly.graph_objects import Scatter, Bar
+from plotly.graph_objects import Scatter, Bar, Pie
 from plotly.subplots import make_subplots
-from .. import state
+from pkg.src.core.strategies import MultiStrategy
 
 
-def main():
-    if not state.get_multistrategy().values.empty:
-        analytics = state.get_multistrategy().analytics
-        st.write(analytics.T)
 
-        fig = make_subplots(rows=1, cols=1)
-        for name, strategy in state.get_multistrategy().strategies.items():
-            # Add line chart for prices to the first subplot
-            val = strategy.value.resample("M").last()
-            price_trace = Scatter(
-                x=val.index,
-                y=val.values,
-                name=name,
-                hovertemplate="Date: %{x} Price: %{y}",
-            )
-            fig.add_trace(price_trace)
 
-        fig.update_layout(
-            title="Performance",
-            hovermode="x",
-            legend=dict(orientation="v", yanchor="top", y=1.1, xanchor="left", x=0),
-        )
 
-        fig.update_layout(
-            xaxis=dict(
-                title="Date", tickformat="%Y-%m-%d"
-            ),  # Customize the date format
-            yaxis=dict(
-                title="Price",
-                tickprefix="$",  # Add a currency symbol to the y-axis tick labels
-            ),
-        )
+def main(multistrategy: MultiStrategy):
 
-        st.plotly_chart(fig, use_container_width=True)
 
-    for name, strategy in state.get_multistrategy().strategies.items():
+    for name, strategy in multistrategy.strategies.items():
         with st.expander(label=name, expanded=False):
+            st.json(getattr(strategy, "signiture"))
+
             st.button(
                 label="Delete",
                 key=name,
-                on_click=state.get_multistrategy().drop_strategy,
+                on_click=multistrategy.drop_strategy,
                 kwargs={"name": name},
             )
 
             st.json(strategy.analytics.to_dict(), expanded=False)
 
-            performance, histo = st.tabs(
+            performance, histo, drawdown = st.tabs(
                 [
                     "Performance",
                     "Hist.Allocations",
+                    "Drawdown",
                 ]
             )
 
@@ -68,14 +42,7 @@ def main():
                 name="Strategy",
                 hovertemplate="Date: %{x}<br>Price: %{y}",
             )
-            # price_bm_trace = Scatter(
-            #     x=strategy.prices_bm.index,
-            #     y=strategy.prices_bm.values,
-            #     name="Benchmark",
-            #     hovertemplate="Date: %{x}<br>Price: %{y}",
-            # )
             fig.add_trace(price_trace, row=1, col=1)
-            # fig.add_trace(price_bm_trace, row=1, col=1)
             fig.update_layout(
                 title="Performance",
                 xaxis_title="Date",
@@ -84,7 +51,6 @@ def main():
                 legend=dict(orientation="h", yanchor="top", y=1.1, xanchor="left", x=0),
                 height=500,
             )
-
             fig.update_layout(
                 xaxis=dict(
                     title="Date", tickformat="%Y-%m-%d"
@@ -120,6 +86,22 @@ def main():
                 height=500,
             )
             with histo:
+                st.plotly_chart(
+                    fig, use_container_width=True, config={"displayModeBar": False}
+                )
+
+            fig = make_subplots(rows=1, cols=1)
+
+            fig.add_trace(
+                Scatter(
+                    x=strategy.drawdown.index,
+                    y=strategy.drawdown,
+                    mode="lines",
+                    name="Drawdown",
+                )
+            )
+
+            with drawdown:
                 st.plotly_chart(
                     fig, use_container_width=True, config={"displayModeBar": False}
                 )

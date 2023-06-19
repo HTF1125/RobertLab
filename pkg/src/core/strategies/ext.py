@@ -50,11 +50,11 @@ class Rebalance:
             opt.set_factor_constraints(
                 values=curr_factor_values, bounds=self.factor_bounds
             )
-        # if not hasattr(opt, self.objective):
-        #     warnings.warn(message="check you allocation objective")
-        #     return opt.uniform_allocation()
-        weight = opt()
-        return weight
+
+        if callable(opt):
+            return opt()
+        else:
+            return pd.Series(dtype=float)
 
 
 class MultiStrategy:
@@ -68,7 +68,7 @@ class MultiStrategy:
         end: Optional[str] = None,
         commission: int = 10,
         frequency: str = "M",
-        shares_frac: Optional[int] = None,
+        allow_fractional_shares: bool = False,
     ) -> "MultiStrategy":
         if name == "USSECTORETF":
             prices = data.get_prices(
@@ -82,7 +82,7 @@ class MultiStrategy:
             end=end,
             commission=commission,
             frequency=frequency,
-            shares_frac=shares_frac,
+            allow_fractional_shares=allow_fractional_shares,
         )
 
     def reset_strategies(self) -> None:
@@ -105,14 +105,14 @@ class MultiStrategy:
         commission: int = 10,
         start: Optional[str] = None,
         end: Optional[str] = None,
-        shares_frac: Optional[int] = None,
+        allow_fractional_shares: bool = False,
     ) -> None:
         self.prices = prices
         self.frequency = frequency
         self.commission = commission
         self.start = start
         self.end = end
-        self.shares_frac = shares_frac
+        self.allow_fractional_shares = allow_fractional_shares
         self.strategies: Dict[str, Strategy] = dict()
 
     def run(
@@ -140,7 +140,9 @@ class MultiStrategy:
             end=kwargs.pop("end", self.end),
             frequency=kwargs.pop("frequency", self.frequency),
             commission=kwargs.pop("commission", self.commission),
-            shares_frac=kwargs.pop("shares_frac", self.shares_frac),
+            allow_fractional_shares=kwargs.pop(
+                "allow_fractional_shares", self.allow_fractional_shares
+            ),
             rebalance=Rebalance(
                 optimizer=optimizer,
                 factor_values=factor_values,

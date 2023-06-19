@@ -5,13 +5,12 @@ from ..ext.store import DataStore
 from .. import metrics
 from . import benchmarks
 
+
 class Strategy:
     """base strategy"""
 
-
     def set_benchmark(self, benchmark: benchmarks.Benchmark) -> None:
-        self.benchmakr = benchmark
-
+        self.benchmark = benchmark
 
     def __init__(
         self,
@@ -22,7 +21,7 @@ class Strategy:
         end: Optional[str] = None,
         initial_investment: float = 10_000.0,
         commission: int = 10,
-        shares_frac: Optional[int] = None,
+        allow_fractional_shares: bool = False,
     ) -> None:
         """
         Initialize a Strategy object.
@@ -35,13 +34,16 @@ class Strategy:
             end (str, optional): End date for the simulation. Defaults to None.
             initial_investment (float, optional): Initial investment amount. Defaults to 10_000.0.
             commission (int, optional): Commission amount for trades. Defaults to 10.
-            shares_frac (int, optional): Number of decimal places for rounding shares. Defaults to None.
+            # `shares_frac` is not a parameter in the `__init__` method of the
+            # `Strategy` class. It is likely a typo and should be
+            # `allow_fractional_shares`, which is a parameter that determines
+            # whether the strategy allows fractional shares or not.
             prices_bm (pd.Series, optional): Benchmark price data. Defaults to None.
         """
         self.total_prices: pd.DataFrame = prices.ffill()
         self.commission = commission
         self.rebalance: Callable = rebalance
-        self.shares_frac = shares_frac
+        self.allow_fractional_shares = allow_fractional_shares
         self.initial_investment = initial_investment
         self.data = DataStore()
         self.start = start or str(self.total_prices.index[0])
@@ -74,7 +76,7 @@ class Strategy:
         Returns:
             pd.Series: Strategy value.
         """
-        return pd.Series(self.data.get("value"))
+        return pd.Series(self.data.get("value"), name="performance")
 
     @property
     def cash(self) -> pd.Series:
@@ -84,7 +86,7 @@ class Strategy:
         Returns:
             pd.Series: Cash holdings.
         """
-        return pd.Series(self.data.get("cash"))
+        return pd.Series(self.data.get("cash"), name="cash")
 
     @property
     def allocations(self) -> pd.DataFrame:
@@ -138,8 +140,9 @@ class Strategy:
                     self.data["allocations"][self.date] = allocations
                     target_capials = value * allocations
                     target_shares = target_capials.divide(self.total_prices.loc[date])
-                    if self.shares_frac is not None:
-                        target_shares = target_shares.round(self.shares_frac)
+                    target_shares = target_shares.round(
+                        decimals=4 if self.allow_fractional_shares else 0
+                    )
                     trade_shares = target_shares.subtract(shares, fill_value=0)
                     trade_shares = trade_shares[trade_shares != 0]
                     self.data["trades"][date] = trade_shares

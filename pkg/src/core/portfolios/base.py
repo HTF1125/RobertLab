@@ -161,6 +161,10 @@ class BaseOptimizer(BaseProperty):
         self.prices_bm = prices_bm
         self.weights_bm = weights_bm
 
+        self.exp = {}
+
+
+
     def set_bounds(
         self,
         weight: Optional[Tuple[Optional[float], Optional[float]]] = (0., 1.),
@@ -472,8 +476,19 @@ class BaseOptimizer(BaseProperty):
         )
         if problem.success:
             data = problem.x + 1e-16
-            return pd.Series(data=data, index=self.assets, name="weights").round(6)
-        return pd.Series(dtype=float)
+            weights = pd.Series(data=data, index=self.assets, name="weights").round(6)
+
+            if self.expected_returns is not None:
+                self.exp['expected_return'] = self.expected_returns.dot(weights)
+            if self.covariance_matrix is not None:
+                self.exp['expected_volatility'] = self.covariance_matrix.dot(weights).dot(weights) ** 0.5
+
+            return weights
+        raise ValueError("Portoflio Optimization Failed.")
+
+
+
+
 
 
 class MaxReturn(BaseOptimizer):
