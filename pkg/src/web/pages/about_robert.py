@@ -17,9 +17,8 @@ class AboutMe(BasePage):
 
     def render(self):
         st.title(self.NAME)
-        st.markdown(
-            '<hr style="margin-top: 0px; margin-bottom: 5px;">', unsafe_allow_html=True
-        )
+        self.low_margin_divider()
+
         st.write(self.DESCRIPTION)
         # st.download_button(
         #     label=" 📄 Download Resume",
@@ -32,9 +31,8 @@ class AboutMe(BasePage):
         # --- EXPERIENCE & QUALIFICATIONS ---
         st.write("\n")
         st.subheader("Experience & Qulifications")
-        st.markdown(
-            '<hr style="margin-top: 0px; margin-bottom: 5px;">', unsafe_allow_html=True
-        )
+        self.low_margin_divider()
+
         st.write(
             """
             - ✔️ 6 Years expereince in quantitative strategy development.
@@ -47,9 +45,8 @@ class AboutMe(BasePage):
         # --- SKILLS ---
         st.write("\n")
         st.subheader("Hard Skills")
-        st.markdown(
-            '<hr style="margin-top: 0px; margin-bottom: 5px;">', unsafe_allow_html=True
-        )
+        self.low_margin_divider()
+
         st.write(
             """
             - 👩‍💻 Programming: Python, SQL, VBA
@@ -63,9 +60,8 @@ class AboutMe(BasePage):
         # --- WORK HISTORY ---
         st.write("\n")
         st.subheader("Work History")
-        st.markdown(
-            '<hr style="margin-top: 0px; margin-bottom: 5px;">', unsafe_allow_html=True
-        )
+        self.low_margin_divider()
+
         # --- JOB 1
         st.write("🚧", "**Quantitative Strategist | Dneuro Inc.**")
         st.write("05/2021 - 05/2023")
@@ -89,9 +85,7 @@ class AboutMe(BasePage):
             """
         )
 
-        st.markdown(
-            '<hr style="margin-top: 0px; margin-bottom: 5px;">', unsafe_allow_html=True
-        )
+        self.low_margin_divider()
         # --- JOB 1
         st.write("🚧", "**Global Solutions Specialist | Woori Asset Management Corp.**")
         st.write("03/2017 - 05/2021")
@@ -107,8 +101,9 @@ class AboutMe(BasePage):
             (VBA) with Bloomberg and Wind terminal.
 
             -► Managed liquidity positions for all global equity funds, ensuring
-            efficient execution of Forex Hedges using futures and forward contracts.
-            Proactively monitored market conditions and implemented hedging
-            strategies to mitigate currency risks and optimize fund performance.
+            efficient execution of Forex Hedges using futures and forward
+            contracts. Proactively monitored market conditions and implemented
+            hedging strategies to mitigate currency risks and optimize fund
+            performance.
             """
         )
