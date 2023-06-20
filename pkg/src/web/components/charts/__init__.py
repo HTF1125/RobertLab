@@ -20,13 +20,17 @@ def line(
     legend_xanchor: Optional[str] = None,
     legend_x: Optional[float] = None,
     legend_y: Optional[float] = None,
-    stackgroup: Optional[str] = None
+    stackgroup: Optional[str] = None,
 ):
     fig = make_subplots(rows=1, cols=1)
 
     for col in data:
         trace = Scatter(
-            x=data.index, y=data[col].values, name=col, hovertemplate=hovertemplate, stackgroup=stackgroup
+            x=data.index,
+            y=data[col].values,
+            name=col,
+            hovertemplate=hovertemplate,
+            stackgroup=stackgroup,
         )
         fig.add_trace(trace)
 
@@ -111,7 +115,9 @@ def pie(
 ):
     fig = go.Figure()
 
-    fig.add_trace(go.Pie(labels=data.index, values=data.values))
+    fig.add_trace(
+        go.Pie(labels=data.index, values=data.values, hovertemplate=hovertemplate)
+    )
     fig.update_layout(
         title=title,
         xaxis_title=xaxis_title,

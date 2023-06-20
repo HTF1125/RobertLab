@@ -1,124 +1,111 @@
-@import url('https://fonts.googleapis.com/css2?family=Readex+Pro:wght@300;400;500;600;700&display=swap');
+@import url("https://fonts.googleapis.com/css2?family=Readex+Pro:wght@300;400;500;600;700&display=swap");
 
-* {font-family: 'Readex Pro';}
-
+* {
+  font-family: "Readex Pro";
+}
 
 body {
-    /*background: #353535; */
-    line-height: 1.2rem;
+  background: #353535;
+  line-height: 1.2rem;
 }
 
 footer {
-    visibility: hidden;
+  visibility: visible;
 }
 
 .StatusWidget-enter-done {
-    visibility: hidden;
+  visibility: visible;
 }
 
 .StatusWidget-enter-active {
-    visibility: hidden;
+  visibility: visible;
 }
 
 .StatusWidget-exit-active {
-    visibility: hidden;
-}
-
-.title:before {
-    content: 'TEST';
-}
-
-.title:after {
-    content: 'TEST';
-}
-
-.title {
-    content: 'TEST';
+  visibility: visible;
 }
 
 .StatusWidget-enter {
-    visibility: hidden;
+  visibility: visible;
 }
 
 .StatusWidget-exit {
-    visibility: hidden;
+  visibility: visible;
 }
 
 .StatusWidget-exit-done {
-    visibility: hidden;
+  visibility: visible;
 }
-
 
 .stStatusWidget {
-    visibility: hidden;
+  visibility: visible;
 }
 
-.stStatusWidget>div {
-    visibility: hidden;
+.stStatusWidget > div {
+  visibility: visible;
 }
 
-.stStatusWidget>div>img {
-    visibility: hidden;
+.stStatusWidget > div > img {
+  visibility: visible;
 }
 
-.stStatusWidget>div>label {
-    visibility: hidden;
+.stStatusWidget > div > label {
+  visibility: visible;
 }
 
-.stStatusWidget>div>span {
-    visibility: hidden;
+.stStatusWidget > div > span {
+  visibility: visible;
 }
 
 .stToolbar {
-    visibility: None;
+  visibility: None;
 }
 
 .loader,
 .loader:after {
-    border-radius: 50%;
-    width: 2rem;
-    height: 2rem;
+  border-radius: 50%;
+  width: 2rem;
+  height: 2rem;
 }
 
 .loader {
-    font-size: 10px;
-    position: relative;
-    /* text-indent: -9999em; */
-    border-top: 0.3em solid rgba(255, 255, 255, 0.2);
-    border-right: 0.3em solid rgba(255, 255, 255, 0.2);
-    border-bottom: 0.3em solid rgba(255, 255, 255, 0.2);
-    border-left: 0.3em solid #a2aab0;
-    -webkit-transform: translateZ(0);
-    -ms-transform: translateZ(0);
-    transform: translateZ(0);
-    -webkit-animation: load8 1.1s infinite linear;
-    animation: load8 1.1s infinite linear;
+  font-size: 10px;
+  position: relative;
+  /* text-indent: -9999em; */
+  border-top: 0.3em solid rgba(255, 255, 255, 0.2);
+  border-right: 0.3em solid rgba(255, 255, 255, 0.2);
+  border-bottom: 0.3em solid rgba(255, 255, 255, 0.2);
+  border-left: 0.3em solid #a2aab0;
+  -webkit-transform: translateZ(0);
+  -ms-transform: translateZ(0);
+  transform: translateZ(0);
+  -webkit-animation: load8 1.1s infinite linear;
+  animation: load8 1.1s infinite linear;
 }
 
 @-webkit-keyframes load8 {
-    0% {
-        -webkit-transform: rotate(0deg);
-        transform: rotate(0deg);
-    }
+  0% {
+    -webkit-transform: rotate(0deg);
+    transform: rotate(0deg);
+  }
 
-    100% {
-        -webkit-transform: rotate(360deg);
-        transform: rotate(360deg);
-    }
+  100% {
+    -webkit-transform: rotate(360deg);
+    transform: rotate(360deg);
+  }
 }
 
 @keyframes load8 {
-    0% {
-        -webkit-transform: rotate(0deg);
-        transform: rotate(0deg);
-    }
+  0% {
+    -webkit-transform: rotate(0deg);
+    transform: rotate(0deg);
+  }
 
-    100% {
-        -webkit-transform: rotate(360deg);
-        transform: rotate(360deg);
-    }
+  100% {
+    -webkit-transform: rotate(360deg);
+    transform: rotate(360deg);
+  }
 }
-
 
 /*
 .stSlider>div>div>div:first-child {
@@ -151,16 +138,15 @@ footer {
     z-index: 1;
 } */
 
-
 /* MENU && FOOTER */
 #MainMenu {
-    visibility: hidden;
+  visibility: visible;
 }
 
-
+/*
 .StatusWidget-enter-done>div>span {
-    visibility: hidden;
-}
+    visibility: visible ;
+} */
 
 #bui-2>div>ul>li:nth-child(4),
 /* Deploy App again? */
@@ -172,7 +158,6 @@ footer {
 /* StreamLit for teams */
 #bui-2>div>ul>li:nth-child(13)
 
-/* About */
-    {
-    visibility: hidden;
+/* About */ {
+  visibility: visible;
 }

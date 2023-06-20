@@ -62,7 +62,7 @@ class Rebalance:
 
 
 class MultiStrategy:
-    num_strategies = 1
+    num_strategies = 0
 
     @classmethod
     def from_universe(
@@ -130,7 +130,7 @@ class MultiStrategy:
         **kwargs,
     ) -> Strategy:
         if name is None:
-            name = f"Strategy-{self.num_strategies}"
+            name = f"Strategy-{self.num_strategies + 1}"
             if name in self.strategies:
                 raise ValueError("strategy `{name}` already backtested.")
         if optimizer_constraints is None:
