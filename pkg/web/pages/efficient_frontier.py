@@ -4,8 +4,7 @@ import pandas as pd
 import streamlit as st
 import plotly.graph_objects as go
 from pkg.src.core import metrics, portfolios
-from pkg.src.web import data
-from pkg.src.web.components.charts import pie
+from pkg.web import data
 from .base import BasePage
 
 
@@ -99,39 +98,39 @@ class EfficientFrontier(BasePage):
                 ef_points = [
                     dict(
                         optimizer=portfolios.MaxSharpe,
-                        marker=dict(symbol="star", size=10, color="cyan"),
+                        marker=dict(symbol="star", size=10),
                     ),
                     dict(
                         optimizer=portfolios.MinVolatility,
-                        marker=dict(symbol="square", size=10, color="cyan"),
+                        marker=dict(symbol="square", size=10),
                     ),
                     dict(
                         optimizer=portfolios.MinCorrelation,
-                        marker=dict(symbol="diamond", size=10, color="cyan"),
+                        marker=dict(symbol="diamond", size=10),
                     ),
                     dict(
                         optimizer=portfolios.RiskParity,
-                        marker=dict(symbol="cross", size=10, color="cyan"),
+                        marker=dict(symbol="cross", size=10),
                     ),
                     dict(
                         optimizer=portfolios.HRP,
-                        marker=dict(symbol="pentagon", size=10, color="cyan"),
+                        marker=dict(symbol="pentagon", size=10),
                     ),
                     dict(
                         optimizer=portfolios.HERC,
-                        marker=dict(symbol="hexagon", size=10, color="cyan"),
+                        marker=dict(symbol="hexagon", size=10),
                     ),
                     dict(
                         optimizer=portfolios.MaxReturn,
-                        marker=dict(symbol="hourglass", size=10, color="cyan"),
+                        marker=dict(symbol="hourglass", size=10),
                     ),
                     dict(
                         optimizer=portfolios.EqualWeight,
-                        marker=dict(symbol="star-square", size=10, color="cyan"),
+                        marker=dict(symbol="star-square", size=10),
                     ),
                     dict(
                         optimizer=portfolios.InverseVariance,
-                        marker=dict(symbol="star-square", size=10, color="cyan"),
+                        marker=dict(symbol="star-square", size=10),
                     ),
                 ]
 
@@ -173,4 +172,14 @@ class EfficientFrontier(BasePage):
 
                 for name, weight in weights.items():
                     with st.expander(label=name, expanded=False):
-                        st.plotly_chart(pie(data=weight), use_container_width=True)
+                        fig = go.Figure()
+
+                        fig.add_trace(
+                            go.Pie(
+                                labels=weight.index,
+                                values=weight.values,
+                                # hovertemplate=hovertemplate,
+                            )
+                        )
+
+                        st.plotly_chart(fig, use_container_width=True)

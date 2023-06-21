@@ -1,6 +1,6 @@
 """ROBERT"""
 
-from pkg.src.web import main
+from pkg.web import main
 
 main.init()
 

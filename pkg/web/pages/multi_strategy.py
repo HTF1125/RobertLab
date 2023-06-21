@@ -2,13 +2,12 @@
 from typing import Dict, List
 import pandas as pd
 import streamlit as st
-from pkg.src.core import factors
-from pkg.src.web import components, data
+from pkg.web import data
 from pkg.src.core import factors, portfolios, strategies
 from .base import BasePage
 
 
-class InvestmentStrategy(BasePage):
+class MultiStrategy(BasePage):
     signiture = {}
 
     def __init__(self) -> None:
@@ -34,25 +33,17 @@ class InvestmentStrategy(BasePage):
         multistrategy.num_strategies = 0
 
     def del_strategy(self, name: str) -> None:
-        strategies = self.get_multistrategy().strategies
-        del strategies[name]
-        del self.signiture[name]
+        stra = self.get_multistrategy().strategies
+        if name in stra:
+            del stra[name]
+        if name in self.signiture:
+            del self.signiture[name]
 
     @staticmethod
     def get_optimizer() -> str:
         optimizer = st.selectbox(
             label="Opt",
-            options=[
-                portfolios.EqualWeight.__name__,
-                portfolios.MaxReturn.__name__,
-                portfolios.MaxSharpe.__name__,
-                portfolios.MinVolatility.__name__,
-                portfolios.MinCorrelation.__name__,
-                portfolios.InverseVariance.__name__,
-                portfolios.RiskParity.__name__,
-                portfolios.HRP.__name__,
-                portfolios.HERC.__name__,
-            ],
+            options=portfolios.__all__,
             help="Select strategy's rebalancing frequency.",
         )
 
@@ -64,10 +55,7 @@ class InvestmentStrategy(BasePage):
     def get_benchmark() -> str:
         benchmark = st.selectbox(
             label="BM",
-            options=[
-                strategies.benchmarks.Global64.__name__,
-                strategies.benchmarks.UnitedStates64.__name__,
-            ],
+            options=strategies.benchmarks.__all__,
             help="Select strategy's benchmark.",
         )
 
@@ -102,7 +90,7 @@ class InvestmentStrategy(BasePage):
 
     def get_strategy_parameters(self):
         parameter_funcs = {
-            "name" : self.get_name,
+            "name": self.get_name,
             "optimizer": self.get_optimizer,
             "benchmark": self.get_benchmark,
             "frequency": self.get_frequency,
@@ -135,7 +123,7 @@ class InvestmentStrategy(BasePage):
                 "label": "Weight",
                 "min_value": 0.0,
                 "max_value": 1.0,
-                "step": 0.05,
+                "step": 0.02,
                 "format_func": lambda x: f"{x:.0%}",
             },
             {
@@ -192,9 +180,7 @@ class InvestmentStrategy(BasePage):
                 if maximum is not None:
                     constraints[f"max_{name}"] = maximum
 
-        cols = st.columns([1] * 2, gap="large")
-
-
+        return constraints
 
     def get_specific_constraints(
         self, universe: pd.DataFrame, num_columns: int = 5
@@ -251,28 +237,7 @@ class InvestmentStrategy(BasePage):
         c1, c2 = st.columns([4, 1])
         params["factors"] = c1.multiselect(
             label="Factor List",
-            options=[
-                factors.PriceMomentum1M.__name__,
-                factors.PriceMomentum2M.__name__,
-                factors.PriceMomentum3M.__name__,
-                factors.PriceMomentum6M.__name__,
-                factors.PriceMomentum9M.__name__,
-                factors.PriceMomentum12M.__name__,
-                factors.PriceMomentum24M.__name__,
-                factors.PriceMomentum36M.__name__,
-                factors.PriceMomentum6M1M.__name__,
-                factors.PriceMomentum6M2M.__name__,
-                factors.PriceMomentum9M1M.__name__,
-                factors.PriceMomentum9M2M.__name__,
-                factors.PriceMomentum12M1M.__name__,
-                factors.PriceMomentum12M2M.__name__,
-                factors.PriceMomentum24M1M.__name__,
-                factors.PriceMomentum24M2M.__name__,
-                factors.PriceMomentum36M1M.__name__,
-                factors.PriceMomentum36M2M.__name__,
-                factors.PriceVolatility1M.__name__,
-                factors.PriceVolatility3M.__name__,
-            ],
+            options=factors.single.__all__,
         )
         with c2:
             params["bounds"] = self.get_bounds(
@@ -304,8 +269,6 @@ class InvestmentStrategy(BasePage):
                 self.low_margin_divider()
                 st.subheader("Specific Constraint")
                 specific_constraints = self.get_specific_constraints(universe=universe)
-
-
 
             submitted = st.form_submit_button(label="Backtest", type="primary")
 
@@ -366,7 +329,7 @@ class InvestmentStrategy(BasePage):
             st.dataframe(analytics.T, use_container_width=True)
 
             st.plotly_chart(
-                components.charts.line(
+                self.line(
                     data=self.get_multistrategy().values.resample("M").last(),
                     yaxis_title="NAV",
                     yaxis_tickformat="$,.0f",
@@ -394,7 +357,7 @@ class InvestmentStrategy(BasePage):
                     )
 
                     with perf_tab:
-                        fig = components.charts.line(
+                        fig = self.line(
                             strategy.value.to_frame(),
                             yaxis_title="NAV",
                             yaxis_tickformat="$,.0f",
@@ -410,7 +373,7 @@ class InvestmentStrategy(BasePage):
                             config={"displayModeBar": False},
                         )
                     with dd_tab:
-                        fig = components.charts.line(
+                        fig = self.line(
                             strategy.drawdown.to_frame(),
                             yaxis_title="Drawdwon",
                             yaxis_tickformat=".0%",
@@ -423,7 +386,7 @@ class InvestmentStrategy(BasePage):
                             config={"displayModeBar": False},
                         )
                     with hw_tab:
-                        fig = components.charts.line(
+                        fig = self.line(
                             strategy.allocations,
                             xaxis_tickformat="%Y-%m-%d",
                             xaxis_title="Date",
@@ -440,7 +403,7 @@ class InvestmentStrategy(BasePage):
                         )
 
                     with cw_tab:
-                        fig = components.charts.pie(
+                        fig = self.pie(
                             strategy.allocations.iloc[-1].dropna(),
                             title="Strategy Current Weights",
                         )

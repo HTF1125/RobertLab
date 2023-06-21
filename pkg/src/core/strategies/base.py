@@ -31,6 +31,10 @@ class StrategyProperty:
     def weights(self) -> pd.DataFrame:
         return pd.DataFrame(self.data.get("weights")).T
 
+    @property
+    def trades(self) -> pd.DataFrame:
+        return pd.DataFrame(self.data.get("trades")).T
+
     ################################################################################
 
 
@@ -66,8 +70,6 @@ class Strategy(StrategyProperty):
             prices_bm (pd.Series, optional): Benchmark price data. Defaults to None.
         """
         super().__init__()
-
-
 
         self.total_prices: pd.DataFrame = prices.ffill()
         self.total_prices.index = pd.to_datetime(self.total_prices.index)
@@ -121,7 +123,7 @@ class Strategy(StrategyProperty):
         try:
             rebalance_date = next(rebalance_dates)
         except StopIteration:
-            rebalance_date = self.total_prices.loc[self.start:].index[0]
+            rebalance_date = self.total_prices.loc[self.start :].index[0]
 
         for date in self.total_prices.loc[self.start : self.end].index:
             capitals = shares.multiply(self.total_prices.loc[date]).dropna()

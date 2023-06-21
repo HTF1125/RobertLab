@@ -8,6 +8,7 @@ __all__ = [
     "UnitedStates64",
 ]
 
+
 class Benchmark:
     @property
     def weights(self) -> pd.Series:

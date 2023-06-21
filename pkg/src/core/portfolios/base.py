@@ -12,158 +12,19 @@ import pandas as pd
 from . import objectives
 from .. import metrics
 from ..metrics import cov_to_corr
-
-logger = logging.getLogger(__name__)
-
-__all__ = [
-    "MaxReturn",
-    "MinVolatility",
-    "MinCorrelation",
-    "MaxSharpe",
-    "RiskParity",
-    "HRP",
-    "HERC",
-    "EqualWeight",
-    "InverseVariance",
-]
-
-
-class OptimizerMetrics:
-    def __init__(self) -> None:
-        self.prices: Optional[pd.DataFrame] = None
-        self.expected_returns: Optional[pd.Series] = None
-        self.covariance_matrix: Optional[pd.DataFrame] = None
-        self.correlation_matrix: Optional[pd.DataFrame] = None
-        self.assets: Optional[pd.Index] = None
-
-
-class BaseProperty:
-    def __init__(self) -> None:
-        self.data = OptimizerMetrics()
-
-    @property
-    def expected_returns(self) -> Optional[pd.Series]:
-        """expected_returns"""
-        return self.data.expected_returns
-
-    @expected_returns.setter
-    def expected_returns(self, expected_returns: Optional[pd.Series] = None) -> None:
-        if expected_returns is not None:
-            self.data.expected_returns = expected_returns
-            self.assets = expected_returns.index
-
-    @property
-    def covariance_matrix(self) -> Optional[pd.DataFrame]:
-        """covariance_matrix"""
-        return self.data.covariance_matrix
-
-    @covariance_matrix.setter
-    def covariance_matrix(
-        self, covariance_matrix: Optional[pd.DataFrame] = None
-    ) -> None:
-        if covariance_matrix is not None:
-            self.data.covariance_matrix = covariance_matrix
-            self.assets = covariance_matrix.index
-            self.assets = covariance_matrix.columns
-
-    @property
-    def correlation_matrix(self) -> Optional[pd.DataFrame]:
-        """correlation_matrix"""
-        return self.data.correlation_matrix
-
-    @correlation_matrix.setter
-    def correlation_matrix(
-        self, correlation_matrix: Optional[pd.DataFrame] = None
-    ) -> None:
-        if correlation_matrix is not None:
-            self.data.correlation_matrix = correlation_matrix
-            self.assets = correlation_matrix.index
-            self.assets = correlation_matrix.columns
-
-    @property
-    def prices(self) -> Optional[pd.DataFrame]:
-        """prices_assets"""
-        return self.data.prices
-
-    @prices.setter
-    def prices(self, prices: Optional[pd.DataFrame] = None) -> None:
-        if prices is None:
-            return
-        self.data.prices = prices
-        self.assets = prices.columns
-
-    @property
-    def assets(self) -> Optional[pd.Index]:
-        """assets"""
-        return self.data.assets
-
-    @assets.setter
-    def assets(self, assets: pd.Index) -> None:
-        """assets setter"""
-        if self.assets is not None:
-            assert self.assets.equals(assets), f"{self.assets} does not equal {assets}"
-            return
-        self.data.assets = assets
-
-    @property
-    def num_assets(self) -> int:
-        """return number of asset"""
-        if self.assets is None:
-            return 0
-        return len(self.assets)
+from .property import BaseProperty
 
 
 class BaseOptimizer(BaseProperty):
     @classmethod
     def from_prices(
-        cls,
-        prices: pd.DataFrame,
-        span: Optional[int] = None,
-        risk_free: float = 0.0,
-        prices_bm: Optional[pd.Series] = None,
-        weights_bm: Optional[pd.Series] = None,
-        min_weight: float = 0.0,
-        max_weight: float = 1.0,
-        sum_weight: float = 1.0,
-        min_active_weight: Optional[float] = None,
-        max_active_weight: Optional[float] = None,
-        min_return: Optional[float] = None,
-        max_return: Optional[float] = None,
-        min_volatility: Optional[float] = None,
-        max_volatility: Optional[float] = None,
-        min_exante_tracking_error: Optional[float] = None,
-        max_exante_tracking_error: Optional[float] = None,
-        min_expost_tracking_error: Optional[float] = None,
-        max_expost_tracking_error: Optional[float] = None,
+        cls, prices: pd.DataFrame, span: Optional[int] = None, **kwargs
     ) -> "BaseOptimizer":
-        """_summary_
-
-        Args:
-            prices (pd.DataFrame): price of assets.
-
-        Returns:
-            Optimizer: initialized optimizer class.
-        """
         return cls(
             expected_returns=metrics.to_expected_returns(prices=prices),
             covariance_matrix=metrics.to_covariance_matrix(prices=prices, span=span),
             correlation_matrix=metrics.to_correlation_matrix(prices=prices, span=span),
-            risk_free=risk_free,
-            prices_bm=prices_bm,
-            weights_bm=weights_bm,
-            min_weight=min_weight,
-            max_weight=max_weight,
-            sum_weight=sum_weight,
-            min_active_weight=min_active_weight,
-            max_active_weight=max_active_weight,
-            min_return=min_return,
-            max_return=max_return,
-            min_volatility=min_volatility,
-            max_volatility=max_volatility,
-            min_exante_tracking_error=min_exante_tracking_error,
-            max_exante_tracking_error=max_exante_tracking_error,
-            min_expost_tracking_error=min_expost_tracking_error,
-            max_expost_tracking_error=max_expost_tracking_error,
+            **kwargs,
         )
 
     def __init__(
@@ -563,11 +424,6 @@ class MaxSharpe(BaseOptimizer):
 
 class RiskParity(BaseOptimizer):
     def solve(self, budgets: Optional[np.ndarray] = None) -> pd.Series:
-        """_summary_
-
-        Returns:
-            pd.Series: _description_
-        """
         if budgets is None:
             budgets = np.ones(self.num_assets) / self.num_assets
         weights = self.__solve__(
@@ -589,7 +445,7 @@ class RiskParity(BaseOptimizer):
         return weights
 
 
-class Hierarchical(RiskParity):
+class Hierarchical(BaseOptimizer):
     def recursive_bisection(self, sorted_tree):
         """_summary_
 
@@ -616,8 +472,6 @@ class Hierarchical(RiskParity):
 
 class HRP(Hierarchical):
     def solve(self, linkage_method: str = "single") -> pd.Series:
-        if self.num_assets <= 2:
-            return super().solve()
         if self.correlation_matrix is None:
             if self.prices is not None:
                 self.correlation_matrix = metrics.to_correlation_matrix(self.prices)
@@ -656,8 +510,7 @@ class HRP(Hierarchical):
 class HERC(Hierarchical):
     def solve(self, linkage_method: str = "single") -> pd.Series:
         """calculate herc weights"""
-        if self.num_assets <= 2:
-            return super().solve()
+
         if self.correlation_matrix is None:
             if self.covariance_matrix is not None:
                 self.correlation_matrix = metrics.cov_to_corr(self.covariance_matrix)
@@ -697,11 +550,6 @@ class HERC(Hierarchical):
 
 class EqualWeight(BaseOptimizer):
     def solve(self) -> pd.Series:
-        """_summary_
-
-        Returns:
-            pd.Series: _description_
-        """
         target_allocations = np.ones(shape=self.num_assets) / self.num_assets
         return self.__solve__(
             objective=lambda w: objectives.l2_norm(np.subtract(w, target_allocations))
@@ -710,11 +558,6 @@ class EqualWeight(BaseOptimizer):
 
 class InverseVariance(BaseOptimizer):
     def solve(self) -> pd.Series:
-        """_summary_
-
-        Returns:
-            pd.Series: _description_
-        """
         inv_var_weights = 1 / np.diag(np.array(self.covariance_matrix))
         inv_var_weights /= inv_var_weights.sum()
         return self.__solve__(
