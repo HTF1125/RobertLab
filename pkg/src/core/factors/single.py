@@ -216,7 +216,7 @@ class PriceVolatility(Factors):
             .rolling(21 * self.months)
             .std()
         )
-        self.factors = self.factors.resample("d").last().ffill()
+        self.factors = - self.factors.resample("d").last().ffill()
 
 
 class PriceVolatility1M(PriceVolatility):
@@ -241,7 +241,7 @@ class VCV(Factors):
         mean = volume.rolling(self.months * 21).mean()
         std = volume.rolling(self.months * 21).std()
         self.factors = std / mean
-        self.factors = self.factors.resample("d").last().ffill()
+        self.factors = - self.factors.resample("d").last().ffill()
 
 
 class VolumeCoefficientOfVariation1M(VCV):

@@ -1,4 +1,4 @@
 """ROBERT"""
-from .base import Strategy
-from .ext import MultiStrategy
-from . import benchmarks
+from .strategy import Strategy, Rebalancer
+from .multistrategy import MultiStrategy
+from .ext import *

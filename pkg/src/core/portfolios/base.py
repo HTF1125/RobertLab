@@ -1,5 +1,4 @@
 """ROBERT"""
-import logging
 import warnings
 from abc import abstractmethod
 from typing import Optional, Callable, Dict, List, Tuple, Any
@@ -33,6 +32,7 @@ class BaseOptimizer(BaseProperty):
         covariance_matrix: Optional[pd.DataFrame] = None,
         correlation_matrix: Optional[pd.DataFrame] = None,
         prices: Optional[pd.DataFrame] = None,
+        factors: Optional[pd.Series] = None,
         risk_free: float = 0.0,
         prices_bm: Optional[pd.Series] = None,
         weights_bm: Optional[pd.Series] = None,
@@ -60,12 +60,12 @@ class BaseOptimizer(BaseProperty):
         self.risk_free = risk_free
         self.prices_bm = prices_bm
         self.weights_bm = weights_bm
+        self.factors = factors
         self.exp = {}
-
-        self.set_sum_weight(sum_weight=sum_weight)
+        self.set_sum_weight(sum_weight)
         self.set_min_weight(min_weight)
         self.set_max_weight(max_weight)
-
+        self.set_min_factor_percentile()
         if min_active_weight is not None:
             self.set_min_active_weight(min_active_weight)
         if max_active_weight is not None:
@@ -276,27 +276,13 @@ class BaseOptimizer(BaseProperty):
             ),
         }
 
-    def set_factor_constraints(
-        self, values: pd.Series, bounds: Tuple[Optional[float], Optional[float]]
-    ) -> "BaseOptimizer":
-        l_bound, u_bound = bounds
-
-        if l_bound is not None:
-            self.constraints["min_" + str(values.to_dict())] = {
+    def set_min_factor_percentile(self) -> None:
+        if self.factors is not None:
+            lbound = self.factors.quantile(0.7)
+            self.constraints["min_factor"] = {
                 "type": "ineq",
-                "fun": lambda w: np.dot(
-                    w, values.reindex(self.assets, fill_value=0) - l_bound
-                ),
+                "fun": lambda w: np.dot(w, np.array(self.factors)) - lbound,
             }
-
-        if u_bound is not None:
-            self.constraints["max_" + str(values.to_dict())] = {
-                "type": "eq",
-                "fun": lambda w: u_bound
-                - np.dot(w, values.reindex(self.assets, fill_value=0)),
-            }
-
-        return self
 
     def set_specific_constraints(
         self, specific_constraints: List[Dict[str, Any]]
@@ -346,7 +332,6 @@ class BaseOptimizer(BaseProperty):
         if problem.success:
             data = problem.x + 1e-16
             weights = pd.Series(data=data, index=self.assets, name="weights").round(6)
-
             if self.expected_returns is not None:
                 self.exp["expected_return"] = self.expected_returns.dot(weights)
             if self.covariance_matrix is not None:
@@ -355,6 +340,7 @@ class BaseOptimizer(BaseProperty):
                 )
             weights = weights[weights != 0.0]
             return weights
+        print(self.factors)
         raise ValueError("Portoflio Optimization Failed.")
 
     @abstractmethod

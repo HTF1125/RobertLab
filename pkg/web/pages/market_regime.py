@@ -4,12 +4,27 @@ import streamlit as st
 from pkg.src.core import metrics
 from .base import BasePage
 from .. import data
+import yfinance as yf
+import pandas_datareader as pdr
+
+@st.cache_data()
+def get_spy():
+    price = yf.download(tickers="^GSPC", progress=False)["Adj Close"]
+    price.name = "^GSPC"
+    return price
+
+
+@st.cache_data()
+def get_debt():
+    price = pdr.DataReader("GFDEGDQ188S", "fred", "1960-1-1")
+    return price
 
 
 class MarketRegime(BasePage):
-    def render(self):
+
+    def load_page(self):
         with st.form(key="Market Regime Form"):
-            start, end = self.get_date_range()
+            start, end = self.get_dates()
             submitted = st.form_submit_button("Submit")
             if submitted:
                 self.get_vix_regime(start=start, end=end)
@@ -22,6 +37,22 @@ class MarketRegime(BasePage):
                 pp = pp.clip(0, 1)
                 pp.name = "fff"
                 st.plotly_chart(self.pie(pp.to_frame().dropna()), use_container_width=True)
+
+                data = get_spy().pct_change(252).rolling(2520).mean().dropna()
+                st.plotly_chart(
+                    self.line(data.to_frame(), title="S&P500 YoY% 10Yr Moving Average"),
+                    use_container_width=True,
+                )
+                data = get_debt().pct_change(12 * 10).dropna()
+                st.plotly_chart(
+                    self.line(
+                        data,
+                        title="Total Public Debt as Percent of Gross Domestic Product 10Yo10Y%",
+                    ),
+                    use_container_width=True,
+                )
+
+
 
     def get_vix_regime(self, start, end):
         vix = data.get_vix()

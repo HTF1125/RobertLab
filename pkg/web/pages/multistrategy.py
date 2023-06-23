@@ -1,67 +1,52 @@
 """ROBERT"""
-from typing import Dict, List
+from typing import Dict, List, Tuple
+from datetime import datetime
+from dateutil.relativedelta import relativedelta
 import pandas as pd
 import streamlit as st
-from pkg.web import data
-from pkg.src.core import factors, portfolios, strategies
+from pkg.src.core import portfolios, strategies, benchmarks, universes
+from pkg.src.core.factors import single, MultiFactors
 from .base import BasePage
 
 
 class MultiStrategy(BasePage):
-    signiture = {}
+    def load_states(self) -> None:
+        if "strategy" not in st.session_state:
+            st.session_state["strategy"] = strategies.MultiStrategy()
 
-    def __init__(self) -> None:
-        if "multistrategy" not in st.session_state:
-            st.session_state["multistrategy"] = strategies.MultiStrategy()
-        super().__init__()
+    @staticmethod
+    def get_strategy() -> strategies.MultiStrategy:
+        return st.session_state["strategy"]
 
-    def get_multistrategy(self) -> strategies.MultiStrategy:
-        return st.session_state["multistrategy"]
-
-    def get_name(self) -> str:
+    @staticmethod
+    def get_inception() -> str:
+        start = datetime.today() - relativedelta(years=20)
         return str(
-            st.text_input(
-                label="Name",
-                value=f"Strategy-{self.get_multistrategy().num_strategies + 1}",
+            st.date_input(
+                label="Incep",
+                value=start,
             )
         )
 
-    def clear_strategy(self) -> None:
-        self.signiture = {}
-        multistrategy = self.get_multistrategy()
-        multistrategy.strategies = {}
-        multistrategy.num_strategies = 0
-
-    def del_strategy(self, name: str) -> None:
-        stra = self.get_multistrategy().strategies
-        if name in stra:
-            del stra[name]
-        if name in self.signiture:
-            del self.signiture[name]
-
     @staticmethod
     def get_optimizer() -> str:
-        optimizer = st.selectbox(
-            label="Opt",
-            options=portfolios.__all__,
-            help="Select strategy's rebalancing frequency.",
+        return str(
+            st.selectbox(
+                label="Opt",
+                options=portfolios.__all__,
+                help="Select strategy's rebalancing frequency.",
+            )
         )
-
-        if optimizer is None:
-            raise ValueError()
-        return optimizer
 
     @staticmethod
     def get_benchmark() -> str:
-        benchmark = st.selectbox(
-            label="BM",
-            options=strategies.benchmarks.__all__,
-            help="Select strategy's benchmark.",
+        return str(
+            st.selectbox(
+                label="BM",
+                options=benchmarks.__all__,
+                help="Select strategy's benchmark.",
+            )
         )
-
-        if benchmark is None:
-            raise ValueError()
-        return benchmark
 
     @staticmethod
     def get_frequency() -> str:
@@ -88,27 +73,44 @@ class MultiStrategy(BasePage):
             )
         )
 
+    @staticmethod
+    def get_min_window() -> int:
+        return int(
+            st.number_input(
+                label="Win",
+                min_value=2,
+                max_value=1500,
+                step=100,
+                value=2,
+                help="Minimum window of price data required.",
+            )
+        )
+
     def get_strategy_parameters(self):
-        parameter_funcs = {
-            "name": self.get_name,
-            "optimizer": self.get_optimizer,
-            "benchmark": self.get_benchmark,
-            "frequency": self.get_frequency,
-            "commission": self.get_commission,
-        }
-
-        parameter_cols = st.columns([1] * len(parameter_funcs))
-
         parameters = {}
+        set_parameter_funcs = [
+            {
+                "universe": self.get_universe,
+                "optimizer": self.get_optimizer,
+                "benchmark": self.get_benchmark,
+                "inception": self.get_inception,
+            },
+            {
+                "frequency": self.get_frequency,
+                "commission": self.get_commission,
+                "min_window": self.get_min_window,
+            },
+        ]
+        for parameter_funcs in set_parameter_funcs:
+            parameter_cols = st.columns([1] * len(parameter_funcs))
 
-        for col, (name, func) in zip(parameter_cols, parameter_funcs.items()):
-            with col:
-                parameters[name] = func()
-
+            for col, (name, func) in zip(parameter_cols, parameter_funcs.items()):
+                with col:
+                    parameters[name] = func()
         return parameters
 
     @staticmethod
-    def get_allow_fractional_shares():
+    def get_allow_fractional_shares() -> bool:
         return st.checkbox(
             label="Fractional Shares",
             value=False,
@@ -124,7 +126,6 @@ class MultiStrategy(BasePage):
                 "min_value": 0.0,
                 "max_value": 1.0,
                 "step": 0.02,
-                "format_func": lambda x: f"{x:.0%}",
             },
             {
                 "name": "return",
@@ -132,7 +133,6 @@ class MultiStrategy(BasePage):
                 "min_value": 0.0,
                 "max_value": 0.3,
                 "step": 0.01,
-                "format_func": lambda x: f"{x:.0%}",
             },
             {
                 "name": "volatility",
@@ -140,15 +140,13 @@ class MultiStrategy(BasePage):
                 "min_value": 0.0,
                 "max_value": 0.3,
                 "step": 0.01,
-                "format_func": lambda x: f"{x:.0%}",
             },
             {
                 "name": "active_weight",
-                "label": "Active Weight",
+                "label": "Act. Weight",
                 "min_value": 0.0,
                 "max_value": 0.3,
                 "step": 0.01,
-                "format_func": lambda x: f"{x:.0%}",
             },
             {
                 "name": "expost_tracking_error",
@@ -156,7 +154,6 @@ class MultiStrategy(BasePage):
                 "min_value": 0.0,
                 "max_value": 0.1,
                 "step": 0.01,
-                "format_func": lambda x: f"{x:.0%}",
             },
             {
                 "name": "exante_tracking_error",
@@ -164,7 +161,6 @@ class MultiStrategy(BasePage):
                 "min_value": 0.0,
                 "max_value": 0.1,
                 "step": 0.01,
-                "format_func": lambda x: f"{x:.0%}",
             },
         ]
 
@@ -174,7 +170,10 @@ class MultiStrategy(BasePage):
             assert isinstance(kwarg, dict)
             name = kwarg.pop("name")
             with cols[idx]:
-                minimum, maximum = self.get_bounds(**kwarg)
+                minimum, maximum = self.get_bounds(
+                    **kwarg, format_func=lambda x: f"{x:.0%}"
+                )
+
                 if minimum is not None:
                     constraints[f"min_{name}"] = minimum
                 if maximum is not None:
@@ -208,7 +207,7 @@ class MultiStrategy(BasePage):
                 }
                 constraints.append(constraint)
 
-        self.low_margin_divider()
+        self.divider()
         final_num_columns = min(num_columns, len(universe))
         cols = st.columns([1] * final_num_columns, gap="large")
         for idx, asset in enumerate(universe.to_dict("records")):
@@ -232,97 +231,69 @@ class MultiStrategy(BasePage):
                 constraints.append(constraint)
         return constraints
 
-    def get_factor_constraints(self) -> Dict:
-        params = {}
-        c1, c2 = st.columns([4, 1])
-        params["factors"] = c1.multiselect(
-            label="Factor List",
-            options=factors.single.__all__,
-        )
-        with c2:
-            params["bounds"] = self.get_bounds(
-                label="Factor Weight",
-                min_value=0.0,
-                max_value=1.0,
-                step=0.1,
-                format_func=lambda x: f"{x:.0%}",
-                help="Select range for your factor weight.",
+    def get_factors(self) -> Tuple[str]:
+        return tuple(
+            st.multiselect(
+                label="Factor List",
+                options=single.__all__,
             )
-        return params
+        )
 
-    def render(self):
-        universe = self.get_universe(show=True)
-
+    def load_page(self):
         with st.form("AssetAllocationForm"):
             # Backtest Parameters
             bt_params = self.get_strategy_parameters()
+            universe = getattr(universes, bt_params.pop("universe"))()
             # Factor Implementatio
-            factor_constraints = self.get_factor_constraints()
-            bt_params["start"], bt_params["end"] = self.get_date_range()
-
+            factors = self.get_factors()
             bt_params["allow_fractional_shares"] = self.get_allow_fractional_shares()
 
             # Asset Allocation Constraints
             with st.expander(label="Custom Constraints:"):
                 st.subheader("Optimizer Constraint")
                 optimizer_constraints = self.get_optimizer_constraints()
-                self.low_margin_divider()
+                self.divider()
                 st.subheader("Specific Constraint")
-                specific_constraints = self.get_specific_constraints(universe=universe)
+                specific_constraints = self.get_specific_constraints(
+                    universe=universe.data
+                )
 
             submitted = st.form_submit_button(label="Backtest", type="primary")
 
             if submitted:
-                prices = data.get_prices(tickers=universe.ticker.tolist())
+                prices = universe.prices
 
                 in_signiture = {
-                    # "universe": universe,
+                    "universe": str(st.session_state["universe"]),
                     "strategy": bt_params,
                     "constraints": {
                         "optimizer": optimizer_constraints,
-                        "factor": factor_constraints,
+                        "factors": factors,
                         "specific": specific_constraints,
                     },
                 }
 
-                no_duplicated_strategy = True
-                for name, signiture in self.signiture.items():
-                    if signiture == in_signiture:
-                        st.warning(f"Exactly the same signiture with {name}")
-                        self.no_duplicated_strategy = False
+                with st.spinner(text="Backtesting in progress..."):
+                    strategy = self.get_strategy().run(
+                        **bt_params,
+                        optimizer_constraints=optimizer_constraints,
+                        specific_constraints=specific_constraints,
+                        prices=prices,
+                        factors=None
+                        if not factors
+                        else MultiFactors(
+                            tickers=universe.tickers,
+                            factors=factors,
+                        ).standard_percentile,
+                    )
+                    setattr(strategy, "signiture", in_signiture)
 
-                if no_duplicated_strategy:
-                    self.signiture[bt_params["name"]] = in_signiture
-                    factor_bounds = factor_constraints["bounds"]
+        multistrategy = self.get_strategy()
 
-                    if (
-                        factor_bounds == (None, None)
-                        or not factor_constraints["factors"]
-                    ):
-                        factor_values = None
-                    else:
-                        with st.spinner("Loading Factor Data."):
-                            factor_values = factors.multi.MultiFactors(
-                                tickers=universe.ticker.tolist(),
-                                factors=factor_constraints["factors"],
-                            ).standard_percentile
-
-                    with st.spinner(text="Backtesting in progress..."):
-                        self.get_multistrategy().run(
-                            **bt_params,
-                            optimizer_constraints=optimizer_constraints,
-                            specific_constraints=specific_constraints,
-                            prices=prices,
-                            factor_values=factor_values,
-                            factor_bounds=factor_bounds,
-                        )
-
-        multistrategy = self.get_multistrategy()
-
-        if multistrategy.strategies:
+        if multistrategy:
             st.button(
                 label="Clear All Strategies",
-                on_click=self.clear_strategy,
+                on_click=self.get_strategy().clear,
             )
 
             analytics = multistrategy.analytics
@@ -330,7 +301,7 @@ class MultiStrategy(BasePage):
 
             st.plotly_chart(
                 self.line(
-                    data=self.get_multistrategy().values.resample("M").last(),
+                    data=self.get_strategy().performance.resample("M").last(),
                     yaxis_title="NAV",
                     yaxis_tickformat="$,.0f",
                     hovertemplate="Date: %{x} - Value: %{y:,.0f}",
@@ -340,15 +311,10 @@ class MultiStrategy(BasePage):
                 config={"displayModeBar": False},
             )
 
-            for name, strategy in multistrategy.strategies.items():
+            for name, strategy in multistrategy.items():
                 with st.expander(label=name, expanded=False):
-                    st.button(
-                        label=f"Delete {name}",
-                        on_click=self.del_strategy,
-                        kwargs={"name": name},
-                    )
                     try:
-                        st.json(self.signiture[name], expanded=False)
+                        st.json(getattr(strategy, "signiture"), expanded=False)
                     except KeyError:
                         st.warning("Signiture store not found.")
 
@@ -358,7 +324,7 @@ class MultiStrategy(BasePage):
 
                     with perf_tab:
                         fig = self.line(
-                            strategy.value.to_frame(),
+                            strategy.book.records.performance.to_frame(),
                             yaxis_title="NAV",
                             yaxis_tickformat="$,.0f",
                             hovertemplate="Date: %{x} - Value: %{y:,.0f}",
@@ -387,7 +353,7 @@ class MultiStrategy(BasePage):
                         )
                     with hw_tab:
                         fig = self.line(
-                            strategy.allocations,
+                            strategy.book.records.allocations,
                             xaxis_tickformat="%Y-%m-%d",
                             xaxis_title="Date",
                             yaxis_title="Weights",
@@ -404,7 +370,7 @@ class MultiStrategy(BasePage):
 
                     with cw_tab:
                         fig = self.pie(
-                            strategy.allocations.iloc[-1].dropna(),
+                            strategy.book.records.allocations.iloc[-1].dropna(),
                             title="Strategy Current Weights",
                         )
                         st.plotly_chart(

@@ -15,9 +15,9 @@ class AboutMe(BasePage):
         """
     EMAIL = "hantianfeng@outlook.com"
 
-    def render(self):
+    def load_page(self):
         st.title(self.NAME)
-        self.low_margin_divider()
+        self.divider()
 
         st.write(self.DESCRIPTION)
         # st.download_button(
@@ -31,13 +31,14 @@ class AboutMe(BasePage):
         # --- EXPERIENCE & QUALIFICATIONS ---
         st.write("\n")
         st.subheader("Experience & Qulifications")
-        self.low_margin_divider()
+        self.divider()
 
         st.write(
             """
             - ✔️ 6 Years expereince in quantitative strategy development.
             - ✔️ Strong hands on experience and knowledge in Python and Excel
-            - ✔️ Good understanding of financial and statistical principles and their respective applications
+            - ✔️ Good understanding of financial and statistical principles and
+            their respective applications
             - ✔️ Excellent team-player and displaying strong sense of initiative on tasks
             """
         )
@@ -45,7 +46,7 @@ class AboutMe(BasePage):
         # --- SKILLS ---
         st.write("\n")
         st.subheader("Hard Skills")
-        self.low_margin_divider()
+        self.divider()
 
         st.write(
             """
@@ -60,7 +61,7 @@ class AboutMe(BasePage):
         # --- WORK HISTORY ---
         st.write("\n")
         st.subheader("Work History")
-        self.low_margin_divider()
+        self.divider()
 
         # --- JOB 1
         st.write("🚧", "**Quantitative Strategist | Dneuro Inc.**")
@@ -85,7 +86,7 @@ class AboutMe(BasePage):
             """
         )
 
-        self.low_margin_divider()
+        self.divider()
         # --- JOB 1
         st.write("🚧", "**Global Solutions Specialist | Woori Asset Management Corp.**")
         st.write("03/2017 - 05/2021")

@@ -1,4 +1,6 @@
 """ROBERT"""
+import os
+import json
 from typing import Union, List, Set, Tuple, Dict
 from datetime import datetime
 from functools import lru_cache
@@ -6,6 +8,14 @@ import pandas as pd
 import yfinance as yf
 import pandas_datareader as pdr
 from pkg.src.core.ext.store import DataStore
+
+
+def get_universe() -> Dict:
+    file = os.path.join(os.path.dirname(__file__), "universe.json")
+    with open(file=file, mode="r", encoding="utf-8") as json_file:
+        return json.load(json_file)
+
+
 
 
 def get_prices(tickers: Union[str, List, Set, Tuple]) -> pd.DataFrame:
@@ -61,15 +71,6 @@ def get_oecd_us_leading_indicator() -> pd.DataFrame:
 
 def get_vix_index() -> pd.DataFrame:
     return get_prices(tickers="^VIX")
-
-
-def get_universe() -> pd.DataFrame:
-    import os
-
-    dirname = os.path.dirname(os.path.abspath(__file__))
-    filename = os.path.join(dirname, "universe.csv")
-    # Load JSON from a file
-    return pd.read_csv(filename)
 
 
 

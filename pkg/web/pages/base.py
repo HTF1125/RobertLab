@@ -8,54 +8,53 @@ import numpy as np
 import pandas as pd
 import streamlit as st
 import plotly.graph_objects as go
-from pkg.src import data
 from pkg import web
+from pkg.src.core import universes
 
 
 class BasePage:
-    def __init__(self) -> None:
-        self.load_local_css()
-        self.load_font_awesome_style()
-        self.load_social_media_badges()
-        self.load_page_header()
-        self.render()
+    """
+    This is the base page
+    """
 
-    def render(self):
+    def __init__(self) -> None:
+        """
+        Hello world"""
+        self.load_states()
+        self.load_static()
+        self.load_header()
+        self.load_page()
+        self.load_info()
+
+    def load_states(self) -> None:
+        pass
+
+    def load_info(self):
+        st.info(self.__class__.__doc__)
+
+    def load_page(self):
         st.warning("The Page is under construction...")
 
     @staticmethod
-    def load_local_css():
-        file = os.path.join(os.path.dirname(web.__file__), "css", "base.css")
-        with open(file=file, encoding="utf-8") as f:
-            st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
+    def load_static():
+        directory = os.path.join(os.path.dirname(web.__file__), "static")
 
-    @staticmethod
-    def load_font_awesome_style():
-        url = (
-            "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
-        )
-        st.markdown(f'<link href="{url}" rel="stylesheet">', unsafe_allow_html=True)
+        files = ["base.css", "media_badge.html"]
+        for file in files:
+            with open(file=os.path.join(directory, file), encoding="utf-8") as f:
+                st.markdown(
+                    body=f"{f.read()}"
+                    if file.endswith(".html")
+                    else f"<style>{f.read()}</style>",
+                    unsafe_allow_html=True,
+                )
 
-    @staticmethod
-    def load_social_media_badges():
-        css_example = """
-            <div style="position: absolute; top: 50%; right: 0; transform: translateY(-50%);">
-                <a href="https://github.com/htf1125" target="_blank" style="text-decoration: none;">
-                    <i class="fa-brands fa-github fa-lg" style="margin-right: 5px; margin-left: 5px; vertical-align: middle; color: #808080;"></i>
-                </a>
-                <a href="https://www.linkedin.com/in/htf1125" target="_blank" style="text-decoration: none;">
-                    <i class="fa-brands fa-linkedin fa-lg" style="margin-right: 5px; margin-left: 5px; vertical-align: middle; color: #808080;"></i>
-                </a>
-            </div>
-        """
-        st.markdown(css_example, unsafe_allow_html=True)
-
-    def load_page_header(self):
+    def load_header(self):
         st.subheader(self.add_spaces_to_pascal_case(self.__class__.__name__))
-        self.low_margin_divider()
+        self.divider()
 
     @staticmethod
-    def low_margin_divider():
+    def divider():
         st.markdown(
             '<hr style="margin-top: 0px; margin-bottom: 5px;">', unsafe_allow_html=True
         )
@@ -67,24 +66,24 @@ class BasePage:
         return spaced_string
 
     @staticmethod
-    def get_universe(show: bool = False) -> pd.DataFrame:
-        file = os.path.join(os.path.dirname(data.__file__), "universe.csv")
-        file_load = pd.read_csv(file)
-        selected = st.selectbox(
-            label="Select Investment Universe",
-            options=file_load.universe.unique(),
-            help="Select strategy's investment universe.",
+    def get_universe() -> str:
+        universe = str(
+            st.selectbox(
+                label="Universe",
+                options=universes.__all__,
+                index=universes.__all__.index(
+                    st.session_state.get("universe", universes.__all__[0])
+                ),
+                help="Select strategy's rebalancing frequency.",
+            )
         )
-        universe = file_load[file_load.universe == selected]
 
-        if show:
-            with st.expander(label="See universe details:"):
-                st.json(universe.to_dict("records"))
+        st.session_state["universe"] = universe
 
         return universe
 
     @staticmethod
-    def get_date_range(
+    def get_dates(
         start: Optional[datetime] = None, end: Optional[datetime] = None
     ) -> Tuple[str, str]:
         if not end:
@@ -101,13 +100,17 @@ class BasePage:
         selected_start, selected_end = st.select_slider(
             "Date Range",
             options=date_strings,
-            value=(default_start, default_end),
+            value=(
+                st.session_state.get("start", default=default_start),
+                st.session_state.get("end", default=default_end),
+            ),
             format_func=lambda x: f"{x}",
         )
+        st.session_state["start"] = selected_start
+        st.session_state["end"] = selected_end
 
         if selected_start >= selected_end:
             st.error("Error: The start date must be before the end date.")
-
         return selected_start, selected_end
 
     @staticmethod

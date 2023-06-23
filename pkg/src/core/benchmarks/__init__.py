@@ -10,6 +10,10 @@ __all__ = [
 
 
 class Benchmark:
+    @classmethod
+    def instance(cls) -> "Benchmark":
+        return cls()
+
     @property
     def weights(self) -> pd.Series:
         return pd.Series(
@@ -58,3 +62,4 @@ class Global64(Benchmark):
 class UnitedStates64(Benchmark):
     SPY = 0.6
     AGG = 0.4
+

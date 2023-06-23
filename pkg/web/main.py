@@ -28,7 +28,7 @@ def init():
                 "nav-link": {
                     "font-size": "15px",
                     "text-align": "left",
-                    "margin": "0px",
+                    "margin": "5px",
                 },
             },
         )

@@ -14,6 +14,7 @@ class OptimizerMetrics:
         self.correlation_matrix: Optional[pd.DataFrame] = None
         self.assets: Optional[pd.Index] = None
         self.risk_free: float = 0.0
+        self.factors: Optional[pd.Series] = None
 
 
 class BaseProperty:
@@ -88,3 +89,15 @@ class BaseProperty:
     @risk_free.setter
     def risk_free(self, risk_free: float) -> None:
         self.data.risk_free = risk_free
+
+
+    @property
+    def factors(self) -> Optional[pd.Series]:
+        """Get asset prices."""
+        return self.data.factors
+
+    @factors.setter
+    def factors(self, factors: Optional[pd.Series]) -> None:
+        if factors is None or not isinstance(factors, pd.Series):
+            return
+        self.data.factors = factors.reindex(index=self.assets, fill_value=0)
