@@ -81,7 +81,7 @@ class MultiStrategy(BasePage):
                 min_value=2,
                 max_value=1500,
                 step=100,
-                value=2,
+                value=252,
                 help="Minimum window of price data required.",
             )
         )
@@ -93,10 +93,10 @@ class MultiStrategy(BasePage):
                 "universe": self.get_universe,
                 "optimizer": self.get_optimizer,
                 "benchmark": self.get_benchmark,
-                "inception": self.get_inception,
+                "frequency": self.get_frequency,
             },
             {
-                "frequency": self.get_frequency,
+                "inception": self.get_inception,
                 "commission": self.get_commission,
                 "min_window": self.get_min_window,
             },

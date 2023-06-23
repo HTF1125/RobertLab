@@ -11,10 +11,9 @@ class EfficientFrontier(BasePage):
     """
     Efficient Frontier
     """
-
     def load_page(self):
         with st.form("Efficient Frontier"):
-            universe = getattr(universes, self.get_universe())()
+            universe = getattr(universes, self.get_universe()).instance()
             start, end = self.get_dates()
             submitted = st.form_submit_button("Run")
 

@@ -6,6 +6,7 @@ from .dashboard import Dashboard
 from .multistrategy import MultiStrategy
 from .efficient_frontier import EfficientFrontier
 from .glossary import Glossary
+from .futures import Futures
 
 __all__ = [
     "Dashboard",
@@ -15,4 +16,5 @@ __all__ = [
     "AlphaFactors",
     "AboutMe",
     "Glossary",
+    "Futures",
 ]

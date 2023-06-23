@@ -11,7 +11,7 @@ __all__ = ["GlobalAssetAllocation", "UnitedStatesSectors"]
 class Universe:
     @classmethod
     def instance(cls) -> "Universe":
-        return cls()
+        return cls()    
 
     def __init__(self) -> None:
         file = os.path.join(os.path.dirname(__file__), "universe.json")

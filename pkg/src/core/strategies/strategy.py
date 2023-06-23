@@ -188,7 +188,9 @@ class Strategy:
                 optimizer=optimizer,
                 factors=MultiFactors(
                     tickers=universe_obj.tickers, factors=factors
-                ).standard_percentile if factors is not None else None
+                ).standard_percentile
+                if factors is not None
+                else None,
             ),
         )
         if "book" in signiture:
@@ -255,8 +257,8 @@ class Strategy:
             Iterator[pd.Timestamp]: Iterator that yields rebalance dates.
         """
         for rebalance_date in pd.date_range(
-            start=self.date,
-            end=str(self.total_prices.index[-1]),
+            start=self.date - pd.DateOffset(days=1),
+            end=pd.Timestamp("now"),
             freq=self.frequency,
         ):
             yield rebalance_date
@@ -273,12 +275,18 @@ class Strategy:
         rebalance_dates = self.generate_rebalance_dates()
         try:
             rebalance_date = next(rebalance_dates)
+            while self.date > rebalance_date:
+                rebalance_date = next(rebalance_dates)
         except StopIteration:
             rebalance_date = pd.Timestamp(
                 str(self.total_prices.loc[self.book.date :].index[0])
             )
 
-        for date in self.generate_simulate_dates():
+        for date in pd.date_range(
+            start=self.date - pd.DateOffset(days=1),
+            end=pd.Timestamp("now"),
+            freq=self.frequency,
+        ):
             self.book.capitals = self.book.shares.multiply(
                 self.total_prices.loc[date]
             ).dropna()
