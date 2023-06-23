@@ -30,8 +30,9 @@ __all__ = [
     "PriceMomentum36M2M",
     "PriceVolatility1M",
     "PriceVolatility3M",
+    "VolumeCoefficientOfVariation1M",
+    "VolumeCoefficientOfVariation3M",
 ]
-
 
 
 class Factors(object):
@@ -39,6 +40,7 @@ class Factors(object):
 
     def __init__(self, tickers: Union[str, List, Set, Tuple]) -> None:
         self.tickers = tickers
+        self.compute()
 
     def __repr__(self) -> str:
         return "Base Factors"
@@ -50,24 +52,23 @@ class Factors(object):
     def standard_percentile(self) -> pd.DataFrame:
         return self.factors.apply(metrics.to_standard_percentile, axis=1)
 
-
-doc_string = """Price Mommentum is calculate {months}"""
+    def compute(self) -> None:
+        raise NotImplementedError("Yout must implement `compute` method.")
 
 
 class PriceMomentum(Factors):
     months = 1
     skip_months = 0
     absolute = False
-    __doc__ = doc_string.format(months=months)
 
-    def __init__(self, tickers: Union[str, List, Set, Tuple]) -> None:
-        super().__init__(tickers=tickers)
+    def compute(self) -> None:
         self.factors = metrics.rolling.to_momentum(
             prices=data.get_prices(tickers=self.tickers),
             months=self.months,
             skip_months=self.skip_months,
             absolute=self.absolute,
         )
+        self.factors = self.factors.resample("d").last().ffill()
 
 
 class PriceMomentum1M(PriceMomentum):
@@ -180,8 +181,7 @@ class PriceMomentumDiffusion(Factors):
     persistence in momentum are allocated to the top portfolio.
     """
 
-    def __init__(self, tickers: Union[str, List, Set, Tuple]) -> None:
-        super().__init__(tickers=tickers)
+    def compute(self) -> None:
         self.factors = (
             pd.concat(
                 objs=[
@@ -199,6 +199,7 @@ class PriceMomentumDiffusion(Factors):
             .unstack()
             .apply(np.sign)
         )
+        self.factors = self.factors.resample("d").last().ffill()
 
     @property
     def standard_percentile(self) -> pd.DataFrame:
@@ -208,14 +209,14 @@ class PriceMomentumDiffusion(Factors):
 class PriceVolatility(Factors):
     months = 1
 
-    def __init__(self, tickers: Union[str, List, Set, Tuple]) -> None:
-        super().__init__(tickers=tickers)
+    def compute(self) -> None:
         self.factors = (
             data.get_prices(tickers=self.tickers)
             .pct_change()
             .rolling(21 * self.months)
             .std()
         )
+        self.factors = - self.factors.resample("d").last().ffill()
 
 
 class PriceVolatility1M(PriceVolatility):
@@ -226,5 +227,26 @@ class PriceVolatility3M(PriceVolatility):
     months = 3
 
 
-class PriceMomentumScaledbyVolatility(Factors):
-    momentum_months = 1
+# class PriceMomentumScaledbyVolatility(Factors):
+#     momentum_months = 1
+
+
+class VCV(Factors):
+    months = 1
+
+    def compute(self) -> None:
+        import yfinance as yf
+
+        volume = yf.download(self.tickers, progress=False)["Volume"]
+        mean = volume.rolling(self.months * 21).mean()
+        std = volume.rolling(self.months * 21).std()
+        self.factors = std / mean
+        self.factors = - self.factors.resample("d").last().ffill()
+
+
+class VolumeCoefficientOfVariation1M(VCV):
+    months = 1
+
+
+class VolumeCoefficientOfVariation3M(VCV):
+    months = 3

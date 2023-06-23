@@ -1,2 +1,0 @@
-"""ROBERT"""
-from . import components

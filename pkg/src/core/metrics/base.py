@@ -1008,13 +1008,19 @@ def to_jensens_alpha(
     )
 
 
-def to_standard_scalar(factors: pd.Series) -> pd.Series:
+def to_standard_scaler(factors: pd.Series) -> pd.Series:
     scalar = (factors - factors.mean()) / factors.std()
     return scalar
 
 
 def to_standard_percentile(factors: pd.Series) -> pd.Series:
-    return to_standard_scalar(factors=factors).aggregate(norm.cdf)
+    return to_standard_scaler(factors=factors).aggregate(norm.cdf)
+
+def to_min_max_scaler(factors: pd.Series) -> pd.Series:
+    min_val = factors.min()
+    max_val = factors.max()
+    scaled_series = (factors - min_val) / (max_val - min_val)
+    return scaled_series
 
 
 def to_minmax_scalar(factors: pd.Series) -> pd.Series:

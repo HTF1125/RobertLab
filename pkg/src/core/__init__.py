@@ -5,5 +5,5 @@ from . import simulations
 from . import signals
 from . import portfolios
 from . import strategies
-from .portfolios import Optimizer
-from .strategies import Strategy, MultiStrategy
+from . import benchmarks
+from . import universes

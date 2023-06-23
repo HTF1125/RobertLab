@@ -1,5 +1,5 @@
 """ROBERT"""
-from typing import Union, List, Set, Tuple, Type
+from typing import Union, List, Set, Tuple
 import pandas as pd
 from pkg.src.core import metrics
 from . import single
@@ -9,7 +9,7 @@ class MultiFactors:
     def __init__(
         self,
         tickers: Union[str, List, Set, Tuple],
-        factors: List[Union[Type[single.Factors], str]],
+        factors: Tuple[str],
     ) -> None:
         factor_data = []
 
