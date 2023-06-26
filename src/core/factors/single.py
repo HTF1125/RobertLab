@@ -2,9 +2,8 @@
 from typing import List, Union, Set, Tuple
 import numpy as np
 import pandas as pd
-from src.backend.core import metrics
+from src.core import metrics
 from src.backend import data
-
 
 
 

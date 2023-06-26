@@ -15,12 +15,11 @@ class Futures(BasePage):
             Development Plan:
 
             `Benchmarks`:
-            1. Build class.
+            1. Build class. (Done)
             2. Incorporate with portfolio optimizer.
 
             `Strategies`:
-            1. Build Plot class.
-            2. Make in class plot functions with Plot class.
+            1. Build Plot class. (Failed Attempt)
 
             """
         )

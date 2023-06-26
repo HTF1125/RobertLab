@@ -3,7 +3,7 @@ import numpy as np
 import pandas as pd
 import streamlit as st
 import plotly.graph_objects as go
-from src.backend.core import metrics, portfolios
+from src.core import metrics, portfolios
 from .base import BasePage
 
 class EfficientFrontier(BasePage):

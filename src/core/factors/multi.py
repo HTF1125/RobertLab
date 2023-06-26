@@ -1,7 +1,7 @@
 """ROBERT"""
 from typing import Union, List, Set, Tuple
 import pandas as pd
-from src.backend.core import metrics
+from src.core import metrics
 from . import single
 
 

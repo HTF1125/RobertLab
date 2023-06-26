@@ -1,13 +1,12 @@
+"""ROBERT"""
+
+from typing import Optional
+
+__all__ = ("Settings",)
 
 
 class BaseSettings:
-
-    platform: str = None
-
+    platform: Optional[str] = None
 
 
 Settings = BaseSettings()
-
-__all__ = (
-    "Settings",
-)

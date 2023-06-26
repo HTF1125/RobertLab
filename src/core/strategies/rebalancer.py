@@ -1,39 +1,36 @@
 """ROBERT"""
-from typing import Optional, List, Dict, Any, Type
+from typing import Optional, List, Dict, Any, Union
 import pandas as pd
-from src.backend.core import portfolios, strategies
-from src.backend.core.factors import MultiFactors
-from src.backend.core.portfolios.base import PortfolioOptimizer
+from src.core.factors import MultiFactors
+from src.core.portfolios import PortfolioOptimizer
+from src.core.strategies import Strategy
+
+from .parser import Parser
 
 
 class Rebalancer:
     def __init__(
         self,
-        optimizer: str = "EqualWeight",
+        optimizer: Union[str, PortfolioOptimizer] = "EqualWeight",
         factors: Optional[MultiFactors] = None,
         optimizer_constraints: Optional[Dict[str, float]] = None,
         specific_constraints: Optional[List[Dict[str, Any]]] = None,
         span: Optional[int] = None,
         risk_free: float = 0.0,
-        prices_bm: Optional[pd.Series] = None,
-        weights_bm: Optional[pd.Series] = None,
     ) -> None:
-        super().__init__()
-        self.optimizer: Type[PortfolioOptimizer] = getattr(portfolios, optimizer)
+        self.optimizer = Parser.get_optimizer(optimizer)
         self.optimizer_constraints = optimizer_constraints or {}
         self.specific_constraints = specific_constraints or []
         self.factors = factors
         self.span = span
         self.risk_free = risk_free
-        self.prices_bm = prices_bm
-        self.weights_bm = weights_bm
 
         if self.factors:
             self.factors_data = self.factors.standard_scaler
         else:
             self.factors_data = None
 
-    def __call__(self, strategy: strategies.Strategy) -> pd.Series:
+    def __call__(self, strategy: Strategy) -> pd.Series:
         """Calculate portfolio allocation weights based on the Strategy instance.
 
         Args:
@@ -42,6 +39,14 @@ class Rebalancer:
         Returns:
             pd.Series: portfolio allocation weights.
         """
+        kwargs = (
+            {
+                "prices_bm": strategy.benchmark.get_performance(strategy.date),
+                "weights_bm": strategy.benchmark.get_weights(strategy.date),
+            }
+            if strategy.benchmark is not None
+            else {}
+        )
         prices = strategy.reb_prices
         opt = self.optimizer.from_prices(
             prices=prices,
@@ -53,16 +58,15 @@ class Rebalancer:
             else None,
             span=self.span,
             risk_free=self.risk_free,
-            prices_bm=self.prices_bm,
-            weights_bm=self.weights_bm,
+            **kwargs,
             **self.optimizer_constraints,
         ).set_specific_constraints(self.specific_constraints)
 
         return opt.solve()
 
-    def get_signiture(self) -> Dict:
+    def get_signature(self) -> Dict:
         return {
-            "optimizer": self.optimizer.__name__,
+            "optimizer": self.optimizer.__class__.__name__,
             "factors": self.factors.factors
             if isinstance(self.factors, MultiFactors)
             else None,

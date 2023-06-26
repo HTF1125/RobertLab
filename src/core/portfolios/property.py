@@ -15,6 +15,8 @@ class OptimizerMetrics:
         self.assets: Optional[pd.Index] = None
         self.risk_free: float = 0.0
         self.factors: Optional[pd.Series] = None
+        self.prices_bm: Optional[pd.Series] = None
+        self.weights_bm: Optional[pd.Series] = None
 
 
 class BaseProperty:
@@ -90,7 +92,6 @@ class BaseProperty:
     def risk_free(self, risk_free: float) -> None:
         self.data.risk_free = risk_free
 
-
     @property
     def factors(self) -> Optional[pd.Series]:
         """Get asset prices."""
@@ -101,3 +102,23 @@ class BaseProperty:
         if factors is None or not isinstance(factors, pd.Series):
             return
         self.data.factors = factors.reindex(index=self.assets, fill_value=0)
+
+    @property
+    def weights_bm(self) -> Optional[pd.Series]:
+        return self.data.weights_bm
+
+    @weights_bm.setter
+    def weights_bm(self, weights_bm: Optional[pd.Series] = None) -> None:
+        if weights_bm is not None:
+            weights_bm = weights_bm.reindex(self.assets, fill_value=0.0).fillna(0)
+            self.data.weights_bm = weights_bm
+
+    @property
+    def prices_bm(self) -> Optional[pd.Series]:
+        return self.data.prices_bm
+
+    @prices_bm.setter
+    def prices_bm(self, prices_bm: Optional[pd.Series]) -> None:
+        if prices_bm is not None and self.prices is not None:
+            prices_bm = prices_bm.reindex(self.prices.index).ffill()
+            self.data.prices_bm = prices_bm

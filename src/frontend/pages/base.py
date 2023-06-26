@@ -7,7 +7,7 @@ import numpy as np
 import pandas as pd
 import streamlit as st
 import plotly.graph_objects as go
-from src.backend.core import universes
+from src.core import universes
 from src.backend.data import get_prices
 from ..static import all_filenames
 

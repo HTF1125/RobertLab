@@ -6,10 +6,10 @@ from src.backend import data
 
 
 __all__ = [
+    "UnitedStatesSectors",
     "GlobalAllocation",
     "GlobalAssetAllocation",
     "UsAllocation",
-    "UnitedStatesSectors",
 ]
 
 class Universe:

@@ -1,5 +1,5 @@
 """ROBERT"""
-from .base import (
+from .ext import (
     EqualWeight,
     MaxReturn,
     MaxSharpe,
@@ -11,7 +11,7 @@ from .base import (
     HERC,
 )
 
-
+from .base import PortfolioOptimizer
 
 __all__ = [
     "EqualWeight",

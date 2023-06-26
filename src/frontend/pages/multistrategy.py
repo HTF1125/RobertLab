@@ -3,10 +3,17 @@ from typing import Dict, List, Tuple, Any
 import pandas as pd
 import streamlit as st
 import plotly.graph_objects as go
-from src.backend.core import portfolios, strategies, benchmarks, universes, factors
+from src.core import portfolios, strategies, benchmarks, universes, factors
 from src.backend.data import get_prices
 from .base import BasePage
 
+
+def save_strategy(name: str, strategy: strategies.Strategy):
+    try:
+        strategy.save(name)
+        st.info(f"save strategy {name} complete.")
+    except:
+        st.warning(f"save file failed.")
 
 class MultiStrategy(BasePage):
     def load_states(self) -> None:
@@ -22,7 +29,7 @@ class MultiStrategy(BasePage):
         return str(
             st.date_input(
                 label="Incep",
-                value=pd.Timestamp("2013-01-01"),
+                value=pd.Timestamp("2003-01-01"),
             )
         )
 
@@ -146,8 +153,8 @@ class MultiStrategy(BasePage):
                 "name": "active_weight",
                 "label": "Act. Weight",
                 "min_value": 0.0,
-                "max_value": 0.3,
-                "step": 0.01,
+                "max_value": 1.0,
+                "step": 0.05,
             },
             {
                 "name": "expost_tracking_error",
@@ -250,10 +257,9 @@ class MultiStrategy(BasePage):
             parameters["universe"] = universe.__class__.__name__
             parameters["benchmark"] = benchmark
             # Asset Allocation Constraints
+            optimizer_constraints = self.get_optimizer_constraints()
+
             with st.expander(label="Custom Constraints:"):
-                st.subheader("Optimizer Constraint")
-                optimizer_constraints = self.get_optimizer_constraints()
-                self.divider()
                 st.subheader("Specific Constraint")
                 specific_constraints = self.get_specific_constraints(
                     universe=pd.DataFrame(universe.ASSETS)
@@ -294,6 +300,7 @@ class MultiStrategy(BasePage):
                         name=name,
                     )
                 )
+
             fig.update_layout(
                 title="Strategy Performance",
                 yaxis_tickformat=",.0f",
@@ -308,8 +315,20 @@ class MultiStrategy(BasePage):
 
             for name, strategy in multistrategy.items():
                 with st.expander(label=name, expanded=False):
+                    strategy_name = st.text_input(
+                        label="Name your strategy", placeholder="...", key=name
+                    )
+
+
+                    st.button(
+                        label="Save",
+                        on_click=save_strategy,
+                        kwargs={"name": strategy_name, "strategy" : strategy},
+                        key=f"{name} save button",
+                    )
+
                     try:
-                        st.json(multistrategy.get_siginiture(name), expanded=False)
+                        st.json(multistrategy.get_signature(name), expanded=False)
                     except KeyError:
                         st.warning("Signiture store not found.")
 
@@ -320,18 +339,26 @@ class MultiStrategy(BasePage):
                     with performance_tab:
                         performance = strategy.book.records.performance
 
-                        fig = (
-                            go.Figure()
-                            .add_trace(
+                        fig = go.Figure().add_trace(
+                            go.Scatter(
+                                x=performance.index,
+                                y=performance.values,
+                                name="Performance",
+                                hovertemplate="Date: %{x} - Value: %{y}",
+                            )
+                        )
+
+                        if not strategy.benchmark is None:
+                            fig.add_trace(
                                 go.Scatter(
-                                    x=performance.index,
-                                    y=performance.values,
-                                    name="Performance",
-                                    hovertemplate="Date: %{x} - Value: %{y}",
+                                    x=strategy.benchmark.performance.index,
+                                    y=strategy.benchmark.performance.values,
+                                    hovertemplate="Date: %{x}: %{y}}",
+                                    name="benchmark",
                                 )
                             )
-                            .update_layout(title="Performance")
-                        )
+
+                        fig.update_layout(title="Performance")
                         st.plotly_chart(
                             fig,
                             use_container_width=True,

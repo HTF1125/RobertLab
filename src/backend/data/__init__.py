@@ -7,7 +7,6 @@ from functools import lru_cache
 import pandas as pd
 import yfinance as yf
 import pandas_datareader as pdr
-from src.backend.core.ext.store import DataStore
 
 
 def get_universe() -> Dict:
@@ -82,30 +81,30 @@ def get_vix_index() -> pd.DataFrame:
     return get_prices(tickers="^VIX")
 
 
-class Data:
-    @classmethod
-    def instance(cls, tickers: Union[str, List, Set, Tuple]) -> "Data":
-        return cls(tickers=tickers)
+# class Data:
+#     @classmethod
+#     def instance(cls, tickers: Union[str, List, Set, Tuple]) -> "Data":
+#         return cls(tickers=tickers)
 
-    def __init__(self, tickers: Union[str, List, Set, Tuple]) -> None:
-        # create ticker list
-        self.tickers = (
-            tickers
-            if isinstance(tickers, (list, set, tuple))
-            else tickers.replace(",", " ").split()
-        )
-        self.store = DataStore()
+#     def __init__(self, tickers: Union[str, List, Set, Tuple]) -> None:
+#         # create ticker list
+#         self.tickers = (
+#             tickers
+#             if isinstance(tickers, (list, set, tuple))
+#             else tickers.replace(",", " ").split()
+#         )
+#         self.store = DataStore()
 
-    def prices(self) -> pd.DataFrame:
-        if "prices" in self.store:
-            return self.store["prices"]
+#     def prices(self) -> pd.DataFrame:
+#         if "prices" in self.store:
+#             return self.store["prices"]
 
-        out = []
-        for ticker in self.tickers:
-            price = get_price(ticker)
-            if price is not None:
-                out.append(price)
-        return pd.concat(out, axis=1).sort_index()
+#         out = []
+#         for ticker in self.tickers:
+#             price = get_price(ticker)
+#             if price is not None:
+#                 out.append(price)
+#         return pd.concat(out, axis=1).sort_index()
 
-    def PriceMomentum1M(self) -> pd.DataFrame:
-        return self.prices().pct_change(21)
+#     def PriceMomentum1M(self) -> pd.DataFrame:
+#         return self.prices().pct_change(21)

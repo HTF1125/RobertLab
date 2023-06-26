@@ -1,10 +1,12 @@
 """ROBERT"""
 import os
 import json
+from pathlib import Path
 from typing import Optional, Callable, Dict, Union
 import pandas as pd
-from src.backend.core import benchmarks, universes, metrics
+from src.core import benchmarks, universes, metrics
 from .book import Book
+from .parser import Parser
 
 INITIAL_INVESTMENT = 10_000
 MIN_WINDOW = 1
@@ -13,57 +15,7 @@ COMMISSION = 10
 ALLOW_FRACTIONAL_SHARES = False
 
 
-class ModuleParser:
-    @staticmethod
-    def parse_universe(
-        universe: Optional[Union[str, universes.Universe]]
-    ) -> universes.Universe:
-        """Parse the universe to ensure it is an instance of the Universe class.
-
-        Args:
-            universe (Optional[Union[str, universes.Universe]]): The universe to parse.
-
-        Returns:
-            universes.Universe: The parsed universe instance.
-
-        Raises:
-            ValueError: If the universe is not an instance of the Universe class.
-
-        """
-        if isinstance(universe, str):
-            universe = getattr(universes, universe)()
-        if not isinstance(universe, universes.Universe):
-            raise ValueError(
-                "Parsing universe failed. Available universes: ", universes.__all__
-            )
-        return universe
-
-    @staticmethod
-    def parse_benchmark(
-        benchmark: Optional[Union[str, benchmarks.Benchmark]],
-    ) -> benchmarks.Benchmark:
-        """Parse the benchmark to ensure it is an instance of the Benchmark class.
-
-        Args:
-            benchmark (Optional[Union[str, benchmarks.Benchmark]]): The benchmark to parse.
-
-        Returns:
-            benchmarks.Benchmark: The parsed benchmark instance.
-
-        Raises:
-            ValueError: If the benchmark is not an instance of the Benchmark class.
-
-        """
-        if isinstance(benchmark, str):
-            benchmark = getattr(benchmarks, benchmark)()
-        if not isinstance(benchmark, benchmarks.Benchmark):
-            raise ValueError(
-                "Parsing benchmark failed. Available benchmarks: ", benchmarks.__all__
-            )
-        return benchmark
-
-
-class Strategy(ModuleParser):
+class Strategy:
     """
     Strategy is an algorithmic trading strategy that sequentially allocates
     capital among a group of assets based on a pre-defined rebalance method.
@@ -75,7 +27,7 @@ class Strategy(ModuleParser):
     @classmethod
     def from_universe(
         cls,
-        universe: Optional[Union[str, universes.Universe]],
+        universe: Union[str, universes.Universe],
         rebalance: Callable,
         frequency: str = FREQUENCY,
         initial_investment: float = INITIAL_INVESTMENT,
@@ -102,7 +54,7 @@ class Strategy(ModuleParser):
             Strategy: An instance of the Strategy class.
 
         """
-        universe = cls.parse_universe(universe=universe)
+        universe = Parser.get_universe(universe=universe)
         prices = universe.get_prices()
         return Strategy(
             prices=prices,
@@ -154,8 +106,16 @@ class Strategy(ModuleParser):
         self.initial_investment = initial_investment
         self.frequency = frequency
         self.min_window = min_window
-        self.universe = None if universe is None else self.parse_universe(universe)
-        self.benchmark = None if benchmark is None else self.parse_benchmark(benchmark)
+        self.universe = None if universe is None else Parser.get_universe(universe)
+        self.benchmark = (
+            None
+            if benchmark is None
+            else Parser.get_benchmark(benchmark).new(
+                min_window=min_window,
+                initial_investment=initial_investment,
+                inception=inception,
+            )
+        )
         self.book = Book(
             date=pd.Timestamp(self.inception),
             value=self.initial_investment,
@@ -173,9 +133,7 @@ class Strategy(ModuleParser):
         Returns:
             pd.DataFrame: Price data.
         """
-        return self.prices.loc[: self.book.date].dropna(
-            thresh=self.min_window, axis=1
-        )
+        return self.prices.loc[: self.book.date].dropna(thresh=self.min_window, axis=1)
 
     @property
     def date(self) -> pd.Timestamp:
@@ -249,13 +207,13 @@ class Strategy(ModuleParser):
         for date in self.prices.loc[self.date :].index:
             self.update_book(date)
             if self.needs_rebalance(date, rebalance_date):
-                try:
-                    self.call_reblance(date=date)
-                    rebalance_date = pd.date_range(
-                        start=date, freq=self.frequency, periods=1
-                    )[0]
-                except Exception as e:
-                    print(f"Optimization failed at {date}: {str(e)}")
+                # try:
+                self.call_reblance(date=date)
+                rebalance_date = pd.date_range(
+                    start=date, freq=self.frequency, periods=1
+                )[0]
+                # except Exception as e:
+                #     print(f"Optimization failed at {date}: {str(e)}")
 
             self.book.date = date
         return self
@@ -290,7 +248,6 @@ class Strategy(ModuleParser):
             }
         )
 
-
     @classmethod
     def read_file(cls, name: str) -> Dict:
         file = os.path.join(os.path.dirname(__file__), "db", f"{name}.json")
@@ -301,21 +258,32 @@ class Strategy(ModuleParser):
             return {}
 
     def save(self, name: str) -> None:
-        signiture = {
-            "universe" : str(self.universe),
+        signature = self.get_signature()
+        file_path = Path(os.path.dirname(__file__)) / "db" / f"{name}.json"
+
+        # Save the dictionary to .pth file
+        try:
+            with open(file=file_path, mode="w", encoding="utf-8") as file:
+                json.dump(signature, file)
+        except OSError as e:
+            print(f"Error occurred while saving the file: {e}")
+            if file_path.exists():
+                file_path.unlink()
+
+    def get_signature(self) -> Dict:
+        signature = {
+            "universe": self.universe.__class__.__name__,
             "benchmark": self.benchmark.__class__.__name__,
             "min_window": self.min_window,
             "inception": self.inception,
             "frequency": self.frequency,
             "commission": self.commission,
             "allow_fractional_shares": self.allow_fractional_shares,
-            "book": self.book.dict(),
         }
-        file = os.path.join(os.path.dirname(__file__), "db", f"{name}.json")
-        # Save the dictionary to JSON file
-        with open(file=file, mode="w", encoding="utf-8") as file:
-            json.dump(signiture, file)
-
+        # if isinstance(self.rebalance, Rebalancer):
+        signature.update(self.rebalance.get_signature())
+        signature["book"] = self.book.dict()
+        return signature
 
     @property
     def performance(self) -> pd.Series:
@@ -331,19 +299,19 @@ class Strategy(ModuleParser):
 
     @property
     def allocations(self) -> pd.DataFrame:
-        out= pd.DataFrame(self.book.records["allocations"]).T
+        out = pd.DataFrame(self.book.records["allocations"]).T
         out.index = pd.to_datetime(out.index)
         return out
 
     @property
     def weights(self) -> pd.DataFrame:
-        out= pd.DataFrame(self.book.records["weights"]).T
+        out = pd.DataFrame(self.book.records["weights"]).T
         out.index = pd.to_datetime(out.index)
         return out
 
     @property
     def trades(self) -> pd.DataFrame:
-        out= pd.DataFrame(self.book.records["trades"]).T
+        out = pd.DataFrame(self.book.records["trades"]).T
         out.index = pd.to_datetime(out.index)
         return out
 

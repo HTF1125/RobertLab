@@ -71,3 +71,36 @@ def dict_to_signature_string(data):
 #             return strategy
 
 #         return wrapper
+
+
+
+# import numpy as np
+# from scipy import stats
+
+
+# def factor_information_coefficient(
+#     factor_data, group_adjust=False, by_group=False, method=stats.spearmanr
+# ):
+#     def src_ic(group):
+#         f = group["factor"]
+#         _ic = group[["period_1", "period_252"]].apply(lambda x: method(x, f)[0])
+#         return _ic
+
+#     factor_data = factor_data.copy()
+
+#     grouper = [factor_data.index.get_level_values("date")]
+
+#     # if group_adjust:
+#     #     factor_data = demean_forward_returns(factor_data, grouper + ['group'])
+#     # if by_group:
+#     #     grouper.append('group')
+
+#     with np.errstate(divide="ignore", invalid="ignore"):
+#         ic = factor_data.groupby(grouper).apply(src_ic)
+
+#     return ic
+
+
+# ic = factor_information_coefficient(far.clean_factor_data)
+
+# ic.plot()

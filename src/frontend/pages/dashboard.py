@@ -1,7 +1,7 @@
 """ROBERT"""
 
 import streamlit as st
-from src.backend.core import MultiStrategy
+from src.core import MultiStrategy
 from .base import BasePage
 
 
@@ -72,17 +72,17 @@ class Dashboard(BasePage):
         multistrategy = MultiStrategy()
         fig = go.Figure()
 
-        for name, strategy_load in li.items():
-            with st.spinner(f"load strategy {name}"):
-                strategy = multistrategy.from_file(name=name, **strategy_load)
+        with st.spinner(f"load strategies..."):
+            strategy = multistrategy.from_files()
 
-                fig.add_trace(
-                    go.Scatter(
-                        x=strategy.performance.index,
-                        y=strategy.performance.values,
-                        name=name,
-                    )
+        for name, strategy in multistrategy.items():
+            fig.add_trace(
+                go.Scatter(
+                    x=strategy.performance.index,
+                    y=strategy.performance.values,
+                    name=name,
                 )
+            )
 
         fig.update_layout(
             title="Performance", legend_orientation="h", hovermode="x unified"
