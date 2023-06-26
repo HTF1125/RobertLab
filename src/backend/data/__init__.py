@@ -16,6 +16,11 @@ def get_universe() -> Dict:
         return json.load(json_file)
 
 
+@lru_cache()
+def get_price(ticker: str) -> pd.Series:
+    p = yf.download(ticker, progress=False)["Adj Close"]
+    p.name = ticker
+    return p
 
 
 def get_prices(tickers: Union[str, List, Set, Tuple]) -> pd.DataFrame:
@@ -26,18 +31,22 @@ def get_prices(tickers: Union[str, List, Set, Tuple]) -> pd.DataFrame:
         else tickers.replace(",", " ").split()
     )
     out = []
+
+    from ..config import settings
+
     for ticker in tickers:
-        price = get_price(ticker)
+        if settings.PLATFORM == "Streamlit":
+            import streamlit as st
+
+            @st.cache_data(ttl="1d")
+            def get_price_st(ticker: str) -> pd.Series:
+                return get_price(ticker)
+            price = get_price_st(ticker)
+        else:
+            price = get_price(ticker)
         if price is not None:
             out.append(price)
     return pd.concat(out, axis=1).sort_index()
-
-
-@lru_cache()
-def get_price(ticker: str) -> pd.Series:
-    p = yf.download(ticker, progress=False)["Adj Close"]
-    p.name = ticker
-    return p
 
 
 @lru_cache()
@@ -73,8 +82,6 @@ def get_vix_index() -> pd.DataFrame:
     return get_prices(tickers="^VIX")
 
 
-
-
 class Data:
     @classmethod
     def instance(cls, tickers: Union[str, List, Set, Tuple]) -> "Data":
@@ -89,9 +96,9 @@ class Data:
         )
         self.store = DataStore()
 
-
     def prices(self) -> pd.DataFrame:
-        if "prices" in self.store: return self.store["prices"]
+        if "prices" in self.store:
+            return self.store["prices"]
 
         out = []
         for ticker in self.tickers:
@@ -100,8 +107,5 @@ class Data:
                 out.append(price)
         return pd.concat(out, axis=1).sort_index()
 
-
     def PriceMomentum1M(self) -> pd.DataFrame:
-
         return self.prices().pct_change(21)
-

@@ -1,5 +1,6 @@
 """ROBERT"""
 import streamlit as st
+import plotly.graph_objects as go
 from .base import BasePage
 
 
@@ -27,10 +28,9 @@ class Futures(BasePage):
         self.chart_thought()
 
     def chart_thought(self):
-        import plotly.graph_objects as go
 
-        self.get_universe()
-        prices = self.get_universe_prices()
+        universe = self.get_universe()
+        prices = self.get_universe_prices(universe)
         minimum = prices / prices.rolling(252).min()
         maximum = prices / prices.rolling(252).max()
         fig = go.Figure()
@@ -51,13 +51,11 @@ class Futures(BasePage):
             )
 
         fig.update_layout(
-            title="From the 52w High&Low",
+            title="From 52W High (y), Low (x)",
             hovermode="x unified",
-            xaxis_title="Above 52w Low",
-            yaxis_title="Below 52w Hight",
-            xaxis_tickformat=".2%",
-            yaxis_tickformat=".2%",
-
+            xaxis_tickformat=".1%",
+            yaxis_tickformat=".1%",
+            legend_orientation="h",
         )
 
         st.plotly_chart(fig, use_container_width=True)

@@ -1,7 +1,5 @@
 from typing import Optional, List
 import numpy as np
-
-
 from .property import BaseProperty
 
 
@@ -190,23 +188,6 @@ def expected_volatility(
         for idx, _ in enumerate(weights, 0):
             if idx not in sub_covariance_matrix_idx:
                 weights[idx] = 0.0
-        # sub_covariance_matrix = covariance_matrix.copy()
-        # for i, row in enumerate(sub_covariance_matrix, start=0):
-        #     for j, _ in enumerate(row, start=0):
-        #         if (
-        #             i not in sub_covariance_matrix_idx
-        #             and j not in sub_covariance_matrix_idx
-        #         ):
-        #             sub_covariance_matrix[i, j] = 0
-        # var = expected_variance(
-        #     weights=weights, covariance_matrix=sub_covariance_matrix
-        # )
-        # if var < 0:
-        #     var = 0
-        # std = np.sqrt(var)
-        # if std == np.nan:
-        #     return 0
-        # return std
     return np.sqrt(
         expected_variance(weights=weights, covariance_matrix=covariance_matrix)
     )

@@ -1,229 +1,161 @@
 """ROBERT"""
 import os
 import json
-from typing import Optional, Callable, Type, Dict, List, Any, Tuple
+from typing import Optional, Callable, Dict, Union
 import pandas as pd
-from src.backend.core import metrics, benchmarks
-from src.backend.core import universes, portfolios
-from src.backend.core.factors import MultiFactors
-from src.backend.core.portfolios.base import BaseOptimizer
+from src.backend.core import benchmarks, universes, metrics
+from .book import Book
+
+INITIAL_INVESTMENT = 10_000
+MIN_WINDOW = 1
+FREQUENCY = "M"
+COMMISSION = 10
+ALLOW_FRACTIONAL_SHARES = False
 
 
-class Rebalancer:
-    def __init__(
-        self,
-        optimizer: str = "EqualWeight",
-        factors: Optional[pd.DataFrame] = None,
-        optimizer_constraints: Optional[Dict[str, float]] = None,
-        specific_constraints: Optional[List[Dict[str, Any]]] = None,
-        span: Optional[int] = None,
-        risk_free: float = 0.0,
-        prices_bm: Optional[pd.Series] = None,
-        weights_bm: Optional[pd.Series] = None,
-    ) -> None:
-        super().__init__()
-        self.optimizer: Type[BaseOptimizer] = getattr(portfolios, optimizer)
-        self.optimizer_constraints = optimizer_constraints or {}
-        self.specific_constraints = specific_constraints or []
-        self.factors = factors
-        self.span = span
-        self.risk_free = risk_free
-        self.prices_bm = prices_bm
-        self.weights_bm = weights_bm
-
-    def __call__(self, strategy: "Strategy") -> pd.Series:
-        """Calculate portfolio allocation weights based on the Strategy instance.
+class ModuleParser:
+    @staticmethod
+    def parse_universe(
+        universe: Optional[Union[str, universes.Universe]]
+    ) -> universes.Universe:
+        """Parse the universe to ensure it is an instance of the Universe class.
 
         Args:
-            strategy (Strategy): Strategy instance.
+            universe (Optional[Union[str, universes.Universe]]): The universe to parse.
 
         Returns:
-            pd.Series: portfolio allocation weights.
+            universes.Universe: The parsed universe instance.
+
+        Raises:
+            ValueError: If the universe is not an instance of the Universe class.
+
         """
-        prices = strategy.prices
-        if self.factors is not None and isinstance(self.factors, pd.DataFrame):
-            factors = self.factors.loc[: strategy.date].iloc[-1]
-            factors = factors.reindex(prices.columns, fill_value=0.0).fillna(0)
-        else:
-            factors = None
+        if isinstance(universe, str):
+            universe = getattr(universes, universe)()
+        if not isinstance(universe, universes.Universe):
+            raise ValueError(
+                "Parsing universe failed. Available universes: ", universes.__all__
+            )
+        return universe
 
-        opt = self.optimizer.from_prices(
-            prices=prices,
-            factors=factors,
-            span=self.span,
-            risk_free=self.risk_free,
-            prices_bm=self.prices_bm,
-            weights_bm=self.weights_bm,
-            **self.optimizer_constraints,
-        ).set_specific_constraints(specific_constraints=self.specific_constraints)
+    @staticmethod
+    def parse_benchmark(
+        benchmark: Optional[Union[str, benchmarks.Benchmark]],
+    ) -> benchmarks.Benchmark:
+        """Parse the benchmark to ensure it is an instance of the Benchmark class.
 
-        return opt.solve()
+        Args:
+            benchmark (Optional[Union[str, benchmarks.Benchmark]]): The benchmark to parse.
 
+        Returns:
+            benchmarks.Benchmark: The parsed benchmark instance.
 
-class Records(dict):
-    def __init__(self, **kwargs) -> None:
-        self["value"] = kwargs.get("value", {})
-        self["cash"] = kwargs.get("cash", {})
-        self["allocations"] = kwargs.get("allocations", {})
-        self["weights"] = kwargs.get("weights", {})
-        self["shares"] = kwargs.get("shares", {})
-        self["trades"] = kwargs.get("trades", {})
+        Raises:
+            ValueError: If the benchmark is not an instance of the Benchmark class.
 
-    @property
-    def performance(self) -> pd.Series:
-        perf = pd.Series(self.get("value"), name="performance")
-        perf.index = pd.to_datetime(perf.index)
-        return perf
-
-    @property
-    def cash(self) -> pd.Series:
-        return pd.Series(self.get("cash"), name="cash")
-
-    @property
-    def allocations(self) -> pd.DataFrame:
-        return pd.DataFrame(self.get("allocations")).T
-
-    @property
-    def weights(self) -> pd.DataFrame:
-        return pd.DataFrame(self.get("weights")).T
-
-    @property
-    def trades(self) -> pd.DataFrame:
-        return pd.DataFrame(self.get("trades")).T
-
-    ################################################################################
+        """
+        if isinstance(benchmark, str):
+            benchmark = getattr(benchmarks, benchmark)()
+        if not isinstance(benchmark, benchmarks.Benchmark):
+            raise ValueError(
+                "Parsing benchmark failed. Available benchmarks: ", benchmarks.__all__
+            )
+        return benchmark
 
 
-class Book:
-    @classmethod
-    def new(
-        cls,
-        inception: pd.Timestamp,
-        initial_investment: float = 10_000.0,
-    ) -> "Book":
-        return cls(
-            date=inception,
-            value=initial_investment,
-            cash=initial_investment,
-            shares=pd.Series(dtype=float),
-            weights=pd.Series(dtype=float),
-            capitals=pd.Series(dtype=float),
-        )
+class Strategy(ModuleParser):
+    """
+    Strategy is an algorithmic trading strategy that sequentially allocates
+    capital among a group of assets based on a pre-defined rebalance method.
 
-    def __init__(
-        self,
-        date: pd.Timestamp,
-        value: float,
-        cash: float,
-        shares: pd.Series,
-        weights: pd.Series,
-        capitals: pd.Series,
-        records: Optional[Dict] = None,
-    ):
-        self.date = date
-        self.value = value
-        self.cash = cash
-        self.shares = shares if isinstance(shares, pd.Series) else pd.Series(shares)
-        self.weights = weights if isinstance(weights, pd.Series) else pd.Series(weights)
-        self.capitals = (
-            capitals if isinstance(capitals, pd.Series) else pd.Series(capitals)
-        )
-        self.records = Records() if records is None else Records(**records)
-
-    def dict(self) -> Dict:
-        return {
-            "date": str(self.date),
-            "value": self.value,
-            "cash": self.cash,
-            "shares": self.shares.to_dict(),
-            "weights": self.weights.to_dict(),
-            "capitals": self.capitals.to_dict(),
-            "records": self.records,
-        }
-
-
-class Strategy:
-    """base strategy"""
+    Strategy shall be the parent for all investment strategies with a period-wise
+    rebalancing scheme.
+    """
 
     @classmethod
-    def load(
+    def from_universe(
         cls,
-        name: str,
-        universe: str = "UnitedStatesSectors",
-        benchmark: str = "Global64",
-        inception: str = "2003-1-1",
-        frequency: str = "M",
-        commission: int = 10,
-        optimizer: str = "EqualWeight",
-        min_window: int = 252,
-        factors: Optional[Tuple[str]] = None,
-        allow_fractional_shares: bool = False,
+        universe: Optional[Union[str, universes.Universe]],
+        rebalance: Callable,
+        frequency: str = FREQUENCY,
+        initial_investment: float = INITIAL_INVESTMENT,
+        commission: int = COMMISSION,
+        allow_fractional_shares: bool = ALLOW_FRACTIONAL_SHARES,
+        min_window: int = MIN_WINDOW,
+        inception: Optional[str] = None,
+        benchmark: Optional[Union[str, benchmarks.Benchmark]] = None,
     ) -> "Strategy":
-        # Get investment universe instance
-        signiture = cls.read_file(name=name)
+        """Create a Strategy instance from a predefined universe.
 
-        if "book" in signiture:
-            date = pd.Timestamp(signiture["book"]["date"])
-            if (pd.Timestamp("now") - date).days <= 2:
-                strategy = cls(
-                    prices=pd.DataFrame(),
-                    rebalance=Rebalancer(),
-                    inception=signiture["inception"],
-                )
-                strategy.book = Book(**signiture["book"])
-                return strategy
+        Args:
+            universe (Optional[Union[str, universes.Universe]]): The universe to use for the strategy.
+            rebalance (Callable): The rebalance method to apply.
+            frequency (str, optional): The frequency of rebalancing. Defaults to FREQUENCY.
+            initial_investment (float, optional): The initial investment amount. Defaults to INITIAL_INVESTMENT.
+            commission (int, optional): The commission amount. Defaults to COMMISSION.
+            allow_fractional_shares (bool, optional): Whether to allow fractional shares. Defaults to ALLOW_FRACTIONAL_SHARES.
+            min_window (int, optional): The minimum window size. Defaults to MIN_WINDOW.
+            inception (Optional[str], optional): The inception date of the strategy. Defaults to None.
+            benchmark (Optional[Union[str, benchmarks.Benchmark]], optional): The benchmark to compare the strategy against. Defaults to None.
 
-        universe_obj = getattr(
-            universes, signiture.get("universe", universe)
-        ).instance()
+        Returns:
+            Strategy: An instance of the Strategy class.
 
-        strategy = cls(
-            prices=universe_obj.prices,
-            inception=signiture.get("inception", inception),
-            frequency=signiture.get("frequency", frequency),
-            commission=signiture.get("commission", commission),
-            min_window=signiture.get("min_window", min_window),
-            benchmark=signiture.get("benchmark", benchmark),
-            allow_fractional_shares=signiture.get(
-                "allow_fractional_shares", allow_fractional_shares
-            ),
-            rebalance=Rebalancer(
-                optimizer=optimizer,
-                factors=MultiFactors(
-                    tickers=universe_obj.tickers, factors=factors
-                ).standard_percentile
-                if factors is not None
-                else None,
-            ),
+        """
+        universe = cls.parse_universe(universe=universe)
+        prices = universe.get_prices()
+        return Strategy(
+            prices=prices,
+            rebalance=rebalance,
+            frequency=frequency,
+            initial_investment=initial_investment,
+            commission=commission,
+            allow_fractional_shares=allow_fractional_shares,
+            min_window=min_window,
+            inception=inception,
+            universe=universe,
+            benchmark=benchmark,
         )
-        if "book" in signiture:
-            strategy.book = Book(**signiture["book"])
-        strategy.simulate()
-
-        return strategy
 
     def __init__(
         self,
         prices: pd.DataFrame,
         rebalance: Callable,
-        frequency: str = "M",
+        frequency: str = FREQUENCY,
+        initial_investment: float = INITIAL_INVESTMENT,
+        commission: int = COMMISSION,
+        allow_fractional_shares: bool = ALLOW_FRACTIONAL_SHARES,
+        min_window: int = MIN_WINDOW,
         inception: Optional[str] = None,
-        initial_investment: float = 10_000.0,
-        commission: int = 10,
-        allow_fractional_shares: bool = False,
-        min_window: int = 2,
-        benchmark: str = "Global64",
+        universe: Optional[Union[str, universes.Universe]] = None,
+        benchmark: Optional[Union[str, benchmarks.Benchmark]] = None,
     ) -> None:
-        self.total_prices: pd.DataFrame = prices.ffill()
-        self.total_prices.index = pd.to_datetime(self.total_prices.index)
-        self.inception = inception or str(self.total_prices.index[0])
+        """Initialize the Strategy class.
+
+        Args:
+            prices (pd.DataFrame): The prices of assets.
+            rebalance (Callable): The rebalance method to apply.
+            frequency (str, optional): The frequency of rebalancing. Defaults to FREQUENCY.
+            initial_investment (float, optional): The initial investment amount. Defaults to INITIAL_INVESTMENT.
+            commission (int, optional): The commission amount. Defaults to COMMISSION.
+            allow_fractional_shares (bool, optional): Whether to allow fractional shares. Defaults to ALLOW_FRACTIONAL_SHARES.
+            min_window (int, optional): The minimum window size. Defaults to MIN_WINDOW.
+            inception (Optional[str], optional): The inception date of the strategy. Defaults to None.
+            universe (Optional[Union[str, universes.Universe]], optional): The universe to use for the strategy. Defaults to None.
+            benchmark (Optional[Union[str, benchmarks.Benchmark]], optional): The benchmark to compare the strategy against. Defaults to None.
+
+        """
+        self.prices: pd.DataFrame = prices.ffill()
+        self.prices.index = pd.to_datetime(self.prices.index)
+        self.inception = inception or str(self.prices.index[0])
         self.rebalance = rebalance
         self.commission = commission
         self.allow_fractional_shares = allow_fractional_shares
         self.initial_investment = initial_investment
         self.frequency = frequency
         self.min_window = min_window
-        self.benchmark = getattr(benchmarks, benchmark).instance()
+        self.universe = None if universe is None else self.parse_universe(universe)
+        self.benchmark = None if benchmark is None else self.parse_benchmark(benchmark)
         self.book = Book(
             date=pd.Timestamp(self.inception),
             value=self.initial_investment,
@@ -234,73 +166,99 @@ class Strategy:
         )
 
     @property
-    def prices(self) -> pd.DataFrame:
+    def reb_prices(self) -> pd.DataFrame:
         """
         Get the price data for the strategy.
 
         Returns:
             pd.DataFrame: Price data.
         """
-        return self.total_prices.loc[: self.book.date].dropna(
+        return self.prices.loc[: self.book.date].dropna(
             thresh=self.min_window, axis=1
         )
 
     @property
     def date(self) -> pd.Timestamp:
+        """
+        Get the current date of the strategy.
+
+        Returns:
+            pd.Timestamp: Current date.
+        """
         return self.book.date
 
     ################################################################################
 
-    def simulate(self) -> None:
+    def update_book(self, date: pd.Timestamp) -> None:
+        """
+        Update the capitals based on current shares and prices.
+
+        Args:
+            date (pd.Timestamp): Current date.
+        """
+        prices_now = self.prices.loc[date]
+        self.book.capitals = self.book.shares.multiply(prices_now).dropna()
+        self.book.value = sum(self.book.capitals) + self.book.cash
+
+    def needs_rebalance(self, date: pd.Timestamp, rebalance_date: pd.Timestamp) -> bool:
+        """
+        Check if the strategy needs rebalancing.
+
+        Args:
+            date (pd.Timestamp): Current date.
+            rebalance_date (pd.Timestamp): Date of the last rebalance.
+
+        Returns:
+            bool: True if rebalancing is needed, False otherwise.
+        """
+        return date > rebalance_date or self.book.value == self.book.cash
+
+    def call_reblance(self, date: pd.Timestamp) -> None:
+        """
+        Rebalance the strategy by executing trades based on the rebalance function.
+
+        Args:
+            date (pd.Timestamp): Current date.
+        """
+        allocations = self.rebalance(strategy=self)
+        if isinstance(allocations, pd.Series):
+            prices = self.prices.loc[date]
+            # Calculate trade shares.
+            target_capitals = self.book.value * allocations
+            target_shares = target_capitals.divide(prices)
+            decimals = decimals = 4 if self.allow_fractional_shares else 0
+            target_shares = target_shares.round(decimals)
+            trade_shares = target_shares.subtract(self.book.shares, fill_value=0)
+            trade_shares = trade_shares[trade_shares != 0]
+
+            # Store allocations & trades.
+            # self.book.records
+            self.book.records["allocations"][str(self.date)] = allocations.to_dict()
+            self.book.records["trades"][str(date)] = trade_shares.to_dict()
+
+            trade_capitals = trade_shares.multiply(prices)
+            trade_capitals += trade_capitals.multiply(self.commission / 1_000)
+            self.book.cash -= trade_capitals.sum()
+            self.book.shares = target_shares
+
+    def simulate(self) -> "Strategy":
         """
         Simulate the strategy.
         """
-
         rebalance_date = self.date - pd.DateOffset(days=1)
-        for date in self.total_prices.loc[self.date :].index:
-            self.book.capitals = self.book.shares.multiply(
-                self.total_prices.loc[date]
-            ).dropna()
-            self.book.value = sum(self.book.capitals) + self.book.cash
-            self.book.weights = self.book.capitals.divide(self.book.value)
-            if date > rebalance_date or self.book.value == self.book.cash:
+        for date in self.prices.loc[self.date :].index:
+            self.update_book(date)
+            if self.needs_rebalance(date, rebalance_date):
                 try:
-                    allocations = self.rebalance(strategy=self)
-                    if isinstance(allocations, pd.Series):
-                        self.book.records["allocations"][
-                            str(self.date)
-                        ] = allocations.to_dict()
-                        target_capials = self.book.value * allocations
-                        target_shares = target_capials.divide(
-                            self.total_prices.loc[date]
-                        )
-                        target_shares = target_shares.round(
-                            decimals=4 if self.allow_fractional_shares else 0
-                        )
-                        trade_shares = target_shares.subtract(
-                            self.book.shares, fill_value=0
-                        )
-                        trade_shares = trade_shares[trade_shares != 0]
-                        self.book.records["trades"][str(date)] = trade_shares.to_dict()
-                        trade_capitals = trade_shares.multiply(
-                            self.total_prices.loc[date]
-                        )
-                        trade_capitals += trade_capitals.multiply(
-                            self.commission / 1_000
-                        )
-                        self.book.cash -= trade_capitals.sum()
-                        self.book.shares = target_shares
-                        rebalance_date = pd.date_range(
-                            start=date, freq=self.frequency, periods=1
-                        )[0]
-                except:
-                    print(f"optimization failed {self.date}")
+                    self.call_reblance(date=date)
+                    rebalance_date = pd.date_range(
+                        start=date, freq=self.frequency, periods=1
+                    )[0]
+                except Exception as e:
+                    print(f"Optimization failed at {date}: {str(e)}")
 
             self.book.date = date
-            self.book.records["value"][str(self.date)] = self.book.value
-            self.book.records["cash"][str(self.date)] = self.book.cash
-            self.book.records["shares"][str(self.date)] = self.book.shares.to_dict()
-            self.book.records["weights"][str(self.date)] = self.book.weights.to_dict()
+        return self
 
     @property
     def analytics(self) -> pd.Series:
@@ -332,9 +290,6 @@ class Strategy:
             }
         )
 
-    @property
-    def drawdown(self) -> pd.Series:
-        return metrics.to_drawdown(self.book.records.performance)
 
     @classmethod
     def read_file(cls, name: str) -> Dict:
@@ -345,9 +300,9 @@ class Strategy:
         except FileNotFoundError:
             return {}
 
-
     def save(self, name: str) -> None:
         signiture = {
+            "universe" : str(self.universe),
             "benchmark": self.benchmark.__class__.__name__,
             "min_window": self.min_window,
             "inception": self.inception,
@@ -360,3 +315,40 @@ class Strategy:
         # Save the dictionary to JSON file
         with open(file=file, mode="w", encoding="utf-8") as file:
             json.dump(signiture, file)
+
+
+    @property
+    def performance(self) -> pd.Series:
+        out = pd.Series(self.book.records["value"], name="performance")
+        out.index = pd.to_datetime(out.index)
+        return out
+
+    @property
+    def cash(self) -> pd.Series:
+        out = pd.Series(self.book.records["cash"], name="cash")
+        out.index = pd.to_datetime(out.index)
+        return out
+
+    @property
+    def allocations(self) -> pd.DataFrame:
+        out= pd.DataFrame(self.book.records["allocations"]).T
+        out.index = pd.to_datetime(out.index)
+        return out
+
+    @property
+    def weights(self) -> pd.DataFrame:
+        out= pd.DataFrame(self.book.records["weights"]).T
+        out.index = pd.to_datetime(out.index)
+        return out
+
+    @property
+    def trades(self) -> pd.DataFrame:
+        out= pd.DataFrame(self.book.records["trades"]).T
+        out.index = pd.to_datetime(out.index)
+        return out
+
+    @property
+    def drawdown(self) -> pd.Series:
+        out = metrics.to_drawdown(self.performance)
+        out.name = "drawdonw"
+        return out

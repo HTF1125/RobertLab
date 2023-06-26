@@ -13,18 +13,16 @@ class EfficientFrontier(BasePage):
 
     def load_page(self):
         with st.form("Efficient Frontier"):
-            self.get_universe()
+            universe = self.get_universe()
             start, end = self.get_dates()
             submitted = st.form_submit_button("Run")
 
             if submitted:
-                prices = self.get_universe_prices().loc[start:end].dropna(axis=1)
+                prices = self.get_universe_prices(universe).loc[start:end].dropna(axis=1)
                 with st.spinner(text="Loading Efficient Frontier for assets ..."):
                     ann_return = metrics.to_ann_return(prices=prices)
                     ann_volatility = metrics.to_ann_volatility(prices=prices)
-
                     ef = []
-
                     for ret in np.linspace(
                         start=ann_return.min(),
                         stop=ann_return.max(),

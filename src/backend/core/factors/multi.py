@@ -11,16 +11,17 @@ class MultiFactors(dict):
         tickers: Union[str, List, Set, Tuple],
         factors: Tuple[str],
     ) -> None:
+        self.factors = factors
         for factor in factors:
             self[factor] = getattr(single, factor)(tickers=tickers)
 
     @property
-    def standard_percentile(self) -> pd.DataFrame:
+    def standard_scaler(self) -> pd.DataFrame:
         return (
             pd.concat(
-                objs=[factor.standard_percentile.stack() for _, factor in self.items()],
+                objs=[factor.standard_scaler.stack() for _, factor in self.items()],
                 axis=1,
             )
             .mean(axis=1)
             .unstack()
-        ).apply(metrics.to_standard_percentile, axis=1)
+        ).apply(metrics.to_standard_scaler, axis=1)

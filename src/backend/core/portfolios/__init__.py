@@ -2,6 +2,8 @@
 from .base import (
     EqualWeight,
     MaxReturn,
+    MaxSharpe,
+    RiskParity,
     MinCorrelation,
     MinVolatility,
     InverseVariance,
@@ -9,8 +11,6 @@ from .base import (
     HERC,
 )
 
-from .max_sharpe import MaxSharpe
-from .risk_parity import RiskParity
 
 
 __all__ = [

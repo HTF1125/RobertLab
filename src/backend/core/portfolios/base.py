@@ -2,23 +2,21 @@
 import warnings
 from abc import abstractmethod
 from typing import Optional, Callable, Dict, List, Tuple, Any
-from functools import partial
 from scipy.optimize import minimize
 from scipy.cluster.hierarchy import linkage, to_tree
 from scipy.spatial.distance import squareform
 import numpy as np
 import pandas as pd
-from . import objectives
 from .. import metrics
 from ..metrics import cov_to_corr
-from .property import BaseProperty
+from .objectives import Objectives
 
 
-class BaseOptimizer(BaseProperty):
+class PortfolioOptimizer(Objectives):
     @classmethod
     def from_prices(
         cls, prices: pd.DataFrame, span: Optional[int] = None, **kwargs
-    ) -> "BaseOptimizer":
+    ) -> "PortfolioOptimizer":
         return cls(
             expected_returns=metrics.to_expected_returns(prices=prices),
             covariance_matrix=metrics.to_covariance_matrix(prices=prices, span=span),
@@ -116,10 +114,7 @@ class BaseOptimizer(BaseProperty):
             return
         self.constraints["min_port_return"] = {
             "type": "ineq",
-            "fun": lambda w: objectives.expected_return(
-                weights=w, expected_returns=np.array(self.expected_returns)
-            )
-            - min_port_return,
+            "fun": lambda w: self.expected_return(weights=w) - min_port_return,
         }
 
     def set_max_port_return(self, max_port_return: float) -> None:
@@ -130,10 +125,7 @@ class BaseOptimizer(BaseProperty):
             return
         self.constraints["max_port_return"] = {
             "type": "ineq",
-            "fun": lambda w: max_port_return
-            - objectives.expected_return(
-                weights=w, expected_returns=np.array(self.expected_returns)
-            ),
+            "fun": lambda w: max_port_return - self.expected_return(weights=w),
         }
 
     def set_min_port_risk(self, min_port_risk: float) -> None:
@@ -144,10 +136,7 @@ class BaseOptimizer(BaseProperty):
             return
         self.constraints["min_port_risk"] = {
             "type": "ineq",
-            "fun": lambda w: objectives.expected_volatility(
-                weights=w, covariance_matrix=np.array(self.covariance_matrix)
-            )
-            - min_port_risk,
+            "fun": lambda w: self.expected_volatility(weights=w) - min_port_risk,
         }
 
     def set_max_port_risk(self, max_port_risk: float) -> None:
@@ -158,10 +147,7 @@ class BaseOptimizer(BaseProperty):
             return
         self.constraints["max_port_risk"] = {
             "type": "ineq",
-            "fun": lambda w: max_port_risk
-            - objectives.expected_volatility(
-                weights=w, covariance_matrix=np.array(self.covariance_matrix)
-            ),
+            "fun": lambda w: max_port_risk - self.expected_volatility(weights=w),
         }
 
     def set_min_active_weight(self, min_active_weight: float) -> None:
@@ -198,10 +184,8 @@ class BaseOptimizer(BaseProperty):
             return
         self.constraints["min_exante_tracking_error"] = {
             "type": "ineq",
-            "fun": lambda w: objectives.exante_tracking_error(
-                weights=w,
-                weights_bm=np.array(self.weights_bm),
-                covariance_matrix=np.array(self.covariance_matrix),
+            "fun": lambda w: self.exante_tracking_error(
+                weights=w, weights_bm=np.array(self.weights_bm)
             )
             - min_exante_tracking_error,
         }
@@ -217,10 +201,8 @@ class BaseOptimizer(BaseProperty):
         self.constraints["max_exante_tracking_error"] = {
             "type": "ineq",
             "fun": lambda w: max_exante_tracking_error
-            - objectives.exante_tracking_error(
-                weights=w,
-                weights_bm=np.array(self.weights_bm),
-                covariance_matrix=np.array(self.covariance_matrix),
+            - self.exante_tracking_error(
+                weights=w, weights_bm=np.array(self.weights_bm)
             ),
         }
 
@@ -242,7 +224,7 @@ class BaseOptimizer(BaseProperty):
 
         self.constraints["min_expost_tracking_error"] = {
             "type": "ineq",
-            "fun": lambda w: objectives.expost_tracking_error(
+            "fun": lambda w: self.expost_tracking_error(
                 weights=w,
                 pri_returns_assets=np.array(pri_returns_assets),
                 pri_returns_bm=np.array(pri_returns_bm),
@@ -269,7 +251,7 @@ class BaseOptimizer(BaseProperty):
         self.constraints["max_expost_tracking_error"] = {
             "type": "ineq",
             "fun": lambda w: max_expost_tracking_error
-            - objectives.expost_tracking_error(
+            - self.expost_tracking_error(
                 weights=w,
                 pri_returns_assets=np.array(pri_returns_assets),
                 pri_returns_bm=np.array(pri_returns_bm),
@@ -286,12 +268,12 @@ class BaseOptimizer(BaseProperty):
 
     def set_specific_constraints(
         self, specific_constraints: List[Dict[str, Any]]
-    ) -> "BaseOptimizer":
+    ) -> "PortfolioOptimizer":
         for specific_constraint in specific_constraints:
             self.set_specific_constraint(**specific_constraint)
         return self
 
-    def set_specific_constraint(self, assets: List, bounds: Tuple) -> "BaseOptimizer":
+    def set_specific_constraint(self, assets: List, bounds: Tuple) -> "PortfolioOptimizer":
         assert self.assets is not None
         specific_assets = np.in1d(self.assets.values, assets)
         l_bound, u_bound = bounds
@@ -330,17 +312,16 @@ class BaseOptimizer(BaseProperty):
             x0=np.ones(shape=self.num_assets) / self.num_assets,
         )
         if problem.success:
-            data = problem.x + 1e-16
-            weights = pd.Series(data=data, index=self.assets, name="weights").round(6)
+            weights = problem.x + 1e-16
             if self.expected_returns is not None:
-                self.exp["expected_return"] = self.expected_returns.dot(weights)
+                self.exp["expected_return"] = self.expected_return(weights)
             if self.covariance_matrix is not None:
-                self.exp["expected_volatility"] = (
-                    float(np.dot(self.covariance_matrix.dot(weights), weights)) ** 0.5
-                )
+                self.exp["expected_volatility"] = self.expected_volatility(weights)
+            weights = pd.Series(data=weights, index=self.assets, name="weights").round(
+                6
+            )
             weights = weights[weights != 0.0]
             return weights
-        print(self.factors)
         raise ValueError("Portoflio Optimization Failed.")
 
     @abstractmethod
@@ -350,80 +331,29 @@ class BaseOptimizer(BaseProperty):
         )
 
 
-class MaxReturn(BaseOptimizer):
-    def solve(self) -> pd.Series:
-        """calculate maximum return weights"""
-        if self.expected_returns is None:
-            warnings.warn("expected_returns must not be none.")
-            raise ValueError("expected_returns must not be none.")
-        return self.__solve__(
-            objective=partial(
-                objectives.expected_return,
-                expected_returns=np.array(self.expected_returns) * -1,
-            )
-        )
-
-
-class MinVolatility(BaseOptimizer):
+class MinVolatility(PortfolioOptimizer):
     def solve(self) -> pd.Series:
         """calculate minimum volatility weights"""
-        if self.covariance_matrix is None:
-            warnings.warn("covariance_matrix must not be none.")
-            raise ValueError("covariance_matrix must not be none.")
-
-        return self.__solve__(
-            objective=partial(
-                objectives.expected_volatility,
-                covariance_matrix=np.array(self.covariance_matrix),
-            )
-        )
+        return self.__solve__(objective=self.expected_volatility)
 
 
-class MinCorrelation(BaseOptimizer):
+class MinCorrelation(PortfolioOptimizer):
     def solve(self) -> pd.Series:
         """calculate minimum correlation weights"""
-
-        return self.__solve__(
-            objective=partial(
-                objectives.expected_correlation,
-                correlation_matrix=np.array(self.correlation_matrix),
-            )
-        )
+        return self.__solve__(objective=self.expected_correlation)
 
 
-class MaxSharpe(BaseOptimizer):
-    def solve(self) -> pd.Series:
-        """calculate maximum sharpe ratio weights"""
-        if self.expected_returns is None or self.covariance_matrix is None:
-            warnings.warn("expected_returns and covariance_matrix must not be none.")
-            raise ValueError("expected_returns must not be none.")
-
-        return self.__solve__(
-            objective=partial(
-                objectives.expected_sharpe,
-                expected_returns=np.array(self.expected_returns * -1),
-                covariance_matrix=np.array(self.covariance_matrix),
-                risk_free=self.risk_free,
-            )
-        )
-
-
-class RiskParity(BaseOptimizer):
+class RiskParity(PortfolioOptimizer):
     def solve(self, budgets: Optional[np.ndarray] = None) -> pd.Series:
         if budgets is None:
             budgets = np.ones(self.num_assets) / self.num_assets
         weights = self.__solve__(
-            objective=lambda w: objectives.l1_norm(
+            objective=lambda w: self.l2_norm(
                 np.subtract(
-                    objectives.risk_contributions(
-                        weights=w, covariance_matrix=np.array(self.covariance_matrix)
-                    ),
+                    self.risk_contributions(weights=w),
                     np.multiply(
                         budgets,
-                        objectives.expected_volatility(
-                            weights=w,
-                            covariance_matrix=np.array(self.covariance_matrix),
-                        ),
+                        self.expected_volatility(weights=w),
                     ),
                 )
             )
@@ -431,7 +361,7 @@ class RiskParity(BaseOptimizer):
         return weights
 
 
-class Hierarchical(BaseOptimizer):
+class Hierarchical(PortfolioOptimizer):
     def recursive_bisection(self, sorted_tree):
         """_summary_
 
@@ -473,17 +403,15 @@ class HRP(Hierarchical):
         if not isinstance(cluster_sets, List):
             cluster_sets = [cluster_sets]
         return self.__solve__(
-            objective=lambda w: objectives.l2_norm(
+            objective=lambda w: self.l2_norm(
                 np.array(
                     [
-                        objectives.expected_volatility(
+                        self.expected_volatility(
                             weights=w,
-                            covariance_matrix=np.array(self.covariance_matrix),
                             sub_covariance_matrix_idx=left_idx,
                         )
-                        - objectives.expected_volatility(
+                        - self.expected_volatility(
                             weights=w,
-                            covariance_matrix=np.array(self.covariance_matrix),
                             sub_covariance_matrix_idx=right_idx,
                         )
                         for left_idx, right_idx in cluster_sets
@@ -509,20 +437,18 @@ class HERC(Hierarchical):
         sorted_tree = list(to_tree(clusters, rd=False).pre_order())
         cluster_sets = self.recursive_bisection(sorted_tree)
         weights = self.__solve__(
-            objective=lambda w: objectives.l2_norm(
+            objective=lambda w: self.l2_norm(
                 np.array(
                     [
                         np.sum(
-                            objectives.risk_contributions(
+                            self.risk_contributions(
                                 weights=w,
-                                covariance_matrix=np.array(self.covariance_matrix),
                                 sub_covariance_matrix_idx=left_idx,
                             )
                         )
                         - np.sum(
-                            objectives.risk_contributions(
+                            self.risk_contributions(
                                 weights=w,
-                                covariance_matrix=np.array(self.covariance_matrix),
                                 sub_covariance_matrix_idx=right_idx,
                             )
                         )
@@ -534,18 +460,30 @@ class HERC(Hierarchical):
         return weights
 
 
-class EqualWeight(BaseOptimizer):
-    def solve(self) -> pd.Series:
-        target_allocations = np.ones(shape=self.num_assets) / self.num_assets
-        return self.__solve__(
-            objective=lambda w: objectives.l2_norm(np.subtract(w, target_allocations))
-        )
-
-
-class InverseVariance(BaseOptimizer):
+class InverseVariance(PortfolioOptimizer):
     def solve(self) -> pd.Series:
         inv_var_weights = 1 / np.diag(np.array(self.covariance_matrix))
         inv_var_weights /= inv_var_weights.sum()
         return self.__solve__(
-            objective=lambda w: objectives.l1_norm(np.subtract(w, inv_var_weights))
+            objective=lambda w: self.l1_norm(np.subtract(w, inv_var_weights))
+        )
+
+
+class MaxReturn(PortfolioOptimizer):
+    def solve(self) -> pd.Series:
+        """calculate maximum return weights"""
+        return self.__solve__(objective=lambda w: -self.expected_return(w))
+
+
+class MaxSharpe(PortfolioOptimizer):
+    def solve(self) -> pd.Series:
+        """calculate maximum sharpe ratio weights"""
+        return self.__solve__(objective=lambda w: -self.expected_sharpe(w))
+
+
+class EqualWeight(PortfolioOptimizer):
+    def solve(self) -> pd.Series:
+        target_allocations = np.ones(shape=self.num_assets) / self.num_assets
+        return self.__solve__(
+            objective=lambda w: self.l2_norm(np.subtract(w, target_allocations))
         )

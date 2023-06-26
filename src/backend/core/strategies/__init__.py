@@ -1,3 +1,3 @@
 """ROBERT"""
-from .strategy import Strategy, Rebalancer
+from .strategy import Strategy
 from .multistrategy import MultiStrategy

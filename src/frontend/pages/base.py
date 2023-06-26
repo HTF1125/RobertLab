@@ -1,5 +1,4 @@
 """ROBERT"""
-import os
 import re
 from typing import Tuple, Optional, Callable, Any
 from datetime import datetime
@@ -8,9 +7,9 @@ import numpy as np
 import pandas as pd
 import streamlit as st
 import plotly.graph_objects as go
-from src import frontend
 from src.backend.core import universes
-from src.frontend.data import get_prices
+from src.backend.data import get_prices
+from ..static import all_filenames
 
 
 class BasePage:
@@ -38,14 +37,12 @@ class BasePage:
 
     @staticmethod
     def load_static():
-        directory = os.path.join(os.path.dirname(frontend.__file__), "static")
-
-        files = ["base.css", "media_badge.html"]
-        for file in files:
-            with open(file=os.path.join(directory, file), encoding="utf-8") as f:
+        filenames = all_filenames()
+        for filename in filenames:
+            with open(file=filename, encoding="utf-8") as f:
                 st.markdown(
                     body=f"{f.read()}"
-                    if file.endswith(".html")
+                    if filename.endswith(".html")
                     else f"<style>{f.read()}</style>",
                     unsafe_allow_html=True,
                 )
@@ -67,7 +64,7 @@ class BasePage:
         return spaced_string
 
     @staticmethod
-    def get_universe() -> None:
+    def get_universe() -> str:
         universe = str(
             st.selectbox(
                 label="Universe",
@@ -78,7 +75,7 @@ class BasePage:
                 help="Select investment universe.",
             )
         )
-        st.session_state["universe"] = universe
+        return universe
 
     @staticmethod
     def get_dates(
@@ -265,9 +262,9 @@ class BasePage:
         return fig
 
     @staticmethod
-    def get_universe_prices() -> pd.DataFrame:
-        if "universe" not in st.session_state:
-            raise ValueError("universe not defined.")
-        universe = st.session_state["universe"]
-        tickers = getattr(universes, universe).instance().tickers
-        return get_prices(tickers)
+    def get_universe_prices(universe: str) -> pd.DataFrame:
+        universe_instance = getattr(universes, universe)()
+        if not isinstance(universe_instance, universes.Universe):
+            raise ValueError("something wrong with the universe.")
+        prices = get_prices(universe_instance.get_tickers())
+        return prices

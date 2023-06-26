@@ -1,18 +1,16 @@
 import streamlit as st
 from .base import BasePage
 
-
 class AboutMe(BasePage):
     NAME = "Robert Han"
     DESCRIPTION = """
-            Results-driven quantitative strategy and financial model developer
-            with a strong background in buy-side equity investing.
-            Offering 6 years of experience in financial research and strategy
-            development, with a focus on developing solid and innovative
-            investment solutions. Proficient in quantitative strategy
-            development for institutional clients, with 2+ years of experience
-            in delivering successful projects.
-        """
+        Results-driven quantitative strategy and financial model developer
+        with a strong background in buy-side equity investing.
+        Offering 6 years of experience in financial research and strategy
+        development, with a focus on developing innovative investment solutions.
+        Proficient in quantitative strategy development for institutional clients,
+        with 2+ years of experience in delivering successful projects.
+    """
     EMAIL = "hantianfeng@outlook.com"
 
     def load_page(self):
@@ -20,91 +18,85 @@ class AboutMe(BasePage):
         self.divider()
 
         st.write(self.DESCRIPTION)
-        # st.download_button(
-        #     label=" 📄 Download Resume",
-        #     data=PDFbyte,
-        #     file_name=resume_file.name,
-        #     mime="application/octet-stream",
-        # )
         st.write("📫", self.EMAIL)
 
         # --- EXPERIENCE & QUALIFICATIONS ---
         st.write("\n")
-        st.subheader("Experience & Qulifications")
+        st.subheader("Experience & Qualifications")
         self.divider()
 
-        st.write(
-            """
-            - ✔️ 6 Years expereince in quantitative strategy development.
-            - ✔️ Strong hands on experience and knowledge in Python and Excel
-            - ✔️ Good understanding of financial and statistical principles and
-            their respective applications
-            - ✔️ Excellent team-player and displaying strong sense of initiative on tasks
-            """
-        )
+        st.markdown("#### Quantitative Strategy Development")
+        st.markdown("- 📈 6 years of experience in developing quantitative strategies.")
+        st.markdown("- 🖥️ Extensive expertise in Python and Excel for strategy development.")
+        st.markdown("- 📊 Proficient in implementing financial and statistical principles in real-world applications.")
 
-        # --- SKILLS ---
-        st.write("\n")
-        st.subheader("Hard Skills")
-        self.divider()
+        st.markdown("#### Team Collaboration and Initiative")
+        st.markdown("- 🤝 Excellent team player, fostering collaboration and communication.")
+        st.markdown("- 🚀 Strong sense of initiative, taking ownership of tasks and driving them to completion.")
 
-        st.write(
-            """
-            - 👩‍💻 Programming: Python, SQL, VBA
-            - 📊 Data Visulization: PowerBi, MS Excel, Plotly
-            - 📚 Modeling: Portoflio Optimizations, Factor & Risk Premia
-            - 🗄️ Databases: Postgres, MySQL
-            - 👩‍💻 Languages: Chinese, English, Korean, Japanese(Beginner)
-            """
-        )
+        st.markdown("#### Hard Skills")
+        st.markdown("- 💻 Programming: Python, SQL, VBA")
+        st.markdown("- 📊 Data Visualization: Power BI, MS Excel, Plotly")
+        st.markdown("- 📚 Modeling: Portfolio Optimization, Factor & Risk Premia")
+        st.markdown("- 🗄️ Databases: Postgres, MySQL")
+        st.markdown("- 🌍 Languages: Chinese, English, Korean, Japanese (Beginner)")
+
+        st.markdown("#### Additional Skills")
+        st.markdown("- 🔍 Advanced knowledge of data analysis and visualization tools.")
+        st.markdown("- 🏆 Proven track record of delivering high-quality results within deadlines.")
+        st.markdown("- 📖 Continuously learning and keeping up with the latest trends and technologies.")
+
 
         # --- WORK HISTORY ---
         st.write("\n")
         st.subheader("Work History")
         self.divider()
 
-        # --- JOB 1
+        # --- JOB 1 ---
         st.write("🚧", "**Quantitative Strategist | Dneuro Inc.**")
         st.write("05/2021 - 05/2023")
         st.write(
             """
             -► Spearheaded the development of a comprehensive Robo-Advisor project,
-            encompassing all aspects of wealth management, involving goal-based
-            dynamic asset allocation, market regime analysis, macro factors, and
-            asset selection methodologies. Additionally, integrated behavioural
-            finance to enhanced client experience.
+              encompassing all aspects of wealth management, including goal-based
+              dynamic asset allocation, market regime analysis, macro factors, and
+              asset selection methodologies. Integrated behavioral finance to
+              enhance client experience.
 
-            -► Led the US equity factor library construction project, taking
-            responsibility for developing Python calculations for over 100
-            fundamental factors. Designed and implemented a database operations
-            module using MariaDB to facilitate efficient data management.
+            -► Led the US equity factor library construction project, developing
+              Python calculations for over 100 fundamental factors. Implemented a
+              database operations module using MariaDB to facilitate efficient
+              data management.
 
-            -► Offered consulting services for OCIO Strategic Asset Allocation,
-            utilizing simulations and portfolio optimization techniques. Developed
-            a user-friendly web portal to facilitate client interactions and provide
-            easy access to customized asset allocation strategies.
+            -► Provided consulting services for OCIO Strategic Asset Allocation,
+              utilizing simulations and portfolio optimization techniques.
+              Developed a user-friendly web portal for client interactions and
+              customized asset allocation strategies.
             """
         )
 
         self.divider()
-        # --- JOB 1
+
+        # --- JOB 2 ---
         st.write("🚧", "**Global Solutions Specialist | Woori Asset Management Corp.**")
         st.write("03/2017 - 05/2021")
         st.write(
             """
             -► Contributed to quantitative research and played a key role in
-            developing models for optimizing global multi-asset portfolios.
-            Leveraged advanced quantitative techniques to analyse market data,
-            identify trends, and enhance portfolio performance and risk management.
+              developing models for optimizing global multi-asset portfolios.
+              Leveraged advanced quantitative techniques to analyze market data,
+              identify trends, and enhance portfolio performance and risk management.
 
-            -► Contributed to global research, specifically focusing on US and
-            Chinese equities. Built multiply financial analysis models in excel
-            (VBA) with Bloomberg and Wind terminal.
+            -► Conducted global research, focusing on US and Chinese equities.
+              Built multiple financial analysis models in Excel (VBA) using
+              Bloomberg and Wind terminals.
 
             -► Managed liquidity positions for all global equity funds, ensuring
-            efficient execution of Forex Hedges using futures and forward
-            contracts. Proactively monitored market conditions and implemented
-            hedging strategies to mitigate currency risks and optimize fund
-            performance.
+              efficient execution of Forex hedges using futures and forward
+              contracts. Monitored market conditions and implemented hedging
+              strategies to mitigate currency risks and optimize fund performance.
             """
         )
+
+        st.warning("Feel free to reach out to discuss potential opportunities!")
+

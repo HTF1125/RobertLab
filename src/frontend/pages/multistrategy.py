@@ -1,9 +1,10 @@
 """ROBERT"""
-from typing import Dict, List, Tuple
+from typing import Dict, List, Tuple, Any
 import pandas as pd
 import streamlit as st
-from src.backend.core import portfolios, strategies, benchmarks, universes
-from src.backend.core.factors import single, MultiFactors
+import plotly.graph_objects as go
+from src.backend.core import portfolios, strategies, benchmarks, universes, factors
+from src.backend.data import get_prices
 from .base import BasePage
 
 
@@ -11,62 +12,39 @@ class MultiStrategy(BasePage):
     def load_states(self) -> None:
         if "strategy" not in st.session_state:
             st.session_state["strategy"] = strategies.MultiStrategy()
-        if "min_window" not in st.session_state:
-            st.session_state["min_window"] = 252
-        if "commission" not in st.session_state:
-            st.session_state["commission"] = 10
-        if "frequency" not in st.session_state:
-            st.session_state["frequency"] = "M"
-        if "optimizer" not in st.session_state:
-            st.session_state["optimizer"] = "EqualWeight"
-        if "inception" not in st.session_state:
-            st.session_state["inception"] = "2003-01-01"
-        if "allow_fractional_shares" not in st.session_state:
-            st.session_state["allow_fractional_shares"] = False
-        if "factors" not in st.session_state:
-            st.session_state["factors"] = None
 
     @staticmethod
     def get_strategy() -> strategies.MultiStrategy:
         return st.session_state["strategy"]
 
     @staticmethod
-    def get_inception() -> None:
-        inception = str(
+    def get_inception() -> str:
+        return str(
             st.date_input(
                 label="Incep",
-                value=pd.Timestamp(st.session_state["inception"]),
+                value=pd.Timestamp("2013-01-01"),
             )
         )
-        st.session_state["inception"] = inception
 
     @staticmethod
-    def get_optimizer() -> None:
-        optimizer = str(
+    def get_optimizer() -> str:
+        return str(
             st.selectbox(
                 label="Opt",
                 options=portfolios.__all__,
-                index=portfolios.__all__.index(
-                    st.session_state.get("optimizer", portfolios.__all__[0])
-                ),
                 help="Select strategy's rebalancing frequency.",
             )
         )
-        st.session_state["optimizer"] = optimizer
 
     @staticmethod
-    def get_benchmark() -> None:
-        benchmark = str(
+    def get_benchmark() -> str:
+        return str(
             st.selectbox(
                 label="BM",
                 options=benchmarks.__all__,
-                index=benchmarks.__all__.index(
-                    st.session_state.get("benchmark", benchmarks.__all__[0])
-                ),
                 help="Select strategy's rebalancing frequency.",
             )
         )
-        st.session_state["benchmark"] = benchmark
 
     @staticmethod
     def get_frequency() -> str:
@@ -94,25 +72,23 @@ class MultiStrategy(BasePage):
         )
 
     @staticmethod
-    def get_min_window() -> None:
-        min_window = int(
+    def get_min_window() -> int:
+        return int(
             st.number_input(
                 label="Win",
                 min_value=2,
                 max_value=1500,
                 step=100,
-                value=st.session_state["min_window"],
+                value=252,
                 help="Minimum window of price data required.",
             )
         )
-        st.session_state["min_window"] = min_window
 
-    def get_strategy_parameters(self) -> None:
+    def get_strategy_parameters(self) -> Dict[str, Any]:
+        parameters = {}
         set_parameter_funcs = [
             {
-                "universe": self.get_universe,
                 "optimizer": self.get_optimizer,
-                "benchmark": self.get_benchmark,
                 "frequency": self.get_frequency,
             },
             {
@@ -120,22 +96,27 @@ class MultiStrategy(BasePage):
                 "commission": self.get_commission,
                 "min_window": self.get_min_window,
             },
+            {
+                "factors": self.get_factors,
+            },
+            {"allow_fractional_shares": self.get_allow_fractional_shares},
         ]
         for parameter_funcs in set_parameter_funcs:
             parameter_cols = st.columns([1] * len(parameter_funcs))
 
             for col, (name, func) in zip(parameter_cols, parameter_funcs.items()):
                 with col:
-                    func()
+                    parameters[name] = func()
+
+        return parameters
 
     @staticmethod
-    def get_allow_fractional_shares() -> None:
-        allow_fractional_shares = st.checkbox(
+    def get_allow_fractional_shares() -> bool:
+        return st.checkbox(
             label="Fractional Shares",
             value=False,
             help="Allow Fractional Shares Investing.",
         )
-        st.session_state["allow_fractional_shares"] = allow_fractional_shares
 
     def get_optimizer_constraints(self):
         constraints = {}
@@ -251,26 +232,23 @@ class MultiStrategy(BasePage):
                 constraints.append(constraint)
         return constraints
 
-    def get_factors(self) -> None:
-        factors = tuple(
+    def get_factors(self) -> Tuple[str]:
+        return tuple(
             st.multiselect(
                 label="Factor List",
-                options=single.__all__,
+                options=factors.__all__,
             )
         )
 
-
-        st.session_state["factors"] = factors
-
     def load_page(self):
+        universe = getattr(universes, self.get_universe())()
+        benchmark = self.get_benchmark()
+
         with st.form("AssetAllocationForm"):
             # Backtest Parameters
-            self.get_strategy_parameters()
-            universe = getattr(universes, st.session_state["universe"])()
-            # Factor Implementation
-            self.get_factors()
-            self.get_allow_fractional_shares()
-
+            parameters = self.get_strategy_parameters()
+            parameters["universe"] = universe.__class__.__name__
+            parameters["benchmark"] = benchmark
             # Asset Allocation Constraints
             with st.expander(label="Custom Constraints:"):
                 st.subheader("Optimizer Constraint")
@@ -278,45 +256,21 @@ class MultiStrategy(BasePage):
                 self.divider()
                 st.subheader("Specific Constraint")
                 specific_constraints = self.get_specific_constraints(
-                    universe=universe.data
+                    universe=pd.DataFrame(universe.ASSETS)
                 )
 
             submitted = st.form_submit_button(label="Backtest", type="primary")
 
             if submitted:
-                prices = self.get_universe_prices()
-
-                in_signiture = {
-                    "universe": st.session_state["universe"],
-                    "strategy": {
-                        "optimizer": st.session_state["optimizer"],
-                        "benchmark": st.session_state["benchmark"],
-                        "frequency": st.session_state["frequency"],
-                        "inception": st.session_state["inception"],
-                        "commission": st.session_state["commission"],
-                        "min_window": st.session_state["min_window"],
-                    },
-                    "constraints": {
-                        "factors": st.session_state["factors"],
-                        "optimizer": optimizer_constraints,
-                        "specific": specific_constraints,
-                    },
-                }
+                prices = get_prices(tickers=universe.get_tickers())
 
                 with st.spinner(text="Backtesting in progress..."):
                     strategy = self.get_strategy().run(
-                        **in_signiture["strategy"],
+                        prices=prices,
+                        **parameters,
                         optimizer_constraints=optimizer_constraints,
                         specific_constraints=specific_constraints,
-                        prices=prices,
-                        factors=None
-                        if not st.session_state["factors"]
-                        else MultiFactors(
-                            tickers=universe.tickers,
-                            factors=st.session_state["factors"],
-                        ).standard_percentile,
                     )
-                    setattr(strategy, "signiture", in_signiture)
 
         multistrategy = self.get_strategy()
 
@@ -329,14 +283,25 @@ class MultiStrategy(BasePage):
             analytics = multistrategy.analytics
             st.dataframe(analytics.T, use_container_width=True)
 
+            fig = go.Figure()
+            for name, strategy in multistrategy.items():
+                performance = strategy.book.records.performance.resample("M").last()
+                fig.add_trace(
+                    go.Scatter(
+                        x=performance.index,
+                        y=performance.values,
+                        hovertemplate="Date: %{x}: %{y}}",
+                        name=name,
+                    )
+                )
+            fig.update_layout(
+                title="Strategy Performance",
+                yaxis_tickformat=",.0f",
+                hovermode="x unified",
+            )
+
             st.plotly_chart(
-                self.line(
-                    data=self.get_strategy().performance.resample("M").last(),
-                    yaxis_title="NAV",
-                    yaxis_tickformat="$,.0f",
-                    hovertemplate="Date: %{x} - Value: %{y:,.0f}",
-                    title="Strategy Performance",
-                ),
+                fig,
                 use_container_width=True,
                 config={"displayModeBar": False},
             )
@@ -344,23 +309,52 @@ class MultiStrategy(BasePage):
             for name, strategy in multistrategy.items():
                 with st.expander(label=name, expanded=False):
                     try:
-                        st.json(getattr(strategy, "signiture"), expanded=False)
+                        st.json(multistrategy.get_siginiture(name), expanded=False)
                     except KeyError:
                         st.warning("Signiture store not found.")
 
-                    perf_tab, dd_tab, hw_tab, cw_tab = st.tabs(
-                        ["Performance", "Drawdown", "Hist.Weights", "Curr.Weights"]
+                    performance_tab, allocations_tab = st.tabs(
+                        ["Performance", "Allocations"]
                     )
 
-                    with perf_tab:
-                        fig = self.line(
-                            strategy.book.records.performance.to_frame(),
-                            yaxis_title="NAV",
-                            yaxis_tickformat="$,.0f",
-                            hovertemplate="Date: %{x} - Value: %{y:,.0f}",
-                            title="Strategy Performance",
-                            legend_xanchor="left",
-                            legend_y=1.1,
+                    with performance_tab:
+                        performance = strategy.book.records.performance
+
+                        fig = (
+                            go.Figure()
+                            .add_trace(
+                                go.Scatter(
+                                    x=performance.index,
+                                    y=performance.values,
+                                    name="Performance",
+                                    hovertemplate="Date: %{x} - Value: %{y}",
+                                )
+                            )
+                            .update_layout(title="Performance")
+                        )
+                        st.plotly_chart(
+                            fig,
+                            use_container_width=True,
+                            config={"displayModeBar": False},
+                        )
+
+                        drawdown = strategy.drawdown
+                        fig = (
+                            go.Figure()
+                            .add_trace(
+                                go.Scatter(
+                                    x=drawdown.index,
+                                    y=drawdown.values,
+                                    name="Drawdown",
+                                    hovertemplate="Date: %{x} - Value: %{y}",
+                                )
+                            )
+                            .update_layout(
+                                title="Drawdown",
+                                hovermode="x unified",
+                                xaxis_tickformat="%Y-%m-%d",
+                                yaxis_tickformat=".2%",
+                            )
                         )
 
                         st.plotly_chart(
@@ -368,20 +362,8 @@ class MultiStrategy(BasePage):
                             use_container_width=True,
                             config={"displayModeBar": False},
                         )
-                    with dd_tab:
-                        fig = self.line(
-                            strategy.drawdown.to_frame(),
-                            yaxis_title="Drawdwon",
-                            yaxis_tickformat=".0%",
-                            hovertemplate="Date: %{x} - Value: %{y:.2%}",
-                            title="Strategy Drawdown",
-                        )
-                        st.plotly_chart(
-                            fig,
-                            use_container_width=True,
-                            config={"displayModeBar": False},
-                        )
-                    with hw_tab:
+
+                    with allocations_tab:
                         fig = self.line(
                             strategy.book.records.allocations,
                             xaxis_tickformat="%Y-%m-%d",
@@ -398,7 +380,6 @@ class MultiStrategy(BasePage):
                             config={"displayModeBar": False},
                         )
 
-                    with cw_tab:
                         fig = self.pie(
                             strategy.book.records.allocations.iloc[-1].dropna(),
                             title="Strategy Current Weights",

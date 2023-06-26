@@ -1,8 +1,8 @@
 """ROBERT"""
 
 import streamlit as st
+from src.backend.core import MultiStrategy
 from .base import BasePage
-from src.backend.core import strategies
 
 
 class Dashboard(BasePage):
@@ -67,20 +67,30 @@ class Dashboard(BasePage):
                 "allow_fractional_shares": False,
             },
         }
+        import plotly.graph_objects as go
 
-        multistrategy = strategies.MultiStrategy()
+        multistrategy = MultiStrategy()
+        fig = go.Figure()
 
         for name, strategy_load in li.items():
             with st.spinner(f"load strategy {name}"):
-                strategy = multistrategy.load(name=name, **strategy_load)
-                strategy.save(name)
+                strategy = multistrategy.from_file(name=name, **strategy_load)
+
+                fig.add_trace(
+                    go.Scatter(
+                        x=strategy.performance.index,
+                        y=strategy.performance.values,
+                        name=name,
+                    )
+                )
+
+        fig.update_layout(
+            title="Performance", legend_orientation="h", hovermode="x unified"
+        )
 
         st.write(multistrategy.analytics.T)
+
         st.plotly_chart(
-            self.line(
-                multistrategy.performance.resample("M").last() / 10000,
-                title="Performance",
-                legend_orientation="h",
-            ),
+            fig,
             use_container_width=True,
         )

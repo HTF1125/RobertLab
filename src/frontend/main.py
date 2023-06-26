@@ -2,7 +2,7 @@
 import streamlit as st
 from streamlit_option_menu import option_menu
 from src.frontend import pages
-
+from src.backend import config
 
 def init():
     st.set_page_config(
@@ -12,6 +12,8 @@ def init():
         initial_sidebar_state="expanded",
         menu_items=None,
     )
+
+    config.settings.PLATFORM = "Streamlit"
 
     with st.sidebar:
         st.markdown(
