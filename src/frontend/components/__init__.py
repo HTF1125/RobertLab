@@ -7,7 +7,9 @@ from src.core.strategies import MultiStrategy
 from src.core.benchmarks import Benchmark
 
 
-def plot_multistrategy(multistrategy: MultiStrategy, allow_save: bool = False) -> None:
+def plot_multistrategy(
+    multistrategy: MultiStrategy, allow_save: bool = True, allow_delete: bool = True
+) -> None:
     for name, strategy in multistrategy.items():
         with st.expander(label=name, expanded=False):
             if allow_save:
@@ -17,7 +19,22 @@ def plot_multistrategy(multistrategy: MultiStrategy, allow_save: bool = False) -
                     value=name,
                 )
 
-                # st.button(label="Save", on_click=save_strategy,)
+                st.button(
+                    label="Save",
+                    key=f"{name}_save",
+                    on_click=strategy.save,
+                    kwargs={"name": new_name},
+                )
+
+            if allow_delete:
+                st.button(
+                    label="Delete",
+                    key=f"{name}_delete",
+                    on_click=multistrategy.delete,
+                    kwargs={"name": name}
+                )
+
+
 
             st.json(strategy.get_signature(), expanded=False)
 
@@ -46,7 +63,6 @@ def plot_multistrategy(multistrategy: MultiStrategy, allow_save: bool = False) -
                     )
                 )
 
-                st.write(strategy.benchmark)
                 if not strategy.benchmark is None:
                     fig.add_trace(
                         go.Scatter(
@@ -56,7 +72,84 @@ def plot_multistrategy(multistrategy: MultiStrategy, allow_save: bool = False) -
                         )
                     )
 
-                fig.update_layout(title="Performance", hovermode="x unified")
+                fig.update_layout(
+                    title="Performance", hovermode="x unified", legend_orientation="h"
+                )
+                st.plotly_chart(
+                    fig,
+                    use_container_width=True,
+                    config={"displayModeBar": False},
+                )
+            with drawdown_tab:
+                drawdown = strategy.drawdown
+                fig = go.Figure().add_trace(
+                    go.Scatter(
+                        x=drawdown.index,
+                        y=drawdown.values,
+                        name="Performance",
+                    )
+                )
+
+                if not strategy.benchmark is None:
+                    fig.add_trace(
+                        go.Scatter(
+                            x=strategy.benchmark.drawdown.index,
+                            y=strategy.benchmark.drawdown.values,
+                            name="Benchmark",
+                        )
+                    )
+
+                fig.update_layout(
+                    title="Performance", hovermode="x unified", legend_orientation="h"
+                )
+                st.plotly_chart(
+                    fig,
+                    use_container_width=True,
+                    config={"displayModeBar": False},
+                )
+            allocations = strategy.allocations
+
+            with hist_allocations_tab:
+                fig = go.Figure()
+
+                for asset in allocations:
+                    fig.add_trace(
+                        go.Scatter(
+                            x=allocations.index,
+                            y=allocations[asset].values,
+                            name=asset,
+                            stackgroup="one",
+                        )
+                    )
+
+                fig.update_layout(
+                    xaxis_tickformat="%Y-%m-%d",
+                    xaxis_title="Date",
+                    yaxis_title="Weights",
+                    yaxis_tickformat=".0%",
+                    title="Strategy Historical Weights",
+                    hovermode="x unified",
+                )
+                st.plotly_chart(
+                    fig,
+                    use_container_width=True,
+                    config={"displayModeBar": False},
+                )
+            with curr_allocations_tab:
+                curr_allocations = allocations.iloc[-1].dropna()
+                curr_allocations = curr_allocations[curr_allocations != 0.0]
+                fig = (
+                    go.Figure()
+                    .add_trace(
+                        go.Pie(
+                            labels=curr_allocations.index,
+                            values=curr_allocations.values,
+                        )
+                    )
+                    .update_layout(
+                        hovermode="x unified",
+                    )
+                )
                 st.plotly_chart(
                     fig,
                     use_container_width=True,

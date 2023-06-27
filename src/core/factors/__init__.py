@@ -28,4 +28,5 @@ __all__ = [
     "PriceVolatility3M",
     "VolumeCoefficientOfVariation1M",
     "VolumeCoefficientOfVariation3M",
+    "PriceRelVol1M3M",
 ]

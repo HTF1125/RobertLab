@@ -16,10 +16,13 @@ class Futures(BasePage):
 
             `Benchmarks`:
             1. Build class. (Done)
-            2. Incorporate with portfolio optimizer.
+            2. Incorporate with portfolio optimizer. (Done)
 
             `Strategies`:
             1. Build Plot class. (Failed Attempt)
+
+            `General`:
+            .... Re-structure code.
 
             """
         )

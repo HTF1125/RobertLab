@@ -278,139 +278,30 @@ class MultiStrategy(BasePage):
                     )
 
         multistrategy = self.get_strategy()
-
         if multistrategy:
-            st.button(
-                label="Clear All Strategies",
-                on_click=self.get_strategy().clear,
-            )
-
-            analytics = multistrategy.analytics
-            st.dataframe(analytics.T, use_container_width=True)
-
             fig = go.Figure()
+
             for name, strategy in multistrategy.items():
-                performance = strategy.book.records.performance.resample("M").last()
+                performance = strategy.performance_alpha
                 fig.add_trace(
                     go.Scatter(
                         x=performance.index,
                         y=performance.values,
-                        hovertemplate="Date: %{x}: %{y}}",
                         name=name,
                     )
                 )
 
             fig.update_layout(
-                title="Strategy Performance",
-                yaxis_tickformat=",.0f",
-                hovermode="x unified",
+                title="Performance", legend_orientation="h", hovermode="x unified"
             )
+
+            st.write(multistrategy.analytics.T)
 
             st.plotly_chart(
                 fig,
                 use_container_width=True,
-                config={"displayModeBar": False},
             )
 
-            for name, strategy in multistrategy.items():
-                with st.expander(label=name, expanded=False):
-                    strategy_name = st.text_input(
-                        label="Name your strategy", placeholder="...", key=name
-                    )
+        from ..components import plot_multistrategy
+        plot_multistrategy(multistrategy, allow_delete=False, allow_save=True)
 
-                    st.button(
-                        label="Save",
-                        on_click=save_strategy,
-                        kwargs={"name": strategy_name, "strategy": strategy},
-                        key=f"{name} save button",
-                    )
-
-                    try:
-                        st.json(multistrategy.get_signature(name), expanded=False)
-                    except KeyError:
-                        st.warning("Signiture store not found.")
-
-                    performance_tab, allocations_tab = st.tabs(
-                        ["Performance", "Allocations"]
-                    )
-
-                    with performance_tab:
-                        performance = strategy.book.records.performance
-
-                        fig = go.Figure().add_trace(
-                            go.Scatter(
-                                x=performance.index,
-                                y=performance.values,
-                                name="Performance",
-                                hovertemplate="Date: %{x} - Value: %{y}",
-                            )
-                        )
-
-                        if not strategy.benchmark is None:
-                            fig.add_trace(
-                                go.Scatter(
-                                    x=strategy.benchmark.performance.index,
-                                    y=strategy.benchmark.performance.values,
-                                    hovertemplate="Date: %{x}: %{y}}",
-                                    name="benchmark",
-                                )
-                            )
-
-                        fig.update_layout(title="Performance")
-                        st.plotly_chart(
-                            fig,
-                            use_container_width=True,
-                            config={"displayModeBar": False},
-                        )
-
-                        drawdown = strategy.drawdown
-                        fig = (
-                            go.Figure()
-                            .add_trace(
-                                go.Scatter(
-                                    x=drawdown.index,
-                                    y=drawdown.values,
-                                    name="Drawdown",
-                                    hovertemplate="Date: %{x} - Value: %{y}",
-                                )
-                            )
-                            .update_layout(
-                                title="Drawdown",
-                                hovermode="x unified",
-                                xaxis_tickformat="%Y-%m-%d",
-                                yaxis_tickformat=".2%",
-                            )
-                        )
-
-                        st.plotly_chart(
-                            fig,
-                            use_container_width=True,
-                            config={"displayModeBar": False},
-                        )
-
-                    with allocations_tab:
-                        fig = self.line(
-                            strategy.book.records.allocations,
-                            xaxis_tickformat="%Y-%m-%d",
-                            xaxis_title="Date",
-                            yaxis_title="Weights",
-                            yaxis_tickformat=".0%",
-                            hovertemplate="Date: %{x} - Value: %{y:.2%}",
-                            title="Strategy Historical Weights",
-                            stackgroup="stack",
-                        )
-                        st.plotly_chart(
-                            fig,
-                            use_container_width=True,
-                            config={"displayModeBar": False},
-                        )
-
-                        fig = self.pie(
-                            strategy.book.records.allocations.iloc[-1].dropna(),
-                            title="Strategy Current Weights",
-                        )
-                        st.plotly_chart(
-                            fig,
-                            use_container_width=True,
-                            config={"displayModeBar": False},
-                        )

@@ -7,7 +7,7 @@ from src.backend import data
 
 
 class Factor(object):
-    factors = pd.DataFrame()
+    factor = pd.DataFrame()
 
     def __repr__(self) -> str:
         return "Base Factors"
@@ -15,11 +15,12 @@ class Factor(object):
     def __str__(self) -> str:
         return "Base Factors"
 
-    def standard_scaler(self, tickers: Union[str, List, Set, Tuple]) -> pd.DataFrame:
-        factors = self.compute(tickers)
-        return factors.apply(metrics.to_standard_scaler, axis=1)
+    def standard_scaler(self) -> pd.DataFrame:
+        if self.factor.empty:
+            return self.factor
+        return self.factor.apply(metrics.to_standard_scaler, axis=1)
 
-    def compute(self, tickers: Union[str, List, Set, Tuple]) -> pd.DataFrame:
+    def compute(self, tickers: Union[str, List, Set, Tuple]) -> "Factor":
         raise NotImplementedError("Yout must implement `compute` method.")
 
 
@@ -28,13 +29,14 @@ class PriceMomentum(Factor):
     skip_months = 0
     absolute = False
 
-    def compute(self, tickers: Union[str, List, Set, Tuple]) -> pd.DataFrame:
-        return metrics.rolling.to_momentum(
+    def compute(self, tickers: Union[str, List, Set, Tuple]) -> "Factor":
+        self.factor = metrics.rolling.to_momentum(
             prices=data.get_prices(tickers),
             months=self.months,
             skip_months=self.skip_months,
             absolute=self.absolute,
         )
+        return self
 
 
 class PriceMomentum1M(PriceMomentum):
@@ -147,16 +149,16 @@ class PriceMomentumDiffusion(Factor):
     persistence in momentum are allocated to the top portfolio.
     """
 
-    def compute(self, tickers: Union[str, List, Set, Tuple]) -> pd.DataFrame:
-        return (
+    def compute(self, tickers: Union[str, List, Set, Tuple]) -> Factor:
+        self.factor = (
             pd.concat(
                 objs=[
-                    PriceMomentum1M().compute(tickers).stack(),
-                    PriceMomentum2M().compute(tickers).stack(),
-                    PriceMomentum3M().compute(tickers).stack(),
-                    PriceMomentum6M().compute(tickers).stack(),
-                    PriceMomentum9M().compute(tickers).stack(),
-                    PriceMomentum12M().compute(tickers).stack(),
+                    PriceMomentum1M().compute(tickers).factor.stack(),
+                    PriceMomentum2M().compute(tickers).factor.stack(),
+                    PriceMomentum3M().compute(tickers).factor.stack(),
+                    PriceMomentum6M().compute(tickers).factor.stack(),
+                    PriceMomentum9M().compute(tickers).factor.stack(),
+                    PriceMomentum12M().compute(tickers).factor.stack(),
                 ],
                 axis=1,
             )
@@ -165,19 +167,33 @@ class PriceMomentumDiffusion(Factor):
             .unstack()
             .apply(np.sign)
         )
+        return self
 
-    def standard_scaler(self, tickers) -> pd.DataFrame:
-        return self.compute(tickers)
+    def standard_scaler(self) -> pd.DataFrame:
+        return self.factor
+
+
+class PriceRelVol1M3M(Factor):
+    months = 1
+    lookback_months = 3
+
+    def compute(self, tickers: Union[str, List, Set, Tuple]) -> Factor:
+        prices = data.get_prices(tickers)
+        pri_return = prices.pct_change()
+        short_std = pri_return.rolling(21 * self.months).std()
+        long_std = pri_return.rolling(21 * self.lookback_months).std()
+        self.factor = (short_std - long_std).dropna(how="all", axis=0)
+        return self
 
 
 class PriceVolatility(Factor):
     months = 1
 
-    def compute(self, tickers: Union[str, List, Set, Tuple]) -> pd.DataFrame:
+    def compute(self, tickers: Union[str, List, Set, Tuple]) -> Factor:
         prices = data.get_prices(tickers)
         pri_return = prices.pct_change()
-        std = pri_return.rolling(21 * self.months).std()
-        return std
+        self.factor = pri_return.rolling(21 * self.months).std()
+        return self
 
 
 class PriceVolatility1M(PriceVolatility):
@@ -195,13 +211,14 @@ class PriceVolatility3M(PriceVolatility):
 class VCV(Factor):
     months = 1
 
-    def compute(self, tickers: Union[str, List, Set, Tuple]) -> pd.DataFrame:
+    def compute(self, tickers: Union[str, List, Set, Tuple]) -> Factor:
         import yfinance as yf
 
         volume = yf.download(tickers, progress=False)["Volume"]
         mean = volume.rolling(self.months * 21).mean()
         std = volume.rolling(self.months * 21).std()
-        return -std / mean
+        self.factor = -std / mean
+        return self
 
 
 class VolumeCoefficientOfVariation1M(VCV):

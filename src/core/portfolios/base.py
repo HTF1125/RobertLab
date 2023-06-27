@@ -1,20 +1,47 @@
 """ROBERT"""
-import warnings
 from abc import abstractmethod
 from typing import Optional, Callable, Dict, List, Tuple, Any
 from scipy.optimize import minimize
 import numpy as np
 import pandas as pd
-from .. import metrics
-from .constraints import Constraints
+from src.core import metrics
+from src.core.portfolios.constraints import Constraints
 
 
+class Optimizer(Constraints):
+    optimizer_metrics = {}
 
-class PortfolioOptimizer(Constraints):
+    def __init__(self):
+        super().__init__()
+        self.constraints = {}
+        self.expected_returns = None
+        self.covariance_matrix = None
+        self.correlation_matrix = None
+        self.prices = None
+        self.risk_free = 0.0
+        self.prices_bm = None
+        self.weights_bm = None
+        self.factors = None
+        self.sum_weight = 1.0
+        self.min_weight = 0.0
+        self.max_weight = 1.0
+        self.min_active_weight = None
+        self.max_active_weight = None
+        self.min_return = None
+        self.max_return = None
+        self.min_volatility = None
+        self.max_volatility = None
+        self.min_exante_tracking_error = None
+        self.max_exante_tracking_error = None
+        self.min_expost_tracking_error = None
+        self.max_expost_tracking_error = None
+        self.min_factor_percentile = 0.2
+        self.exp = {}
+
     @classmethod
     def from_prices(
         cls, prices: pd.DataFrame, span: Optional[int] = None, **kwargs
-    ) -> "PortfolioOptimizer":
+    ) -> "Optimizer":
         expected_returns = metrics.to_expected_returns(prices)
         covariance_matrix = metrics.to_covariance_matrix(prices, span=span)
         correlation_matrix = metrics.to_correlation_matrix(prices, span=span)
@@ -50,9 +77,7 @@ class PortfolioOptimizer(Constraints):
         min_expost_tracking_error: Optional[float] = None,
         max_expost_tracking_error: Optional[float] = None,
         min_factor_percentile: float = 0.2,
-    ) -> "PortfolioOptimizer":
-        """init"""
-        self.constraints = {}
+    ) -> "Optimizer":
         self.expected_returns = expected_returns
         self.covariance_matrix = covariance_matrix
         self.correlation_matrix = correlation_matrix
@@ -78,17 +103,16 @@ class PortfolioOptimizer(Constraints):
         self.exp = {}
         return self
 
-
     def set_specific_constraints(
         self, specific_constraints: List[Dict[str, Any]]
-    ) -> "PortfolioOptimizer":
+    ) -> "Optimizer":
         for specific_constraint in specific_constraints:
             self.set_specific_constraint(**specific_constraint)
         return self
 
     def set_specific_constraint(
-        self, assets: List, bounds: Tuple
-    ) -> "PortfolioOptimizer":
+        self, assets: List[str], bounds: Tuple[Optional[float], Optional[float]]
+    ) -> "Optimizer":
         assert self.assets is not None
         specific_assets = np.in1d(self.assets.values, assets)
         l_bound, u_bound = bounds
@@ -107,16 +131,6 @@ class PortfolioOptimizer(Constraints):
     def __solve__(
         self, objective: Callable, extra_constraints: Optional[List[Dict]] = None
     ) -> pd.Series:
-        """_summary_
-
-        Args:
-            objective (Callable): optimization objective.
-            extra_constraints (Optional[List[Dict]]): temporary constraints.
-                Defaults to None.
-
-        Returns:
-            pd.Series: optimized weights
-        """
         constraints = list(self.constraints.values())
         if extra_constraints:
             constraints.extend(extra_constraints)
@@ -129,9 +143,13 @@ class PortfolioOptimizer(Constraints):
         if problem.success:
             weights = problem.x + 1e-16
             if self.expected_returns is not None:
-                self.exp["expected_return"] = self.expected_return(weights)
+                self.optimizer_metrics["expected_return"] = self.expected_return(
+                    weights
+                )
             if self.covariance_matrix is not None:
-                self.exp["expected_volatility"] = self.expected_volatility(weights)
+                self.optimizer_metrics[
+                    "expected_volatility"
+                ] = self.expected_volatility(weights)
             weights = pd.Series(data=weights, index=self.assets, name="weights").round(
                 6
             )
@@ -142,16 +160,16 @@ class PortfolioOptimizer(Constraints):
             self.min_factor_percentile -= 0.05
             if self.min_factor_percentile < 0.0:
                 raise ValueError(
-                    "Portoflio Optimization Failed. After adjusting factor percentile."
+                    "Portfolio Optimization Failed. After adjusting factor percentile."
                 )
             return self.__solve__(
                 objective=objective, extra_constraints=extra_constraints
             )
 
-        raise ValueError("Portoflio Optimization Failed.")
+        raise ValueError("Portfolio Optimization Failed.")
 
     @abstractmethod
     def solve(self):
-        raise ValueError(
-            "Must implement `solve` method for subclasses of BaseOptimizer."
+        raise NotImplementedError(
+            "Must implement `solve` method for subclasses of Optimizer."
         )

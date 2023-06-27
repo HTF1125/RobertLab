@@ -4,8 +4,6 @@ from src.core import universes
 from .base import Benchmark
 
 
-
-
 class UnitedStates64(Benchmark):
     UNIVERSE = universes.UsAllocation()
 

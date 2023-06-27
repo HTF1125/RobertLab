@@ -11,7 +11,7 @@ from .ext import (
     HERC,
 )
 
-from .base import PortfolioOptimizer
+from .base import Optimizer
 
 __all__ = [
     "EqualWeight",

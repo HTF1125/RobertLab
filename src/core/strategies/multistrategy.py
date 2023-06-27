@@ -1,10 +1,11 @@
 """ROBERT"""
 import os
 import json
+from pathlib import Path
 from typing import Optional, Dict, Any, List, Tuple, Union
 import pandas as pd
 from src import core
-from src.core.portfolios import PortfolioOptimizer
+from src.core.portfolios import Optimizer
 from src.core.universes import Universe
 from src.core.benchmarks import Benchmark
 from src.core.factors import MultiFactors
@@ -35,18 +36,13 @@ class MultiStrategy(dict):
                             prices=pd.DataFrame(),
                             rebalance=Rebalancer(
                                 optimizer=signature.pop("optimizer"),
-                                factors=core.factors.MultiFactors(
-                                    tickers=(), factors=factors
-                                )
-                                if factors
-                                else None,
+                                factors=core.factors.MultiFactors(factors=factors),
                                 optimizer_constraints=signature.pop(
                                     "optimizer_constraints"
                                 ),
                                 specific_constraints=signature.pop(
                                     "specific_constraints"
                                 ),
-                                case=True,
                             ),
                             **signature,
                         )
@@ -63,12 +59,12 @@ class MultiStrategy(dict):
     def prep_strategy(
         self,
         prices: Optional[pd.DataFrame] = None,
-        optimizer: Union[str, PortfolioOptimizer] = "EqualWeight",
+        optimizer: Union[str, Optimizer] = "EqualWeight",
         # universe & benchmark
         universe: Optional[Union[str, Universe]] = None,
         benchmark: Optional[Union[str, Benchmark]] = None,
         # rebalancer arguments
-        factors: Optional[Tuple[str]] = None,
+        factors: Tuple[str] = tuple(),
         optimizer_constraints: Optional[Dict[str, float]] = None,
         specific_constraints: Optional[List[Dict[str, Any]]] = None,
         # strategy arguments
@@ -92,9 +88,7 @@ class MultiStrategy(dict):
             prices=prices,
             rebalance=Rebalancer(
                 optimizer=optimizer,
-                factors=MultiFactors(tickers=tickers, factors=factors)
-                if factors
-                else None,
+                factors=MultiFactors(factors=factors).compute_standard_scaler(tickers),
                 optimizer_constraints=optimizer_constraints,
                 specific_constraints=specific_constraints,
             ),
@@ -115,7 +109,7 @@ class MultiStrategy(dict):
         optimizer: str = "EqualWeight",
         name: Optional[str] = None,
         # universe & benchmark
-        universe: Optional[Union[str, Universe]] = None,
+        universe: Optional[Union[str, Benchmark]] = None,
         benchmark: Optional[Union[str, Benchmark]] = None,
         # rebalancer arguments
         factors: Optional[Tuple[str]] = None,
@@ -196,15 +190,15 @@ class MultiStrategy(dict):
         signature["book"] = strategy.book.dict()
         return signature
 
-    # def save(self, name: str) -> None:
-    #     signature = self.get_signature(name)
-    #     file_path = Path(os.path.dirname(__file__)) / "db" / f"{name}.json"
+    @property
+    def performance_alpha(self) -> pd.DataFrame:
+        return pd.DataFrame(
+            {name: strategy.performance_alpha for name, strategy in self.items()}
+        )
 
-    #     # Save the dictionary to .pth file
-    #     try:
-    #         with open(file=file_path, mode="w", encoding="utf-8") as file:
-    #             file.write(str(signature))
-    #     except OSError as e:
-    #         print(f"Error occurred while saving the file: {e}")
-    #         if file_path.exists():
-    #             file_path.unlink()
+    def delete(self, name: str) -> None:
+        if name in self:
+            del self[name]
+
+        file_path = Path(os.path.dirname(__file__)) / "db" / f"{name}.json"
+        file_path.unlink()

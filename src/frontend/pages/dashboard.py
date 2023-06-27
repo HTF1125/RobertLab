@@ -6,12 +6,12 @@ from src.core import MultiStrategy
 from .base import BasePage
 from ..components import plot_multistrategy
 
+
 class Dashboard(BasePage):
     """Dashboard"""
 
     def load_page(self):
         st.info("Welcome to Robert's Dashboard.")
-
 
         multistrategy = MultiStrategy()
         fig = go.Figure()
@@ -20,7 +20,7 @@ class Dashboard(BasePage):
             multistrategy.from_files()
 
         for name, strategy in multistrategy.items():
-            performance = strategy.performance.resample("M").last()
+            performance = strategy.performance_alpha.resample("M").last()
             fig.add_trace(
                 go.Scatter(
                     x=performance.index,
@@ -40,4 +40,4 @@ class Dashboard(BasePage):
             use_container_width=True,
         )
 
-        plot_multistrategy(multistrategy)
+        plot_multistrategy(multistrategy, allow_delete=False, allow_save=False)

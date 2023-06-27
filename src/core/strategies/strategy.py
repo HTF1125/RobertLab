@@ -110,11 +110,13 @@ class Strategy:
         self.benchmark = (
             None
             if benchmark is None
-            else Parser.get_benchmark(benchmark).new(
+            else Parser.get_benchmark(benchmark)
+            .new(
                 min_window=min_window,
                 initial_investment=initial_investment,
                 inception=inception,
             )
+            .compute()
         )
         self.book = Book(
             date=pd.Timestamp(self.inception),
@@ -260,7 +262,6 @@ class Strategy:
     def save(self, name: str) -> None:
         signature = self.get_signature()
         file_path = Path(os.path.dirname(__file__)) / "db" / f"{name}.json"
-
         # Save the dictionary to .pth file
         try:
             with open(file=file_path, mode="w", encoding="utf-8") as file:
@@ -287,7 +288,7 @@ class Strategy:
 
     @property
     def performance(self) -> pd.Series:
-        out = pd.Series(self.book.records["value"], name="performance")
+        out = pd.Series(self.book.records["value"], name="Performance")
         out.index = pd.to_datetime(out.index)
         return out
 
@@ -320,3 +321,8 @@ class Strategy:
         out = metrics.to_drawdown(self.performance)
         out.name = "drawdonw"
         return out
+
+    @property
+    def performance_alpha(self) -> pd.Series:
+        assert self.benchmark is not None
+        return self.benchmark.get_alpha(self.performance)

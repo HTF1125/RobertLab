@@ -6,23 +6,23 @@ import pandas as pd
 from scipy.cluster.hierarchy import linkage, to_tree
 from scipy.spatial.distance import squareform
 from src.core import metrics
-from .base import PortfolioOptimizer
+from .base import Optimizer
 
 
 
-class MinVolatility(PortfolioOptimizer):
+class MinVolatility(Optimizer):
     def solve(self) -> pd.Series:
         """calculate minimum volatility weights"""
         return self.__solve__(objective=self.expected_volatility)
 
 
-class MinCorrelation(PortfolioOptimizer):
+class MinCorrelation(Optimizer):
     def solve(self) -> pd.Series:
         """calculate minimum correlation weights"""
         return self.__solve__(objective=self.expected_correlation)
 
 
-class RiskParity(PortfolioOptimizer):
+class RiskParity(Optimizer):
     def solve(self, budgets: Optional[np.ndarray] = None) -> pd.Series:
         if budgets is None:
             budgets = np.ones(self.num_assets) / self.num_assets
@@ -40,7 +40,7 @@ class RiskParity(PortfolioOptimizer):
         return weights
 
 
-class Hierarchical(PortfolioOptimizer):
+class Hierarchical(Optimizer):
     def recursive_bisection(self, sorted_tree):
         """_summary_
 
@@ -139,7 +139,7 @@ class HERC(Hierarchical):
         return weights
 
 
-class InverseVariance(PortfolioOptimizer):
+class InverseVariance(Optimizer):
     def solve(self) -> pd.Series:
         inv_var_weights = 1 / np.diag(np.array(self.covariance_matrix))
         inv_var_weights /= inv_var_weights.sum()
@@ -148,19 +148,19 @@ class InverseVariance(PortfolioOptimizer):
         )
 
 
-class MaxReturn(PortfolioOptimizer):
+class MaxReturn(Optimizer):
     def solve(self) -> pd.Series:
         """calculate maximum return weights"""
         return self.__solve__(objective=lambda w: -self.expected_return(w))
 
 
-class MaxSharpe(PortfolioOptimizer):
+class MaxSharpe(Optimizer):
     def solve(self) -> pd.Series:
         """calculate maximum sharpe ratio weights"""
         return self.__solve__(objective=lambda w: -self.expected_sharpe(w))
 
 
-class EqualWeight(PortfolioOptimizer):
+class EqualWeight(Optimizer):
     def solve(self) -> pd.Series:
         target_allocations = np.ones(shape=self.num_assets) / self.num_assets
         return self.__solve__(
