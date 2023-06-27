@@ -12,14 +12,19 @@ class MultiFactors(dict):
         factors: Tuple[str],
     ) -> None:
         self.factors = factors
-        for factor in factors:
-            self[factor] = getattr(single, factor)(tickers=tickers)
+        self.tickers = tickers
+        for factor in self.factors:
+            self[factor] = getattr(single, factor)()
 
-    @property
-    def standard_scaler(self) -> pd.DataFrame:
+    def standard_scaler(
+        self,
+    ) -> pd.DataFrame:
         return (
             pd.concat(
-                objs=[factor.standard_scaler.stack() for _, factor in self.items()],
+                objs=[
+                    factor.standard_scaler(tickers=self.tickers).stack()
+                    for _, factor in self.items()
+                ],
                 axis=1,
             )
             .mean(axis=1)

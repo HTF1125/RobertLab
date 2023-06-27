@@ -3,103 +3,62 @@ from typing import Optional
 import pandas as pd
 import streamlit as st
 import plotly.graph_objects as go
+from src.core.strategies import MultiStrategy
+from src.core.benchmarks import Benchmark
 
 
-class Plot:
-    def __init__(self) -> None:
-        self.fig = go.Figure()
+def plot_multistrategy(multistrategy: MultiStrategy, allow_save: bool = False) -> None:
+    for name, strategy in multistrategy.items():
+        with st.expander(label=name, expanded=False):
+            if allow_save:
+                new_name = st.text_input(
+                    label="Customize the strategy name",
+                    key=f"custom name strategy {name}",
+                    value=name,
+                )
 
-    def Bar(
-        self,
-        data: pd.DataFrame,
-        hovertemplate: Optional[str] = None,
-        stackgroup: Optional[str] = None,
-    ) -> "Plot":
-        for col in data:
-            trace = go.Bar(
-                x=data.index,
-                y=data[col].values,
-                name=col,
-                hovertemplate=hovertemplate,
-                stackgroup=stackgroup,
+                # st.button(label="Save", on_click=save_strategy,)
+
+            st.json(strategy.get_signature(), expanded=False)
+
+            (
+                performance_tab,
+                drawdown_tab,
+                hist_allocations_tab,
+                curr_allocations_tab,
+            ) = st.tabs(
+                [
+                    "Performance",
+                    "Drawdown",
+                    "Hist. Allocations",
+                    "Curr. Allocations",
+                ]
             )
-            self.fig.add_trace(trace)
 
-        return self
+            with performance_tab:
+                performance = strategy.performance
 
-    def Pie(
-        self,
-        data: pd.DataFrame,
-        hovertemplate: Optional[str] = None,
-        stackgroup: Optional[str] = None,
-    ) -> "Plot":
-        for col in data:
-            trace = go.Pie(
-                x=data.index,
-                y=data[col].values,
-                name=col,
-                hovertemplate=hovertemplate,
-                stackgroup=stackgroup,
-            )
-            self.fig.add_trace(trace)
+                fig = go.Figure().add_trace(
+                    go.Scatter(
+                        x=performance.index,
+                        y=performance.values,
+                        name="Performance",
+                    )
+                )
 
-        return self
+                st.write(strategy.benchmark)
+                if not strategy.benchmark is None:
+                    fig.add_trace(
+                        go.Scatter(
+                            x=strategy.benchmark.performance.index,
+                            y=strategy.benchmark.performance.values,
+                            name="Benchmark",
+                        )
+                    )
 
-    def Line(
-        self,
-        data: pd.DataFrame,
-        hovertemplate: Optional[str] = None,
-        stackgroup: Optional[str] = None,
-    ) -> "Plot":
-        for col in data:
-            trace = go.Scatter(
-                x=data.index,
-                y=data[col].values,
-                name=col,
-                hovertemplate=hovertemplate,
-                stackgroup=stackgroup,
-            )
-            self.fig.add_trace(trace)
-
-        return self
-
-    def update_layout(
-        self,
-        title: Optional[str] = None,
-        xaxis_title: Optional[str] = None,
-        yaxis_title: Optional[str] = None,
-        hovermode: Optional[str] = None,
-        xaxis_tickformat: Optional[str] = None,
-        yaxis_tickformat: Optional[str] = None,
-        legend_orientation: Optional[str] = None,
-        legend_yanchor: Optional[str] = None,
-        legend_xanchor: Optional[str] = None,
-        legend_x: Optional[float] = None,
-        legend_y: Optional[float] = None,
-        **kwargs,
-    ) -> "Plot":
-        self.fig.update_layout(
-            title=title,
-            xaxis_title=xaxis_title,
-            xaxis_tickformat=xaxis_tickformat,
-            yaxis_title=yaxis_title,
-            yaxis_tickformat=yaxis_tickformat,
-            hovermode=hovermode,
-            legend=dict(
-                orientation=legend_orientation,
-                yanchor=legend_yanchor,
-                xanchor=legend_xanchor,
-                y=legend_y,
-                x=legend_x,
-            ),
-            **kwargs
-        )
-        return self
-
-    def load_streamlit(self, **kwargs) -> None:
-        st.plotly_chart(
-            figure_or_data=self.fig,
-            use_container_width=True,
-            config={"displayModeBar": False},
-            **kwargs
-        )
+                fig.update_layout(title="Performance", hovermode="x unified")
+                st.plotly_chart(
+                    fig,
+                    use_container_width=True,
+                    config={"displayModeBar": False},
+                )

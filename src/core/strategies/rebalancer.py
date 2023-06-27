@@ -17,6 +17,7 @@ class Rebalancer:
         specific_constraints: Optional[List[Dict[str, Any]]] = None,
         span: Optional[int] = None,
         risk_free: float = 0.0,
+        case: bool = False,
     ) -> None:
         self.optimizer = Parser.get_optimizer(optimizer)
         self.optimizer_constraints = optimizer_constraints or {}
@@ -25,8 +26,11 @@ class Rebalancer:
         self.span = span
         self.risk_free = risk_free
 
-        if self.factors:
-            self.factors_data = self.factors.standard_scaler
+        if not case:
+            if self.factors:
+                self.factors_data = self.factors.standard_scaler()
+            else:
+                self.factors_data = None
         else:
             self.factors_data = None
 

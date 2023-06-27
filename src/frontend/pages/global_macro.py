@@ -7,7 +7,6 @@ from .base import BasePage
 from .. import data
 import yfinance as yf
 import pandas_datareader as pdr
-from src.frontend.components import Plot
 
 
 @st.cache_data(ttl=pd.Timedelta(days=1))

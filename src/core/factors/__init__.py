@@ -2,7 +2,6 @@
 from .multi import MultiFactors
 from .single import *
 
-
 __all__ = [
     "PriceMomentum1M",
     "PriceMomentum2M",

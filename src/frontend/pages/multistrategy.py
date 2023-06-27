@@ -5,6 +5,7 @@ import streamlit as st
 import plotly.graph_objects as go
 from src.core import portfolios, strategies, benchmarks, universes, factors
 from src.backend.data import get_prices
+from src.core.strategies.parser import Parser
 from .base import BasePage
 
 
@@ -14,6 +15,7 @@ def save_strategy(name: str, strategy: strategies.Strategy):
         st.info(f"save strategy {name} complete.")
     except:
         st.warning(f"save file failed.")
+
 
 class MultiStrategy(BasePage):
     def load_states(self) -> None:
@@ -95,6 +97,8 @@ class MultiStrategy(BasePage):
         parameters = {}
         set_parameter_funcs = [
             {
+                "universe": self.get_universe,
+                "benchmark": self.get_benchmark,
                 "optimizer": self.get_optimizer,
                 "frequency": self.get_frequency,
             },
@@ -248,17 +252,12 @@ class MultiStrategy(BasePage):
         )
 
     def load_page(self):
-        universe = getattr(universes, self.get_universe())()
-        benchmark = self.get_benchmark()
-
+        parameters = self.get_strategy_parameters()
+        universe = Parser.get_universe(parameters["universe"])
         with st.form("AssetAllocationForm"):
             # Backtest Parameters
-            parameters = self.get_strategy_parameters()
-            parameters["universe"] = universe.__class__.__name__
-            parameters["benchmark"] = benchmark
             # Asset Allocation Constraints
             optimizer_constraints = self.get_optimizer_constraints()
-
             with st.expander(label="Custom Constraints:"):
                 st.subheader("Specific Constraint")
                 specific_constraints = self.get_specific_constraints(
@@ -319,11 +318,10 @@ class MultiStrategy(BasePage):
                         label="Name your strategy", placeholder="...", key=name
                     )
 
-
                     st.button(
                         label="Save",
                         on_click=save_strategy,
-                        kwargs={"name": strategy_name, "strategy" : strategy},
+                        kwargs={"name": strategy_name, "strategy": strategy},
                         key=f"{name} save button",
                     )
 

@@ -7,6 +7,8 @@ from src import core
 from src.core.portfolios import PortfolioOptimizer
 from src.core.universes import Universe
 from src.core.benchmarks import Benchmark
+from src.core.factors import MultiFactors
+
 from .strategy import Strategy
 from .rebalancer import Rebalancer
 from .book import Book
@@ -14,7 +16,7 @@ from .parser import Parser
 
 
 class MultiStrategy(dict):
-    def from_files(self) -> Strategy:
+    def from_files(self) -> None:
         directory = os.path.join(os.path.dirname(__file__), "db")
 
         # Loop through all files in the directory
@@ -27,11 +29,26 @@ class MultiStrategy(dict):
                 book = signature.pop("book")
                 if book:
                     date = pd.Timestamp(book["date"])
+                    factors = signature.pop("factors")
                     if (pd.Timestamp("now") - date).days <= 5:
                         strategy = Strategy(
                             prices=pd.DataFrame(),
-                            rebalance=Rebalancer(),
-                            inception=signature["inception"],
+                            rebalance=Rebalancer(
+                                optimizer=signature.pop("optimizer"),
+                                factors=core.factors.MultiFactors(
+                                    tickers=(), factors=factors
+                                )
+                                if factors
+                                else None,
+                                optimizer_constraints=signature.pop(
+                                    "optimizer_constraints"
+                                ),
+                                specific_constraints=signature.pop(
+                                    "specific_constraints"
+                                ),
+                                case=True,
+                            ),
+                            **signature,
                         )
                         strategy.book = Book(**book)
                         self[filename.replace(".json", "")] = strategy
@@ -42,8 +59,6 @@ class MultiStrategy(dict):
                     strategy.book = Book(**book)
                 self[filename.replace(".json", "")] = strategy
                 strategy.save(name=filename.replace(".json", ""))
-
-
 
     def prep_strategy(
         self,
@@ -77,7 +92,7 @@ class MultiStrategy(dict):
             prices=prices,
             rebalance=Rebalancer(
                 optimizer=optimizer,
-                factors=core.factors.MultiFactors(tickers=tickers, factors=factors)
+                factors=MultiFactors(tickers=tickers, factors=factors)
                 if factors
                 else None,
                 optimizer_constraints=optimizer_constraints,
@@ -181,15 +196,15 @@ class MultiStrategy(dict):
         signature["book"] = strategy.book.dict()
         return signature
 
-    def save(self, name: str) -> None:
-        signature = self.get_signature(name)
-        file_path = Path(os.path.dirname(__file__)) / "db" / f"{name}.json"
+    # def save(self, name: str) -> None:
+    #     signature = self.get_signature(name)
+    #     file_path = Path(os.path.dirname(__file__)) / "db" / f"{name}.json"
 
-        # Save the dictionary to .pth file
-        try:
-            with open(file=file_path, mode="w", encoding="utf-8") as file:
-                file.write(str(signature))
-        except OSError as e:
-            print(f"Error occurred while saving the file: {e}")
-            if file_path.exists():
-                file_path.unlink()
+    #     # Save the dictionary to .pth file
+    #     try:
+    #         with open(file=file_path, mode="w", encoding="utf-8") as file:
+    #             file.write(str(signature))
+    #     except OSError as e:
+    #         print(f"Error occurred while saving the file: {e}")
+    #         if file_path.exists():
+    #             file_path.unlink()
