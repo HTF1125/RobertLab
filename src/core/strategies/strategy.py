@@ -259,17 +259,25 @@ class Strategy:
         except FileNotFoundError:
             return {}
 
-    def save(self, name: str) -> None:
+    def save(self, name: str, override: bool = False) -> bool:
         signature = self.get_signature()
         file_path = Path(os.path.dirname(__file__)) / "db" / f"{name}.json"
-        # Save the dictionary to .pth file
+
+        # Here add a block to check if the files already exist, if it exits do not save.
+        if not override:
+            if file_path.exists():
+                print(f"File {file_path} already exists. Not saving.")
+                return False
+
         try:
             with open(file=file_path, mode="w", encoding="utf-8") as file:
                 json.dump(signature, file)
+            return True
         except OSError as e:
             print(f"Error occurred while saving the file: {e}")
             if file_path.exists():
                 file_path.unlink()
+        return False
 
     def get_signature(self) -> Dict:
         signature = {

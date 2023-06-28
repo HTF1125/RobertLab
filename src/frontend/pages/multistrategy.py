@@ -9,12 +9,6 @@ from src.core.strategies.parser import Parser
 from .base import BasePage
 
 
-def save_strategy(name: str, strategy: strategies.Strategy):
-    try:
-        strategy.save(name)
-        st.info(f"save strategy {name} complete.")
-    except:
-        st.warning(f"save file failed.")
 
 
 class MultiStrategy(BasePage):
@@ -303,5 +297,5 @@ class MultiStrategy(BasePage):
             )
 
         from ..components import plot_multistrategy
-        plot_multistrategy(multistrategy, allow_delete=False, allow_save=True)
+        plot_multistrategy(multistrategy, allow_save=True)
 

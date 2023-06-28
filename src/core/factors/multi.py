@@ -2,7 +2,7 @@
 from typing import Union, List, Set, Tuple, Optional
 import pandas as pd
 from src.core import metrics
-from . import single
+from . import base
 
 
 class MultiFactors(dict):
@@ -10,26 +10,21 @@ class MultiFactors(dict):
 
     def __init__(
         self,
-        factors: Tuple[Union[str, single.Factor]] = tuple(),
+        factors: Tuple[Union[str, base.Factor]] = tuple(),
     ) -> None:
         for factor in factors:
             self.add_factor(factor)
 
-    def add_factor(self, factor: Union[str, single.Factor]) -> "MultiFactors":
-        if issubclass(factor.__class__, single.Factor):
-            self[factor.__class__.__name__] = factor
-        else:
-            try:
-                factor_class = getattr(single, str(factor))
-                self[factor_class.__name__] = factor_class()
-            except AttributeError as exc:
-                raise ValueError(f"Invalid factor: {factor}") from exc
+    def add_factor(self, factor: Union[str, base.Factor]) -> "MultiFactors":
+        if isinstance(factor, str):
+            factor = base.get_attr(factor)
+        self[factor.__class__.__name__] = factor
         return self
 
-    def __getitem__(self, name: str) -> single.Factor:
+    def __getitem__(self, name: str) -> base.Factor:
         return super().__getitem__(name)
 
-    def items(self) -> List[Tuple[str, single.Factor]]:
+    def items(self) -> List[Tuple[str, base.Factor]]:
         return [(name, factor) for name, factor in super().items()]
 
     def compute(self, tickers: Union[str, List, Set, Tuple]) -> "MultiFactors":

@@ -695,7 +695,6 @@ def to_correlation_matrix(
 ) -> pd.DataFrame:
     if span:
         return to_exponential_correlation_matrix(prices=prices, span=span)
-
     return to_pri_return(prices=prices).corr()
 
 

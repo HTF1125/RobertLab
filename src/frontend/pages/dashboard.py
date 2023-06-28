@@ -18,9 +18,15 @@ class Dashboard(BasePage):
 
         with st.spinner("load strategies..."):
             multistrategy.from_files()
+        st.write(multistrategy.analytics.T)
 
+        show_alpha = st.checkbox(label="show alpha")
         for name, strategy in multistrategy.items():
-            performance = strategy.performance_alpha.resample("M").last()
+
+            if show_alpha:
+                performance = strategy.performance_alpha
+            else:
+                performance = strategy.performance
             fig.add_trace(
                 go.Scatter(
                     x=performance.index,
@@ -30,14 +36,13 @@ class Dashboard(BasePage):
             )
 
         fig.update_layout(
-            title="Performance", legend_orientation="h", hovermode="x unified"
+            title="Alpha Performance", legend_orientation="h", hovermode="x unified"
         )
 
-        st.write(multistrategy.analytics.T)
 
         st.plotly_chart(
             fig,
             use_container_width=True,
         )
 
-        plot_multistrategy(multistrategy, allow_delete=False, allow_save=False)
+        plot_multistrategy(multistrategy, allow_save=False)

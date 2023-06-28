@@ -1,6 +1,6 @@
 """ROBERT"""
 from .multi import MultiFactors
-from .single import *
+from .base import *
 
 __all__ = [
     "PriceMomentum1M",

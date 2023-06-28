@@ -7,11 +7,24 @@ from src.core.strategies import MultiStrategy
 from src.core.benchmarks import Benchmark
 
 
-def plot_multistrategy(
-    multistrategy: MultiStrategy, allow_save: bool = True, allow_delete: bool = True
-) -> None:
+def delete_strategy(multistrategy: MultiStrategy, name: str):
+    if multistrategy.delete(name):
+        st.info(f"Delete strategy `{name}` successful.")
+    else:
+        st.warning("Delete Failed.")
+
+
+def save_strategy(multistrategy: MultiStrategy, name: str, new_name: str):
+    if multistrategy.save(name, new_name):
+        st.info(f"Save strategy `{name}` successful.")
+    else:
+        st.warning("Save Failed.")
+
+
+def plot_multistrategy(multistrategy: MultiStrategy, allow_save: bool = True) -> None:
     for name, strategy in multistrategy.items():
         with st.expander(label=name, expanded=False):
+
             if allow_save:
                 new_name = st.text_input(
                     label="Customize the strategy name",
@@ -19,22 +32,24 @@ def plot_multistrategy(
                     value=name,
                 )
 
-                st.button(
+                col1, col2 = st.columns([1, 1])
+                col1.button(
                     label="Save",
                     key=f"{name}_save",
-                    on_click=strategy.save,
-                    kwargs={"name": new_name},
+                    on_click=save_strategy,
+                    kwargs={
+                        "multistrategy": multistrategy,
+                        "name": name,
+                        "new_name": new_name,
+                    },
                 )
 
-            if allow_delete:
-                st.button(
+                col2.button(
                     label="Delete",
                     key=f"{name}_delete",
-                    on_click=multistrategy.delete,
-                    kwargs={"name": name}
+                    on_click=delete_strategy,
+                    kwargs={"multistrategy": multistrategy, "name": name},
                 )
-
-
 
             st.json(strategy.get_signature(), expanded=False)
 

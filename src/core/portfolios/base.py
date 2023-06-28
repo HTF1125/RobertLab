@@ -12,31 +12,11 @@ class Optimizer(Constraints):
     optimizer_metrics = {}
 
     def __init__(self):
-        super().__init__()
-        self.constraints = {}
-        self.expected_returns = None
-        self.covariance_matrix = None
-        self.correlation_matrix = None
-        self.prices = None
-        self.risk_free = 0.0
-        self.prices_bm = None
-        self.weights_bm = None
-        self.factors = None
-        self.sum_weight = 1.0
         self.min_weight = 0.0
         self.max_weight = 1.0
-        self.min_active_weight = None
-        self.max_active_weight = None
-        self.min_return = None
-        self.max_return = None
-        self.min_volatility = None
-        self.max_volatility = None
-        self.min_exante_tracking_error = None
-        self.max_exante_tracking_error = None
-        self.min_expost_tracking_error = None
-        self.max_expost_tracking_error = None
+        self.sum_weight = 1.0
+        self.risk_free = 0.0
         self.min_factor_percentile = 0.2
-        self.exp = {}
 
     @classmethod
     def from_prices(

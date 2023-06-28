@@ -17,6 +17,8 @@ from .parser import Parser
 
 
 class MultiStrategy(dict):
+    num_strategies = 1
+
     def from_files(self) -> None:
         directory = os.path.join(os.path.dirname(__file__), "db")
 
@@ -54,7 +56,7 @@ class MultiStrategy(dict):
                 if book:
                     strategy.book = Book(**book)
                 self[filename.replace(".json", "")] = strategy
-                strategy.save(name=filename.replace(".json", ""))
+                strategy.save(name=filename.replace(".json", ""), override=True)
 
     def prep_strategy(
         self,
@@ -109,10 +111,10 @@ class MultiStrategy(dict):
         optimizer: str = "EqualWeight",
         name: Optional[str] = None,
         # universe & benchmark
-        universe: Optional[Union[str, Benchmark]] = None,
+        universe: Optional[Union[str, Universe]] = None,
         benchmark: Optional[Union[str, Benchmark]] = None,
         # rebalancer arguments
-        factors: Optional[Tuple[str]] = None,
+        factors: Tuple[str] = tuple(),
         optimizer_constraints: Optional[Dict[str, float]] = None,
         specific_constraints: Optional[List[Dict[str, Any]]] = None,
         # strategy arguments
@@ -124,7 +126,7 @@ class MultiStrategy(dict):
         initial_investment: int = 10_000,
     ) -> Strategy:
         if name is None:
-            name = f"Strategy-{len(self) + 1}"
+            name = f"Strategy-{self.num_strategies}"
             if name in self:
                 raise ValueError("strategy `{name}` already backtested.")
         strategy = self.prep_strategy(
@@ -144,6 +146,7 @@ class MultiStrategy(dict):
         )
         strategy.simulate()
         self[name] = strategy
+        self.num_strategies += 1
         return strategy
 
     @property
@@ -196,9 +199,15 @@ class MultiStrategy(dict):
             {name: strategy.performance_alpha for name, strategy in self.items()}
         )
 
-    def delete(self, name: str) -> None:
-        if name in self:
-            del self[name]
-
+    def delete(self, name: str) -> bool:
+        if name not in self:
+            return False
+        del self[name]
         file_path = Path(os.path.dirname(__file__)) / "db" / f"{name}.json"
-        file_path.unlink()
+        try:
+            file_path.unlink()
+        except FileNotFoundError:
+            pass
+        return True
+    def save(self, name: str, new_name: str) -> bool:
+        return self[name].save(new_name)
