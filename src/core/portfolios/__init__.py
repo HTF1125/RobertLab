@@ -1,17 +1,7 @@
 """ROBERT"""
-from .ext import (
-    EqualWeight,
-    MaxReturn,
-    MaxSharpe,
-    RiskParity,
-    MinCorrelation,
-    MinVolatility,
-    InverseVariance,
-    HRP,
-    HERC,
-)
-
+import sys
 from .base import Optimizer
+from .ext import *
 
 __all__ = [
     "EqualWeight",
@@ -24,3 +14,11 @@ __all__ = [
     "HRP",
     "HERC",
 ]
+
+
+def get(optimizer: str) -> "Optimizer":
+    # Use getattr() to get the attribute value
+    try:
+        return getattr(sys.modules[__name__], optimizer)()
+    except AttributeError as exc:
+        raise ValueError(f"Invalid optimizer: {optimizer}") from exc

@@ -32,8 +32,8 @@ def plot_multistrategy(multistrategy: MultiStrategy, allow_save: bool = True) ->
                     value=name,
                 )
 
-                col1, col2 = st.columns([1, 1])
-                col1.button(
+                # col1, col2 = st.columns([1, 1])
+                st.button(
                     label="Save",
                     key=f"{name}_save",
                     on_click=save_strategy,
@@ -44,13 +44,12 @@ def plot_multistrategy(multistrategy: MultiStrategy, allow_save: bool = True) ->
                     },
                 )
 
-                col2.button(
-                    label="Delete",
-                    key=f"{name}_delete",
-                    on_click=delete_strategy,
-                    kwargs={"multistrategy": multistrategy, "name": name},
-                )
-
+                # col2.button(
+                #     label="Delete",
+                #     key=f"{name}_delete",
+                #     on_click=delete_strategy,
+                #     kwargs={"multistrategy": multistrategy, "name": name},
+                # )
             st.json(strategy.get_signature(), expanded=False)
 
             (

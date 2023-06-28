@@ -100,7 +100,7 @@ class BaseProperty:
     def factors(self, factors: pd.Series) -> None:
         if factors is None or not isinstance(factors, pd.Series):
             return
-        self._factors = factors.reindex(index=self.assets, fill_value=0)
+        self._factors = factors.reindex(index=self.assets, fill_value=0).fillna(0)
 
     @property
     def weights_bm(self) -> Optional[pd.Series]:

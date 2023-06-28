@@ -1,5 +1,5 @@
 """ROBERT"""
-
+import sys
 from typing import Tuple
 import pandas as pd
 from src.backend import data
@@ -11,6 +11,15 @@ __all__ = [
     "GlobalAssetAllocation",
     "UsAllocation",
 ]
+
+
+def get_attr(universe: str) -> "Universe":
+    # Use getattr() to get the attribute value
+    try:
+        return getattr(sys.modules[__name__], universe)()
+    except AttributeError as exc:
+        raise ValueError(f"Invalid optimizer: {universe}") from exc
+
 
 class Universe:
     ASSETS = ()
@@ -24,15 +33,9 @@ class Universe:
         return data.get_prices(tickers=cls.get_tickers())
 
 
-
-
 class GlobalAssetAllocation(Universe):
     ASSETS = (
-        {
-            "ticker": "SPY",
-            "assetclass": "Equity",
-            "name": "U.S. Stocks (S&P500)"
-        },
+        {"ticker": "SPY", "assetclass": "Equity", "name": "U.S. Stocks (S&P500)"},
         {
             "ticker": "EZU",
             "assetclass": "Equity",
@@ -48,21 +51,9 @@ class GlobalAssetAllocation(Universe):
             "assetclass": "Equity",
             "name": "Emerging Market Stocks",
         },
-        {
-            "ticker": "RWR",
-            "assetclass": "RealEstate",
-            "name": "Global REITs"
-        },
-        {
-            "ticker": "GLD",
-            "assetclass": "Alternative",
-            "name": "Gold"
-        },
-        {
-            "ticker": "GSG",
-            "assetclass": "Alternative",
-            "name": "Commodities"
-        },
+        {"ticker": "RWR", "assetclass": "RealEstate", "name": "Global REITs"},
+        {"ticker": "GLD", "assetclass": "Alternative", "name": "Gold"},
+        {"ticker": "GSG", "assetclass": "Alternative", "name": "Commodities"},
         {
             "ticker": "IEF",
             "assetclass": "FixedIncome",
@@ -73,11 +64,7 @@ class GlobalAssetAllocation(Universe):
             "assetclass": "FixedIncome",
             "name": "Long-Term Treasuries (20+Y)",
         },
-        {
-            "ticker": "EMB",
-            "assetclass": "FixedIncome",
-            "name": "Emerging Bond (USD)"
-        },
+        {"ticker": "EMB", "assetclass": "FixedIncome", "name": "Emerging Bond (USD)"},
         {
             "ticker": "IGOV",
             "assetclass": "FixedIncome",
@@ -153,28 +140,13 @@ class UnitedStatesSectors(Universe):
 
 class UsAllocation(Universe):
     ASSETS = (
-        {
-            "ticker": "SPY",
-            "assetclass": "Equity",
-            "name": "US SPY Equity"
-        },
-        {
-            "ticker": "AGG",
-            "assetclass": "FixedIncome",
-            "name": "US Aggregate Bond"
-        },
+        {"ticker": "SPY", "assetclass": "Equity", "name": "US SPY Equity"},
+        {"ticker": "AGG", "assetclass": "FixedIncome", "name": "US Aggregate Bond"},
     )
+
 
 class GlobalAllocation(Universe):
     ASSETS = (
-        {
-            "ticker": "ACWI",
-            "assetclass": "Equity",
-            "name": "MSCI All Country"
-        },
-        {
-            "ticker": "BND",
-            "assetclass": "FixedIncome",
-            "name": "Total Bond Market"
-        },
+        {"ticker": "ACWI", "assetclass": "Equity", "name": "MSCI All Country"},
+        {"ticker": "BND", "assetclass": "FixedIncome", "name": "Total Bond Market"},
     )

@@ -13,7 +13,7 @@ def init():
         menu_items=None,
     )
 
-    config.settings.PLATFORM = "Streamlit"
+    config.Settings.PLATFORM = "Streamlit"
 
     with st.sidebar:
         st.markdown(

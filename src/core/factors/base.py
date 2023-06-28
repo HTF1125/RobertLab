@@ -7,12 +7,6 @@ from src.core import metrics
 from src.backend import data
 
 
-def get_attr(factor: str) -> "Factor":
-    # Use getattr() to get the attribute value
-    try:
-        return getattr(sys.modules[__name__], factor)()
-    except AttributeError as exc:
-        raise ValueError(f"Invalid factor: {factor}") from exc
 
 
 class Factor(object):

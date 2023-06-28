@@ -3,18 +3,18 @@ from typing import Dict, List, Tuple, Any
 import pandas as pd
 import streamlit as st
 import plotly.graph_objects as go
-from src.core import portfolios, strategies, benchmarks, universes, factors
+from src.core import portfolios, strategies, benchmarks, factors, universes
 from src.backend.data import get_prices
-from src.core.strategies.parser import Parser
 from .base import BasePage
-
-
+from ..components import plot_multistrategy
 
 
 class MultiStrategy(BasePage):
     def load_states(self) -> None:
         if "strategy" not in st.session_state:
-            st.session_state["strategy"] = strategies.MultiStrategy()
+            multistrategy = strategies.MultiStrategy()
+            multistrategy.from_files()
+            st.session_state["strategy"] = multistrategy
 
     @staticmethod
     def get_strategy() -> strategies.MultiStrategy:
@@ -247,7 +247,7 @@ class MultiStrategy(BasePage):
 
     def load_page(self):
         parameters = self.get_strategy_parameters()
-        universe = Parser.get_universe(parameters["universe"])
+        universe = universes.get_attr(parameters["universe"])
         with st.form("AssetAllocationForm"):
             # Backtest Parameters
             # Asset Allocation Constraints
@@ -272,11 +272,16 @@ class MultiStrategy(BasePage):
                     )
 
         multistrategy = self.get_strategy()
+
+        show_alpha = st.checkbox(label="Plot Excess Performance", value=True)
         if multistrategy:
             fig = go.Figure()
 
             for name, strategy in multistrategy.items():
-                performance = strategy.performance_alpha
+                if show_alpha:
+                    performance = strategy.performance_alpha - 1
+                else:
+                    performance = strategy.performance
                 fig.add_trace(
                     go.Scatter(
                         x=performance.index,
@@ -294,8 +299,7 @@ class MultiStrategy(BasePage):
             st.plotly_chart(
                 fig,
                 use_container_width=True,
+                config={"displayModeBar": False},
             )
 
-        from ..components import plot_multistrategy
         plot_multistrategy(multistrategy, allow_save=True)
-

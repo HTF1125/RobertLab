@@ -80,7 +80,6 @@ class Optimizer(Constraints):
         self.min_expost_tracking_error = min_expost_tracking_error
         self.max_expost_tracking_error = max_expost_tracking_error
         self.min_factor_percentile = min_factor_percentile
-        self.exp = {}
         return self
 
     def set_specific_constraints(

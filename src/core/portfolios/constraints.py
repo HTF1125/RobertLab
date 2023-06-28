@@ -3,6 +3,7 @@ import warnings
 from typing import Optional
 import numpy as np
 from .objectives import Objectives
+from scipy.stats import percentileofscore
 
 
 class Constraints(Objectives):
@@ -293,13 +294,15 @@ class Constraints(Objectives):
         self._min_factor_percentile = min_factor_percentile
         if self.factors is not None:
             if self.weights_bm is not None:
-                from scipy.stats import percentileofscore
-
                 factor = np.dot(self.weights_bm, np.array(self.factors))
                 score = percentileofscore(self.factors, score=factor)
-                lbound = self.factors.quantile(
-                    min(score / 100 + self.min_factor_percentile, 1.0)
-                )
+                try:
+                    lbound = self.factors.quantile(
+                        min(score / 100 + self.min_factor_percentile, 1.0)
+                    )
+                except:
+                    print(self.factors, self.weights_bm, self.assets)
+                    raise
             else:
                 lbound = self.factors.quantile(0.5 + min_factor_percentile)
             self.constraints["min_factor_percentile"] = {

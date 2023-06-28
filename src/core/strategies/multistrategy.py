@@ -13,7 +13,6 @@ from src.core.factors import MultiFactors
 from .strategy import Strategy
 from .rebalancer import Rebalancer
 from .book import Book
-from .parser import Parser
 
 
 class MultiStrategy(dict):
@@ -28,7 +27,6 @@ class MultiStrategy(dict):
                 file_path = os.path.join(directory, filename)
                 with open(file=file_path, mode="r", encoding="utf-8") as file:
                     signature = json.load(file)
-
                 book = signature.pop("book")
                 if book:
                     date = pd.Timestamp(book["date"])
@@ -80,7 +78,7 @@ class MultiStrategy(dict):
         if prices is None:
             if universe is None:
                 raise ValueError("Must provide one of prices of universe.")
-            universe = Parser.get_universe(universe)
+            universe = core.universes.get_attr(str(universe))
             tickers = universe.get_tickers()
             prices = universe.get_prices()
         else:
@@ -209,5 +207,6 @@ class MultiStrategy(dict):
         except FileNotFoundError:
             pass
         return True
+
     def save(self, name: str, new_name: str) -> bool:
         return self[name].save(new_name)

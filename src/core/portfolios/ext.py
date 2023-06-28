@@ -1,5 +1,4 @@
 """ROBERT"""
-
 from typing import Optional, List
 import numpy as np
 import pandas as pd
@@ -7,7 +6,6 @@ from scipy.cluster.hierarchy import linkage, to_tree
 from scipy.spatial.distance import squareform
 from src.core import metrics
 from .base import Optimizer
-
 
 
 class MinVolatility(Optimizer):

@@ -5,7 +5,6 @@ from src.core import portfolios
 from src.core.factors import MultiFactors
 from src.core.strategies import Strategy
 
-from .parser import Parser
 
 
 class Rebalancer:
@@ -18,7 +17,7 @@ class Rebalancer:
         span: Optional[int] = None,
         risk_free: float = 0.0,
     ) -> None:
-        self.optimizer = Parser.get_optimizer(optimizer)
+        self.optimizer = portfolios.get(str(optimizer))
         self.optimizer_constraints = optimizer_constraints or {}
         self.specific_constraints = specific_constraints or []
         self.factors = factors

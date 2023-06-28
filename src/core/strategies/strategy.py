@@ -6,7 +6,6 @@ from typing import Optional, Callable, Dict, Union
 import pandas as pd
 from src.core import benchmarks, universes, metrics
 from .book import Book
-from .parser import Parser
 
 INITIAL_INVESTMENT = 10_000
 MIN_WINDOW = 1
@@ -54,7 +53,7 @@ class Strategy:
             Strategy: An instance of the Strategy class.
 
         """
-        universe = Parser.get_universe(universe=universe)
+        universe = universes.get_attr(str(universe))
         prices = universe.get_prices()
         return Strategy(
             prices=prices,
@@ -106,11 +105,11 @@ class Strategy:
         self.initial_investment = initial_investment
         self.frequency = frequency
         self.min_window = min_window
-        self.universe = None if universe is None else Parser.get_universe(universe)
+        self.universe = None if universe is None else universes.get_attr(str(universe))
         self.benchmark = (
             None
             if benchmark is None
-            else Parser.get_benchmark(benchmark)
+            else benchmarks.get(str(benchmark))
             .new(
                 min_window=min_window,
                 initial_investment=initial_investment,
@@ -268,7 +267,6 @@ class Strategy:
             if file_path.exists():
                 print(f"File {file_path} already exists. Not saving.")
                 return False
-
         try:
             with open(file=file_path, mode="w", encoding="utf-8") as file:
                 json.dump(signature, file)
