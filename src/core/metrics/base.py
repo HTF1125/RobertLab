@@ -1140,7 +1140,6 @@ def to_macd(
     return signal
 
 
-
 def to_information_coefficient(
     prices: pd.DataFrame,
     allocations: pd.DataFrame,

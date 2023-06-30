@@ -1,10 +1,188 @@
 """ROBERT"""
-from typing import Optional
+from typing import Optional, Tuple, List, Dict, Callable, Any
+from datetime import date
+import numpy as np
 import pandas as pd
 import streamlit as st
 import plotly.graph_objects as go
-from src.core.strategies import MultiStrategy
-from src.core.benchmarks import Benchmark
+from src.core.strategies.multi import MultiStrategy
+from src.core import universes, benchmarks, portfolios
+
+
+def get_frequency() -> str:
+    options = ["D", "M", "Q", "Y"]
+    return str(
+        st.selectbox(
+            label="Freq",
+            options=options,
+            index=options.index("M"),
+            help="Select strategy's rebalancing frequency.",
+        )
+    )
+
+
+def get_inception() -> str:
+    return str(
+        st.date_input(
+            label="Incep",
+            value=pd.Timestamp("2003-01-01"),
+        )
+    )
+
+
+def get_commission() -> int:
+    return int(
+        st.number_input(
+            label="Comm",
+            min_value=0,
+            max_value=100,
+            step=10,
+            value=10,
+            help="Select strategy's trading commission in basis points.",
+        )
+    )
+
+
+def get_min_window() -> int:
+    return int(
+        st.number_input(
+            label="Win",
+            min_value=2,
+            max_value=1500,
+            step=100,
+            value=252,
+            help="Minimum window of price data required.",
+        )
+    )
+
+
+def get_optimizer() -> portfolios.Optimizer:
+    optimizer = str(
+        st.selectbox(
+            label="Opt",
+            options=portfolios.__all__,
+            help="Select strategy's rebalancing frequency.",
+        )
+    )
+    return portfolios.get(optimizer)
+
+
+def get_benchmark() -> benchmarks.Benchmark:
+    benchmark = str(
+        st.selectbox(
+            label="BM",
+            options=benchmarks.__all__,
+            help="Select strategy's rebalancing frequency.",
+        )
+    )
+    return benchmarks.get(benchmark)
+
+
+def get_universe() -> universes.Universe:
+    universe = str(
+        st.selectbox(
+            label="Universe",
+            options=universes.__all__,
+            index=universes.__all__.index(
+                st.session_state.get("universe", universes.__all__[0])
+            ),
+            help="Select investment universe.",
+        )
+    )
+    return universes.get(universe)
+
+
+def get_dates(
+    start: str = "2010-01-01",
+    end: str = str(date.today()),
+) -> Tuple[str, str]:
+    DATEFORMAT = "%Y-%m-%d"
+    dates = pd.date_range(start=start, end=end, freq="M")
+    dates = [date.strftime(DATEFORMAT) for date in dates]
+
+    selected_start, selected_end = st.select_slider(
+        "Date Range",
+        options=dates,
+        value=(dates[0], dates[-1]),
+    )
+    if selected_start >= selected_end:
+        st.error("Error: The start date must be before the end date.")
+    return selected_start, selected_end
+
+
+def get_bounds(
+    label: str,
+    min_value: float = 0,
+    max_value: float = 100,
+    step: float = 4,
+    format_func: Callable[[Any], Any] = str,
+    help: Optional[str] = None,
+) -> Tuple[Optional[float], Optional[float]]:
+    bounds = st.select_slider(
+        label=label,
+        options=np.arange(min_value, max_value + step, step),
+        value=(min_value, max_value),
+        format_func=format_func,
+        help=help,
+    )
+    assert isinstance(bounds, tuple)
+    low, high = bounds
+
+    return (
+        low if low != min_value else None,
+        high if high != max_value else None,
+    )
+
+
+def get_specific_constraints(
+    universe: universes.Universe, num_columns: int = 5
+) -> List[Dict]:
+    constraints = []
+    universe_df = pd.DataFrame(universe.ASSETS)
+    asset_classes = universe_df["assetclass"].unique()
+    final_num_columns = min(num_columns, len(asset_classes))
+    cols = st.columns([1] * final_num_columns, gap="large")
+    for idx, asset_class in enumerate(asset_classes):
+        with cols[idx % num_columns]:
+            bounds = get_bounds(
+                label=asset_class,
+                min_value=0.0,
+                max_value=1.0,
+                step=0.05,
+                format_func=lambda x: f"{x:.0%}",
+            )
+            if bounds == (None, None):
+                continue
+            constraint = {
+                "assets": universe_df[
+                    universe_df["assetclass"] == asset_class
+                ].ticker.to_list(),
+                "bounds": bounds,
+            }
+        constraints.append(constraint)
+    with st.expander("Specific Asset Constrints:"):
+        final_num_columns = min(num_columns, len(universe_df))
+        cols = st.columns([1] * final_num_columns, gap="large")
+        for idx, asset in enumerate(universe_df.to_dict("records")):
+            ticker = asset["ticker"]
+            name = asset["name"]
+            with cols[idx % num_columns]:
+                bounds = get_bounds(
+                    label=ticker,
+                    min_value=0.0,
+                    max_value=1.0,
+                    step=0.05,
+                    format_func=lambda x: f"{x:.0%}",
+                    help=name,
+                )
+                if bounds == (None, None):
+                    continue
+                constraint = {
+                    "assets": ticker,
+                    "bounds": bounds,
+                }
+                constraints.append(constraint)
+    return constraints
 
 
 def delete_strategy(multistrategy: MultiStrategy, name: str):
@@ -24,7 +202,6 @@ def save_strategy(multistrategy: MultiStrategy, name: str, new_name: str):
 def plot_multistrategy(multistrategy: MultiStrategy, allow_save: bool = True) -> None:
     for name, strategy in multistrategy.items():
         with st.expander(label=name, expanded=False):
-
             if allow_save:
                 new_name = st.text_input(
                     label="Customize the strategy name",
@@ -77,14 +254,16 @@ def plot_multistrategy(multistrategy: MultiStrategy, allow_save: bool = True) ->
                     )
                 )
 
-                if not strategy.benchmark is None:
-                    fig.add_trace(
-                        go.Scatter(
-                            x=strategy.benchmark.performance.index,
-                            y=strategy.benchmark.performance.values,
-                            name="Benchmark",
-                        )
-                    )
+                # if not strategy.benchmark is None:
+                #     bmP = strategy.benchmark.performance.reindex(performance.index).ffill()
+                #     bmP = bmP / bmP.iloc[0] * performance.iloc[0]
+                #     fig.add_trace(
+                #         go.Scatter(
+                #             x=bmP.index,
+                #             y=bmP.values,
+                #             name="Benchmark",
+                #         )
+                #     )
 
                 fig.update_layout(
                     title="Performance", hovermode="x unified", legend_orientation="h"
@@ -104,14 +283,14 @@ def plot_multistrategy(multistrategy: MultiStrategy, allow_save: bool = True) ->
                     )
                 )
 
-                if not strategy.benchmark is None:
-                    fig.add_trace(
-                        go.Scatter(
-                            x=strategy.benchmark.drawdown.index,
-                            y=strategy.benchmark.drawdown.values,
-                            name="Benchmark",
-                        )
-                    )
+                # if not strategy.benchmark is None:
+                #     fig.add_trace(
+                #         go.Scatter(
+                #             x=strategy.benchmark.drawdown.index,
+                #             y=strategy.benchmark.drawdown.values,
+                #             name="Benchmark",
+                #         )
+                #     )
 
                 fig.update_layout(
                     title="Performance", hovermode="x unified", legend_orientation="h"

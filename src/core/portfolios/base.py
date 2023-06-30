@@ -12,11 +12,13 @@ class Optimizer(Constraints):
     optimizer_metrics = {}
 
     def __init__(self):
+        super().__init__()
         self.min_weight = 0.0
         self.max_weight = 1.0
         self.sum_weight = 1.0
         self.risk_free = 0.0
         self.min_factor_percentile = 0.2
+
 
     @classmethod
     def from_prices(
@@ -25,7 +27,6 @@ class Optimizer(Constraints):
         expected_returns = metrics.to_expected_returns(prices)
         covariance_matrix = metrics.to_covariance_matrix(prices, span=span)
         correlation_matrix = metrics.to_correlation_matrix(prices, span=span)
-
         return cls().new(
             expected_returns=expected_returns,
             covariance_matrix=covariance_matrix,

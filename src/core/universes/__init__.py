@@ -1,9 +1,11 @@
 """ROBERT"""
 import sys
-from typing import Tuple
+import logging
+from typing import Tuple, Any
 import pandas as pd
 from src.backend import data
 
+logger = logging.getLogger(__name__)
 
 __all__ = [
     "UnitedStatesSectors",
@@ -13,7 +15,7 @@ __all__ = [
 ]
 
 
-def get_attr(universe: str) -> "Universe":
+def get(universe: str) -> "Universe":
     # Use getattr() to get the attribute value
     try:
         return getattr(sys.modules[__name__], universe)()
@@ -22,6 +24,9 @@ def get_attr(universe: str) -> "Universe":
 
 
 class Universe:
+
+    inception = "2010-01-01"
+
     ASSETS = ()
 
     @classmethod
@@ -30,7 +35,12 @@ class Universe:
 
     @classmethod
     def get_prices(cls) -> pd.DataFrame:
+        logger.warning(f"{cls.__name__}.get_prices called.")
         return data.get_prices(tickers=cls.get_tickers())
+
+    @classmethod
+    def get_prices_by_date(cls, date: Any) -> pd.DataFrame:
+        return cls.get_prices().loc[:date]
 
 
 class GlobalAssetAllocation(Universe):

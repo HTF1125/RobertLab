@@ -7,7 +7,9 @@ from scipy.stats import percentileofscore
 
 
 class Constraints(Objectives):
-    constraints = {}
+
+    def __init__(self) -> None:
+        self.constraints = {}
 
     @property
     def sum_weight(self) -> float:
@@ -53,12 +55,14 @@ class Constraints(Objectives):
 
     @min_return.setter
     def min_return(self, min_return: Optional[float]) -> None:
+
         if min_return is None:
             return
         if self.expected_returns is None:
             warnings.warn("unable to set minimum return constraint.")
             warnings.warn("expected returns is null.")
             return
+        print(f"setting minimum return for opt {min_return}")
         minimum = self.expected_returns.min()
         maximum = self.expected_returns.max()
         min_return = min(maximum, max(min_return, minimum))

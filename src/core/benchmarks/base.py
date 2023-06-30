@@ -3,71 +3,26 @@ from typing import Optional, Any
 import pandas as pd
 from src.core import universes, metrics
 
+
 class Benchmark:
     UNIVERSE = universes.UsAllocation()
     PERFORMANCE = pd.Series(dtype=float)
     WEIGHTS = pd.DataFrame()
     INCEPTION = "1900-01-01"
-    INITIAL_INVESTMENT = 10_000.
+    INITIAL_INVESTMENT = 10_000.0
     MIN_WINDOW = 0
 
-    @property
-    def inception(self) -> str:
-        return self.INCEPTION
-
-    @inception.setter
-    def inception(self, inception: Optional[str]) -> None:
-        if inception is None:
-            return
-        self.INCEPTION = inception
-
-    @property
-    def initial_investment(self) -> float:
-        return self.INITIAL_INVESTMENT
-
-    @initial_investment.setter
-    def initial_investment(self, initial_investment: Optional[float]) -> None:
-        if initial_investment is None:
-            return
-        self.INITIAL_INVESTMENT = initial_investment
-
-    @property
-    def min_window(self) -> int:
-        return self.MIN_WINDOW
-
-    @min_window.setter
-    def min_window(self, min_window: Optional[int]) -> None:
-        if min_window is None:
-            return
-        self.MIN_WINDOW = min_window
-
-    @property
-    def weights(self) -> pd.DataFrame:
-        return self.WEIGHTS
-
-    @weights.setter
-    def weights(self, weights: pd.DataFrame) -> None:
-        self.WEIGHTS = weights
-
-    @property
-    def performance(self) -> pd.Series:
-        return self.PERFORMANCE
-
-    @performance.setter
-    def performance(self, performance: pd.Series) -> None:
-        performance.name = self.__class__.__name__
-        self.PERFORMANCE = performance
-
-    def new(
+    def __init__(
         self,
-        inception: Optional[str] = None,
-        initial_investment: Optional[float] = None,
-        min_window: Optional[int] = None,
-    ) -> "Benchmark":
-        self.initial_investment = initial_investment
+        inception: str = "1900-01-01",
+        initial_investment: int = 10_000,
+        min_window: int = 0,
+    ) -> None:
         self.inception = inception
+        self.initial_investment = initial_investment
         self.min_window = min_window
-        return self
+        self.weights = pd.DataFrame()
+        self.performance = pd.Series(dtype=float)
 
     def compute(self, prices: Optional[pd.DataFrame] = None) -> "Benchmark":
         prices = prices or self.UNIVERSE.get_prices()
@@ -96,11 +51,17 @@ class Benchmark:
         return w
 
     def get_performance(self, date: Optional[Any] = None) -> pd.Series:
+
+        if self.performance.empty:
+            self.compute()
         if date is not None:
             return self.performance.loc[:date]
         return self.performance
 
+
     def get_weights(self, date: Optional[Any] = None) -> pd.Series:
+        if self.weights.empty:
+            self.compute()
         if date is None:
             return self.weights.iloc[-1]
         try:
@@ -108,13 +69,11 @@ class Benchmark:
         except IndexError:
             return self.weights.iloc[0]
 
-
     def get_alpha(self, performance: pd.Series) -> pd.Series:
+        if self.performance.empty:
+            self.compute()
         bm_performance = self.performance.reindex(performance.index).ffill()
-        pri_return_1 = performance.pct_change().fillna(0)
-        pri_return_2 = bm_performance.pct_change().fillna(0)
-        return (pri_return_1 - pri_return_2).add(1).cumprod()
-
+        return performance * self.INITIAL_INVESTMENT - bm_performance
 
     @property
     def drawdown(self) -> pd.Series:

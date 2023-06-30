@@ -4,20 +4,22 @@ import pandas as pd
 import streamlit as st
 import plotly.graph_objects as go
 from src.core import portfolios, strategies, benchmarks, factors, universes
-from src.backend.data import get_prices
+from src.core.strategies import multi
 from .base import BasePage
-from ..components import plot_multistrategy
+from .. import components
+
+
 
 
 class MultiStrategy(BasePage):
     def load_states(self) -> None:
         if "strategy" not in st.session_state:
-            multistrategy = strategies.MultiStrategy()
-            multistrategy.from_files()
+            multistrategy = multi.MultiStrategy()
+            # multistrategy.load_files()
             st.session_state["strategy"] = multistrategy
 
     @staticmethod
-    def get_strategy() -> strategies.MultiStrategy:
+    def get_strategy() -> multi.MultiStrategy:
         return st.session_state["strategy"]
 
     @staticmethod
@@ -91,18 +93,16 @@ class MultiStrategy(BasePage):
         parameters = {}
         set_parameter_funcs = [
             {
-                "universe": self.get_universe,
-                "benchmark": self.get_benchmark,
-                "optimizer": self.get_optimizer,
-                "frequency": self.get_frequency,
+                "optimizer": components.get_optimizer,
+                "frequency": components.get_frequency,
             },
             {
-                "inception": self.get_inception,
-                "commission": self.get_commission,
-                "min_window": self.get_min_window,
+                "inception": components.get_inception,
+                "commission": components.get_commission,
+                "min_window": components.get_min_window,
             },
             {
-                "factors": self.get_factors,
+                "factor": self.get_factors,
             },
             {"allow_fractional_shares": self.get_allow_fractional_shares},
         ]
@@ -246,11 +246,14 @@ class MultiStrategy(BasePage):
         )
 
     def load_page(self):
-        parameters = self.get_strategy_parameters()
-        universe = universes.get_attr(parameters["universe"])
+
+        universe = components.get_universe()
+        # benchmark = components.get_benchmark()
+
         with st.form("AssetAllocationForm"):
             # Backtest Parameters
             # Asset Allocation Constraints
+            parameters = self.get_strategy_parameters()
             optimizer_constraints = self.get_optimizer_constraints()
             with st.expander(label="Custom Constraints:"):
                 st.subheader("Specific Constraint")
@@ -261,11 +264,12 @@ class MultiStrategy(BasePage):
             submitted = st.form_submit_button(label="Backtest", type="primary")
 
             if submitted:
-                prices = get_prices(tickers=universe.get_tickers())
+                # prices = get_prices(tickers=universe.get_tickers())
 
                 with st.spinner(text="Backtesting in progress..."):
-                    strategy = self.get_strategy().run(
-                        prices=prices,
+                    strategy = self.get_strategy().add_strategy(
+                        universe=universe,
+                        # benchmark=benchmark,
                         **parameters,
                         optimizer_constraints=optimizer_constraints,
                         specific_constraints=specific_constraints,
@@ -273,7 +277,7 @@ class MultiStrategy(BasePage):
 
         multistrategy = self.get_strategy()
 
-        show_alpha = st.checkbox(label="Plot Excess Performance", value=True)
+        show_alpha = st.checkbox(label="Plot Excess Performance", value=False)
         if multistrategy:
             fig = go.Figure()
 
@@ -302,4 +306,4 @@ class MultiStrategy(BasePage):
                 config={"displayModeBar": False},
             )
 
-        plot_multistrategy(multistrategy, allow_save=True)
+        components.plot_multistrategy(multistrategy, allow_save=True)
