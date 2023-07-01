@@ -1,38 +1,28 @@
 """"""
-import sys
 import logging
 from typing import Union, List, Set, Tuple, Optional, Type
 import pandas as pd
 from src.core import metrics
-from .base import Factor, get
-
+from .base import Factor
+from .ext import get
 
 logger = logging.getLogger(__name__)
 
 
 class MultiFactor(dict):
-    factor = pd.DataFrame()
+    data = pd.DataFrame()
 
     def __init__(
         self,
         *factors: Union[str, Factor, Type[Factor]],
     ) -> None:
-        self.add_factor(*factors)
+        if factors is not None:
+            for factor in factors:
+                self.add_factor(factor)
 
-    def add_factor(self, *factors: Union[str, Factor, Type[Factor]]) -> "MultiFactor":
-        for factor in factors:
-            if isinstance(factor, str):
-                parsed_factor = get(factor)
-                self[parsed_factor.__class__.__name__] = parsed_factor
-            elif isinstance(factor, type):
-                if issubclass(factor, Factor):
-                    self[factor.__name__] = factor()
-                    continue
-                logger.warning("add factor: %s failed.", factor)
-            elif issubclass(factor.__class__, Factor):
-                self[factor.__class__.__name__] = factor
-            else:
-                logger.warning("add factor: %s failed.", factor)
+    def add_factor(self, factor: Union[str, Factor, Type[Factor]]) -> "MultiFactor":
+        parsed_factor = get(factor)
+        self[parsed_factor.__class__.__name__] = parsed_factor
         return self
 
     def __getitem__(self, name: str) -> Factor:

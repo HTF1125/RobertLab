@@ -10,12 +10,43 @@ import pandas_datareader as pdr
 from src.backend.config import Settings
 
 
-
 @lru_cache()
 def get_price(ticker: str) -> pd.Series:
     p = yf.download(ticker, progress=False)["Adj Close"]
     p.name = ticker
     return p
+
+
+@lru_cache()
+def get_volume(ticker: str) -> pd.Series:
+    p = yf.download(ticker, progress=False)["Volume"]
+    p.name = ticker
+    return p
+
+
+def get_volumes(tickers: Union[str, List, Set, Tuple]) -> pd.DataFrame:
+    # create ticker list
+    tickers = (
+        tickers
+        if isinstance(tickers, (list, set, tuple))
+        else tickers.replace(",", " ").split()
+    )
+    out = []
+
+    for ticker in tickers:
+        if Settings.PLATFORM == "Streamlit":
+            import streamlit as st
+
+            @st.cache_data(ttl="1d")
+            def get_volume_st(ticker: str) -> pd.Series:
+                return get_volume(ticker)
+
+            price = get_volume_st(ticker)
+        else:
+            price = get_volume(ticker)
+        if price is not None:
+            out.append(price)
+    return pd.concat(out, axis=1).sort_index()
 
 
 def get_prices(tickers: Union[str, List, Set, Tuple]) -> pd.DataFrame:
@@ -74,4 +105,3 @@ def get_oecd_us_leading_indicator() -> pd.DataFrame:
 
 def get_vix_index() -> pd.DataFrame:
     return get_prices(tickers="^VIX")
-

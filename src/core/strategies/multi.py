@@ -138,12 +138,21 @@ class MultiStrategy(dict):
         if name not in self:
             return False
         del self[name]
+        return True
+
+    def delete_file(self, name: str) -> bool:
         file_path = Path(os.path.dirname(__file__)) / "db" / f"{name}.json"
         try:
             file_path.unlink()
+            return True
         except FileNotFoundError:
-            pass
-        return True
+            return False
+        return False
 
     def save(self, name: str, new_name: str) -> bool:
-        return self[name].save(new_name)
+        success = self[name].save(new_name)
+        if success:
+            v = self[name]
+            del self[name]
+            self[new_name] = v
+        return success

@@ -188,13 +188,15 @@ def get_specific_constraints(
 def delete_strategy(multistrategy: MultiStrategy, name: str):
     if multistrategy.delete(name):
         st.info(f"Delete strategy `{name}` successful.")
+        st.experimental_rerun()
     else:
         st.warning("Delete Failed.")
 
 
 def save_strategy(multistrategy: MultiStrategy, name: str, new_name: str):
     if multistrategy.save(name, new_name):
-        st.info(f"Save strategy `{name}` successful.")
+        st.info(f"Save strategy `{new_name}` successful.")
+        st.experimental_rerun()
     else:
         st.warning("Save Failed.")
 
@@ -202,32 +204,28 @@ def save_strategy(multistrategy: MultiStrategy, name: str, new_name: str):
 def plot_multistrategy(multistrategy: MultiStrategy, allow_save: bool = True) -> None:
     for name, strategy in multistrategy.items():
         with st.expander(label=name, expanded=False):
-            if allow_save:
+            with st.form(f"{name}"):
                 new_name = st.text_input(
                     label="Customize the strategy name",
                     key=f"custom name strategy {name}",
                     value=name,
                 )
-
-                # col1, col2 = st.columns([1, 1])
-                st.button(
-                    label="Save",
-                    key=f"{name}_save",
-                    on_click=save_strategy,
-                    kwargs={
-                        "multistrategy": multistrategy,
-                        "name": name,
-                        "new_name": new_name,
-                    },
+                action = st.radio(
+                    label="Action",
+                    options=["Save", "Delete"],
+                    horizontal=True,
+                    label_visibility="collapsed",
                 )
+                submitted = st.form_submit_button(label="submit")
+                if submitted:
+                    if action == "Save":
+                        save_strategy(multistrategy, name, new_name)
+                    elif action == "Delete":
+                        delete_strategy(multistrategy, name)
 
-                # col2.button(
-                #     label="Delete",
-                #     key=f"{name}_delete",
-                #     on_click=delete_strategy,
-                #     kwargs={"multistrategy": multistrategy, "name": name},
-                # )
-            st.json(strategy.get_signature(), expanded=False)
+            signature = strategy.get_signature()
+            del signature["book"]
+            st.json(signature, expanded=False)
 
             (
                 performance_tab,

@@ -3,7 +3,7 @@ import numpy as np
 import pandas as pd
 import streamlit as st
 import plotly.graph_objects as go
-from src.core import metrics, portfolios, universes
+from src.core import metrics, portfolios
 from ..components import get_universe, get_dates, get_specific_constraints
 from .base import BasePage
 

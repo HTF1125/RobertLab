@@ -3,8 +3,7 @@ from typing import Dict, List, Tuple, Any
 import pandas as pd
 import streamlit as st
 import plotly.graph_objects as go
-from src.core import portfolios, strategies, benchmarks, factors, universes
-from src.core.strategies import multi
+from src.core import portfolios, benchmarks, factors, strategies
 from .base import BasePage
 from .. import components
 
@@ -14,12 +13,11 @@ from .. import components
 class MultiStrategy(BasePage):
     def load_states(self) -> None:
         if "strategy" not in st.session_state:
-            multistrategy = multi.MultiStrategy()
-            # multistrategy.load_files()
+            multistrategy = strategies.MultiStrategy().load_files()
             st.session_state["strategy"] = multistrategy
 
     @staticmethod
-    def get_strategy() -> multi.MultiStrategy:
+    def get_strategy() -> strategies.MultiStrategy:
         return st.session_state["strategy"]
 
     @staticmethod

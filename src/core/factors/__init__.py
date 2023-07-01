@@ -1,7 +1,7 @@
 """ROBERT"""
 
-from .base import *
 from .multi import MultiFactor
+from .ext import *
 
 
 __all__ = [
@@ -30,6 +30,8 @@ __all__ = [
     "PriceVolatility3M",
     "VolumeCoefficientOfVariation1M",
     "VolumeCoefficientOfVariation3M",
+    "VolumeCoefficientOfVariation6M",
+    "VolumeCoefficientOfVariation12M",
     "PriceRelVol1M3M",
     "MACD1",
     "MACD2",
