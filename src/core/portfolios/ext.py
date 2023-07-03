@@ -5,22 +5,22 @@ import pandas as pd
 from scipy.cluster.hierarchy import linkage, to_tree
 from scipy.spatial.distance import squareform
 from src.core import metrics
-from .base import Optimizer
+from .base import Portfolio
 
 
-class MinVolatility(Optimizer):
+class MinVolatility(Portfolio):
     def solve(self) -> pd.Series:
         """calculate minimum volatility weights"""
         return self.__solve__(objective=self.expected_volatility)
 
 
-class MinCorrelation(Optimizer):
+class MinCorrelation(Portfolio):
     def solve(self) -> pd.Series:
         """calculate minimum correlation weights"""
         return self.__solve__(objective=self.expected_correlation)
 
 
-class RiskParity(Optimizer):
+class RiskParity(Portfolio):
     def solve(self, budgets: Optional[np.ndarray] = None) -> pd.Series:
         if budgets is None:
             budgets = np.ones(self.num_assets) / self.num_assets
@@ -38,7 +38,7 @@ class RiskParity(Optimizer):
         return weights
 
 
-class Hierarchical(Optimizer):
+class Hierarchical(Portfolio):
     def recursive_bisection(self, sorted_tree):
         """_summary_
 
@@ -137,7 +137,7 @@ class HERC(Hierarchical):
         return weights
 
 
-class InverseVariance(Optimizer):
+class InverseVariance(Portfolio):
     def solve(self) -> pd.Series:
         inv_var_weights = 1 / np.diag(np.array(self.covariance_matrix))
         inv_var_weights /= inv_var_weights.sum()
@@ -146,19 +146,19 @@ class InverseVariance(Optimizer):
         )
 
 
-class MaxReturn(Optimizer):
+class MaxReturn(Portfolio):
     def solve(self) -> pd.Series:
         """calculate maximum return weights"""
         return self.__solve__(objective=lambda w: -self.expected_return(w))
 
 
-class MaxSharpe(Optimizer):
+class MaxSharpe(Portfolio):
     def solve(self) -> pd.Series:
         """calculate maximum sharpe ratio weights"""
         return self.__solve__(objective=lambda w: -self.expected_sharpe(w))
 
 
-class EqualWeight(Optimizer):
+class EqualWeight(Portfolio):
     def solve(self) -> pd.Series:
         target_allocations = np.ones(shape=self.num_assets) / self.num_assets
         return self.__solve__(

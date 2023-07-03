@@ -6,65 +6,101 @@ import pandas as pd
 import streamlit as st
 import plotly.graph_objects as go
 from src.core.strategies.multi import MultiStrategy
-from src.core import universes, benchmarks, portfolios
+from src.core import universes, benchmarks, portfolios, factors, states
+from .session import Session
+
+def get_states() -> None:
+    universe = str(
+        st.selectbox(
+            label="State",
+            options=states.__all__,
+            index=states.__all__.index(
+                st.session_state.get("state", states.__all__[0])
+            ),
+            help="Select investment universe.",
+        )
+    )
+    st.session_state["state"] = universe
 
 
-def get_frequency() -> str:
+def get_factor() -> None:
+    st.session_state["factors"] = tuple(
+        st.multiselect(
+            label="Factor List",
+            options=factors.__all__,
+        )
+    )
+
+
+def get_allow_fractional_shares() -> bool:
+    return st.checkbox(
+        label="Fractional Shares",
+        value=False,
+        help="Allow Fractional Shares Investing.",
+    )
+
+
+def get_frequency() -> None:
     options = ["D", "M", "Q", "Y"]
-    return str(
+    frequency = str(
         st.selectbox(
             label="Freq",
             options=options,
-            index=options.index("M"),
+            index=options.index(
+                st.session_state.get("frequency", "M"),
+            ),
             help="Select strategy's rebalancing frequency.",
         )
     )
+    st.session_state["frequency"] = frequency
 
 
-def get_inception() -> str:
-    return str(
-        st.date_input(
-            label="Incep",
-            value=pd.Timestamp("2003-01-01"),
+def get_inception() -> None:
+    st.session_state["inception"] = pd.Timestamp(
+        str(
+            st.date_input(
+                label="Incep",
+                value=pd.Timestamp("2003-01-01"),
+            )
         )
     )
 
 
-def get_commission() -> int:
-    return int(
+def get_commission() -> None:
+    st.session_state["commission"] = int(
         st.number_input(
             label="Comm",
             min_value=0,
             max_value=100,
             step=10,
-            value=10,
+            value=st.session_state.get("commission", 10),
             help="Select strategy's trading commission in basis points.",
         )
     )
 
 
-def get_min_window() -> int:
-    return int(
+def get_min_window() -> None:
+    st.session_state["min_window"] = int(
         st.number_input(
             label="Win",
             min_value=2,
             max_value=1500,
             step=100,
-            value=252,
+            value=st.session_state.get("min_window", 252),
             help="Minimum window of price data required.",
         )
     )
 
 
-def get_optimizer() -> portfolios.Optimizer:
-    optimizer = str(
+def get_portfolio():
+    portfolio = str(
         st.selectbox(
-            label="Opt",
+            label="Port",
             options=portfolios.__all__,
             help="Select strategy's rebalancing frequency.",
         )
     )
-    return portfolios.get(optimizer)
+    st.session_state["portfolio"] = portfolio
 
 
 def get_benchmark() -> benchmarks.Benchmark:
@@ -78,7 +114,7 @@ def get_benchmark() -> benchmarks.Benchmark:
     return benchmarks.get(benchmark)
 
 
-def get_universe() -> universes.Universe:
+def get_universe():
     universe = str(
         st.selectbox(
             label="Universe",
@@ -89,7 +125,8 @@ def get_universe() -> universes.Universe:
             help="Select investment universe.",
         )
     )
-    return universes.get(universe)
+    st.session_state["universe"] = universe
+    return universe
 
 
 def get_dates(

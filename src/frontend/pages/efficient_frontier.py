@@ -4,9 +4,9 @@ import pandas as pd
 import streamlit as st
 import plotly.graph_objects as go
 from src.core import metrics, portfolios
-from ..components import get_universe, get_dates, get_specific_constraints
+from ..components import get_dates, get_specific_constraints
 from .base import BasePage
-
+from .. import components
 
 class EfficientFrontier(BasePage):
     """
@@ -14,7 +14,8 @@ class EfficientFrontier(BasePage):
     """
 
     def load_page(self):
-        universe = get_universe()
+        components.get_universe()
+        universe = components.Session.get_universe()
         prices = universe.get_prices()
         start, end = get_dates(start=str(prices.index[0]), end=str(prices.index[-1]))
         prices = prices.loc[start:end].dropna(how="all", axis=1)

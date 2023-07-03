@@ -29,7 +29,7 @@ class Rebalancer:
         factors = strategy.factor.get_factor_by_date(
             tickers=list(prices.columns), date=strategy.date
         )
-        opt = strategy.optimizer.from_prices(
+        opt = strategy.portfolio.from_prices(
             prices=prices,
             span=None,
             factors=factors,
@@ -37,8 +37,8 @@ class Rebalancer:
             # prices_bm=strategy.benchmark.get_performance(strategy.date),
             # weights_bm=strategy.benchmark.get_weights(strategy.date),
             # sum_weight=0.0, min_weight = -1, max_weight = 1,
-            weights_bm=pd.Series(1/len(prices.columns), index=prices.columns),
-            **strategy.optimizer_constraints,
+            weights_bm=pd.Series(1 / len(prices.columns), index=prices.columns),
+            **strategy.portfolio_constraints,
         ).set_specific_constraints(strategy.specific_constraints)
         return opt.solve()
 
@@ -83,8 +83,8 @@ class Book:
     def __init__(
         self,
         date: pd.Timestamp,
-        value: float,
-        cash: float,
+        value: float = 0.,
+        cash: float = 0.,
         shares=pd.Series(dtype=float),
         capitals=pd.Series(dtype=float),
         allocations=pd.Series(dtype=float),
@@ -126,35 +126,31 @@ class Strategy:
         self,
         rebalancer: Rebalancer,
         universe: universes.Universe,
-        # benchmark: benchmarks.Benchmark,
         inception: Optional[str] = None,
         frequency: str = "M",
         initial_investment: int = 10_000,
         commission: int = 10,
         allow_fractional_shares: bool = False,
         min_window: int = 1,
-        optimizer: portfolios.Optimizer = portfolios.EqualWeight(),
+        portoflio: portfolios.Portfolio = portfolios.EqualWeight(),
         factor: MultiFactor = MultiFactor(),
-        optimizer_constraints: Optional[Dict[str, float]] = None,
+        portfolio_constraints: Optional[Dict[str, float]] = None,
         specific_constraints: Optional[List[Dict[str, Any]]] = None,
     ) -> None:
         self.rebalancer = rebalancer
         self.universe = universe
-        # self.benchmark = benchmark
         self.inception = inception or self.universe.inception
         self.frequency = frequency
         self.min_window = min_window
         self.commission = commission
         self.initial_investment = initial_investment
         self.allow_fractional_shares = allow_fractional_shares
-        self.optimizer = optimizer
+        self.portfolio = portoflio
         self.factor = factor
-        self.optimizer_constraints = optimizer_constraints or {}
+        self.portfolio_constraints = portfolio_constraints or {}
         self.specific_constraints = specific_constraints or []
         self.book = Book(
             date=pd.Timestamp(self.inception),
-            value=self.initial_investment,
-            cash=self.initial_investment,
         )
         logger.warning("Strategy init finished.")
         self.prices = pd.DataFrame()
@@ -173,17 +169,6 @@ class Strategy:
     def date(self) -> pd.Timestamp:
         return self.book.date
 
-    # def update_book(self, date: pd.Timestamp) -> None:
-    #     """
-    #     Update the capitals based on current shares and prices.
-
-    #     Args:
-    #         date (pd.Timestamp): Current date.
-    #     """
-    #     prices_now = self.prices.loc[date]
-    #     self.book.capitals = self.book.shares.multiply(prices_now).dropna()
-    #     self.book.value = float(self.book.capitals.sum()) + self.book.cash
-
     def simulate(self) -> "Strategy":
         end = pd.Timestamp("now") + pd.DateOffset(days=1)
         start = self.date + pd.DateOffset(days=1)
@@ -193,31 +178,34 @@ class Strategy:
         self.prices = self.universe.get_prices()
         for self.book.date in pd.date_range(start=start, end=end):
             if self.book.date in self.prices.index:
-                # update book here
-                prices_now = self.prices.loc[self.book.date]
-                self.book.capitals = self.book.shares.multiply(prices_now).dropna()
-                self.book.value = sum(self.book.capitals) + self.book.cash
-                # make trade here
-                if not self.book.allocations.empty:
-                    # Calculate trade shares.
-                    target_capitals = self.book.value * self.book.allocations
-                    target_shares = target_capitals.divide(prices_now)
-                    decimals = decimals = 4 if self.allow_fractional_shares else 0
-                    target_shares = target_shares.round(decimals)
-                    trade_shares = target_shares.subtract(
-                        self.book.shares, fill_value=0
-                    )
-                    trade_shares = trade_shares[trade_shares != 0]
-                    # Store allocations & trades.
-                    self.book.records["trades"][str(self.date)] = trade_shares.to_dict()
-                    trade_capitals = trade_shares.multiply(prices_now)
-                    trade_cost = trade_capitals.abs().sum() * (self.commission / 10_000)
-                    self.book.cash -= trade_capitals.sum()
-                    self.book.cash -= trade_cost
-                    self.book.shares = target_shares
+                if self.book.value == 0.0:
+                    self.book.value = self.book.cash = self.initial_investment
+                else:
+                    # update book here
+                    prices_now = self.prices.loc[self.book.date]
                     self.book.capitals = self.book.shares.multiply(prices_now).dropna()
                     self.book.value = sum(self.book.capitals) + self.book.cash
-                    self.book.allocations = pd.Series(dtype=float)
+                    # make trade here
+                    if not self.book.allocations.empty:
+                        # Calculate trade shares.
+                        target_capitals = self.book.value * self.book.allocations
+                        target_shares = target_capitals.divide(prices_now)
+                        decimals = decimals = 4 if self.allow_fractional_shares else 0
+                        target_shares = target_shares.round(decimals)
+                        trade_shares = target_shares.subtract(
+                            self.book.shares, fill_value=0
+                        )
+                        trade_shares = trade_shares[trade_shares != 0]
+                        # Store allocations & trades.
+                        self.book.records["trades"][str(self.date)] = trade_shares.to_dict()
+                        trade_capitals = trade_shares.multiply(prices_now)
+                        trade_cost = trade_capitals.abs().sum() * (self.commission / 10_000)
+                        self.book.cash -= trade_capitals.sum()
+                        self.book.cash -= trade_cost
+                        self.book.shares = target_shares
+                        self.book.capitals = self.book.shares.multiply(prices_now).dropna()
+                        self.book.value = sum(self.book.capitals) + self.book.cash
+                        self.book.allocations = pd.Series(dtype=float)
                 self.book.records["value"][str(self.date)] = self.book.value
                 self.book.records["cash"][str(self.date)] = self.book.cash
                 self.book.records["shares"][str(self.date)] = self.book.shares.to_dict()
@@ -285,14 +273,13 @@ class Strategy:
     def get_signature(self) -> Dict:
         return {
             "universe": self.universe.__class__.__name__,
-            # "benchmark": self.benchmark.__class__.__name__,
-            "optimizer": self.optimizer.__class__.__name__,
+            "portfolio": self.portfolio.__class__.__name__,
             "min_window": self.min_window,
             "inception": self.inception,
             "frequency": self.frequency,
             "commission": self.commission,
             "allow_fractional_shares": self.allow_fractional_shares,
-            "optimizer_constraints": self.optimizer_constraints,
+            "portfolio_constraints": self.portfolio_constraints,
             "specific_constraints": self.specific_constraints,
             "factor": tuple(self.factor.keys()),
             "book": self.book.dict(),
@@ -333,8 +320,3 @@ class Strategy:
         out = metrics.to_drawdown(self.performance)
         out.name = "drawdonw"
         return out
-
-    @property
-    def performance_alpha(self) -> pd.Series:
-        assert self.benchmark is not None
-        return self.benchmark.get_alpha(self.performance / self.initial_investment)

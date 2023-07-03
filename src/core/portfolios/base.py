@@ -8,7 +8,7 @@ from src.core import metrics
 from src.core.portfolios.constraints import Constraints
 
 
-class Optimizer(Constraints):
+class Portfolio(Constraints):
     optimizer_metrics = {}
 
     def __init__(self):
@@ -23,7 +23,7 @@ class Optimizer(Constraints):
     @classmethod
     def from_prices(
         cls, prices: pd.DataFrame, span: Optional[int] = None, **kwargs
-    ) -> "Optimizer":
+    ) -> "Portfolio":
         expected_returns = metrics.to_expected_returns(prices)
         covariance_matrix = metrics.to_covariance_matrix(prices, span=span)
         correlation_matrix = metrics.to_correlation_matrix(prices, span=span)
@@ -58,7 +58,7 @@ class Optimizer(Constraints):
         min_expost_tracking_error: Optional[float] = None,
         max_expost_tracking_error: Optional[float] = None,
         min_factor_percentile: float = 0.2,
-    ) -> "Optimizer":
+    ) -> "Portfolio":
         self.expected_returns = expected_returns
         self.covariance_matrix = covariance_matrix
         self.correlation_matrix = correlation_matrix
@@ -85,14 +85,14 @@ class Optimizer(Constraints):
 
     def set_specific_constraints(
         self, specific_constraints: List[Dict[str, Any]]
-    ) -> "Optimizer":
+    ) -> "Portfolio":
         for specific_constraint in specific_constraints:
             self.set_specific_constraint(**specific_constraint)
         return self
 
     def set_specific_constraint(
         self, assets: List[str], bounds: Tuple[Optional[float], Optional[float]]
-    ) -> "Optimizer":
+    ) -> "Portfolio":
         assert self.assets is not None
         specific_assets = np.in1d(self.assets.values, assets)
         l_bound, u_bound = bounds

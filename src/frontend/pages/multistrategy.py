@@ -1,13 +1,12 @@
 """ROBERT"""
-from typing import Dict, List, Tuple, Any
+from typing import Dict, List, Any, Callable
+import numpy as np
 import pandas as pd
 import streamlit as st
 import plotly.graph_objects as go
-from src.core import portfolios, benchmarks, factors, strategies
+from src.core import strategies
 from .base import BasePage
 from .. import components
-
-
 
 
 class MultiStrategy(BasePage):
@@ -20,115 +19,34 @@ class MultiStrategy(BasePage):
     def get_strategy() -> strategies.MultiStrategy:
         return st.session_state["strategy"]
 
-    @staticmethod
-    def get_inception() -> str:
-        return str(
-            st.date_input(
-                label="Incep",
-                value=pd.Timestamp("2003-01-01"),
-            )
-        )
-
-    @staticmethod
-    def get_optimizer() -> str:
-        return str(
-            st.selectbox(
-                label="Opt",
-                options=portfolios.__all__,
-                help="Select strategy's rebalancing frequency.",
-            )
-        )
-
-    @staticmethod
-    def get_benchmark() -> str:
-        return str(
-            st.selectbox(
-                label="BM",
-                options=benchmarks.__all__,
-                help="Select strategy's rebalancing frequency.",
-            )
-        )
-
-    @staticmethod
-    def get_frequency() -> str:
-        options = ["D", "M", "Q", "Y"]
-        return str(
-            st.selectbox(
-                label="Freq",
-                options=options,
-                index=options.index("M"),
-                help="Select strategy's rebalancing frequency.",
-            )
-        )
-
-    @staticmethod
-    def get_commission() -> int:
-        return int(
-            st.number_input(
-                label="Comm",
-                min_value=0,
-                max_value=100,
-                step=10,
-                value=10,
-                help="Select strategy's trading commission in basis points.",
-            )
-        )
-
-    @staticmethod
-    def get_min_window() -> int:
-        return int(
-            st.number_input(
-                label="Win",
-                min_value=2,
-                max_value=1500,
-                step=100,
-                value=252,
-                help="Minimum window of price data required.",
-            )
-        )
+    def clear_strategies(self):
+        self.get_strategy().clear()
 
     def get_strategy_parameters(self) -> Dict[str, Any]:
         parameters = {}
         set_parameter_funcs = [
             {
-                "optimizer": components.get_optimizer,
-                "frequency": components.get_frequency,
-            },
-            {
                 "inception": components.get_inception,
                 "commission": components.get_commission,
                 "min_window": components.get_min_window,
             },
-            {
-                "factor": self.get_factors,
-            },
-            {"allow_fractional_shares": self.get_allow_fractional_shares},
         ]
         for parameter_funcs in set_parameter_funcs:
             parameter_cols = st.columns([1] * len(parameter_funcs))
-
             for col, (name, func) in zip(parameter_cols, parameter_funcs.items()):
                 with col:
                     parameters[name] = func()
 
         return parameters
 
-    @staticmethod
-    def get_allow_fractional_shares() -> bool:
-        return st.checkbox(
-            label="Fractional Shares",
-            value=False,
-            help="Allow Fractional Shares Investing.",
-        )
-
-    def get_optimizer_constraints(self):
+    def get_portfolio_constraints(self):
         constraints = {}
         kwargs = [
             {
                 "name": "weight",
                 "label": "Weight",
                 "min_value": 0.0,
-                "max_value": 1.0,
+                "max_value": 2.0,
                 "step": 0.02,
             },
             {
@@ -177,7 +95,6 @@ class MultiStrategy(BasePage):
                 minimum, maximum = self.get_bounds(
                     **kwarg, format_func=lambda x: f"{x:.0%}"
                 )
-
                 if minimum is not None:
                     constraints[f"min_{name}"] = minimum
                 if maximum is not None:
@@ -235,29 +152,44 @@ class MultiStrategy(BasePage):
                 constraints.append(constraint)
         return constraints
 
-    def get_factors(self) -> Tuple[str]:
-        return tuple(
-            st.multiselect(
-                label="Factor List",
-                options=factors.__all__,
-            )
-        )
+    @staticmethod
+    def get_horizon_input(*funcs: Callable) -> None:
+        cols = st.columns(len(funcs))
+
+        for col, func in zip(cols, funcs):
+            with col:
+                func()
 
     def load_page(self):
+        self.get_horizon_input(components.get_universe, components.get_states)
 
-        universe = components.get_universe()
-        # benchmark = components.get_benchmark()
+        with st.expander(label="State"):
+            state = components.Session.get_state()
+            selected_state = st.selectbox(label="Select state", options=state.states)
+
+            self.get_horizon_input(
+                components.get_portfolio,
+                components.get_factor,
+            )
+            portfolio_constraints = self.get_portfolio_constraints()
 
         with st.form("AssetAllocationForm"):
-            # Backtest Parameters
-            # Asset Allocation Constraints
-            parameters = self.get_strategy_parameters()
-            optimizer_constraints = self.get_optimizer_constraints()
-            with st.expander(label="Custom Constraints:"):
-                st.subheader("Specific Constraint")
-                specific_constraints = self.get_specific_constraints(
-                    universe=pd.DataFrame(universe.ASSETS)
-                )
+            # portfolio_constraints = self.get_portfolio_constraints()
+
+            self.get_horizon_input(
+                components.get_frequency,
+                components.get_inception,
+                components.get_commission,
+                components.get_min_window,
+            )
+            allow_fractional_shares = components.get_allow_fractional_shares()
+
+
+
+            # with st.expander(label="Custom Constraints:", expanded=False):
+            #     specific_constraints = self.get_specific_constraints(
+            #         universe=pd.DataFrame(components.Session.get_universe().ASSETS)
+            #     )
 
             submitted = st.form_submit_button(label="Backtest", type="primary")
 
@@ -265,43 +197,50 @@ class MultiStrategy(BasePage):
                 # prices = get_prices(tickers=universe.get_tickers())
 
                 with st.spinner(text="Backtesting in progress..."):
-                    strategy = self.get_strategy().add_strategy(
-                        universe=universe,
-                        # benchmark=benchmark,
-                        **parameters,
-                        optimizer_constraints=optimizer_constraints,
-                        specific_constraints=specific_constraints,
+                    self.get_strategy().add_strategy(
+                        universe=components.Session.get_universe(),
+                        portfolio=components.Session.get_portfolio(),
+                        frequency=components.Session.get_frequency(),
+                        factor=components.Session.get_factor(),
+                        inception=str(components.Session.get_inception()),
+                        commission=components.Session.get_commission(),
+                        min_window=components.Session.get_min_window(),
+                        allow_fractional_shares=allow_fractional_shares,
+                        portfolio_constraints=portfolio_constraints,
+                        # specific_constraints=specific_constraints,
                     )
 
         multistrategy = self.get_strategy()
 
-        show_alpha = st.checkbox(label="Plot Excess Performance", value=False)
         if multistrategy:
-            fig = go.Figure()
+            st.button(label="Clear Strategies", on_click=self.clear_strategies)
 
-            for name, strategy in multistrategy.items():
-                if show_alpha:
-                    performance = strategy.performance_alpha - 1
-                else:
-                    performance = strategy.performance
-                fig.add_trace(
-                    go.Scatter(
-                        x=performance.index,
-                        y=performance.values,
-                        name=name,
-                    )
-                )
+            # fig = go.Figure()
 
-            fig.update_layout(
-                title="Performance", legend_orientation="h", hovermode="x unified"
-            )
+            # for name, strategy in multistrategy.items():
+            #     performance = strategy.performance
+            #     num_points = len(performance)
 
+            #     indices = np.linspace(0, num_points - 1, 10, dtype=int)
+
+            #     performance = performance.iloc[indices]
+
+            #     fig.add_trace(
+            #         go.Scatter(
+            #             x=performance.index,
+            #             y=performance.values,
+            #             name=name,
+            #         )
+            #     )
+
+            # fig.update_layout(
+            #     title="Performance", legend_orientation="h", hovermode="x unified"
+            # )
+            # st.plotly_chart(
+            #     fig,
+            #     use_container_width=True,
+            #     config={"displayModeBar": False},
+            # )
             st.write(multistrategy.analytics.T)
 
-            st.plotly_chart(
-                fig,
-                use_container_width=True,
-                config={"displayModeBar": False},
-            )
-
-        components.plot_multistrategy(multistrategy, allow_save=True)
+        # components.plot_multistrategy(multistrategy, allow_save=True)

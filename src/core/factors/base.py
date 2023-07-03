@@ -25,10 +25,10 @@ class Factor(object):
 
     def standard_scaler(self, tickers: Union[str, List, Set, Tuple]) -> pd.DataFrame:
         if self.factor.empty:
-            self.compute(tickers)
+            self.fit(tickers)
         return self.factor.apply(metrics.to_standard_scaler, axis=1)
 
-    def compute(self, tickers: Union[str, List, Set, Tuple]) -> pd.DataFrame:
+    def fit(self, tickers: Union[str, List, Set, Tuple]) -> pd.DataFrame:
         raise NotImplementedError("Yout must implement `compute` method.")
 
     def get_factor_by_date(
@@ -47,7 +47,7 @@ class Factor(object):
         ]
         if new_tickers:
             self.factor = pd.concat(
-                objs=[self.factor, self.compute(new_tickers)], axis=1
+                objs=[self.factor, self.fit(new_tickers)], axis=1
             )
         out_factor = self.factor.ffill().loc[:date].iloc[-1]
         if method == "standard_scaler":

@@ -30,7 +30,7 @@ class PriceMomentum(Factor):
     skip_months = 1
     absolute = False
 
-    def compute(self, tickers: Union[str, List, Set, Tuple]) -> pd.DataFrame:
+    def fit(self, tickers: Union[str, List, Set, Tuple]) -> pd.DataFrame:
         return metrics.rolling.to_momentum(
             prices=data.get_prices(set(tickers)),
             months=self.months,
@@ -149,16 +149,16 @@ class PriceMomentumDiffusion(Factor):
     persistence in momentum are allocated to the top portfolio.
     """
 
-    def compute(self, tickers: Union[str, List, Set, Tuple]) -> pd.DataFrame:
+    def fit(self, tickers: Union[str, List, Set, Tuple]) -> pd.DataFrame:
         return (
             pd.concat(
                 objs=[
-                    PriceMomentum1M().compute(tickers).stack(),
-                    PriceMomentum2M().compute(tickers).stack(),
-                    PriceMomentum3M().compute(tickers).stack(),
-                    PriceMomentum6M().compute(tickers).stack(),
-                    PriceMomentum9M().compute(tickers).stack(),
-                    PriceMomentum12M().compute(tickers).stack(),
+                    PriceMomentum1M().fit(tickers).stack(),
+                    PriceMomentum2M().fit(tickers).stack(),
+                    PriceMomentum3M().fit(tickers).stack(),
+                    PriceMomentum6M().fit(tickers).stack(),
+                    PriceMomentum9M().fit(tickers).stack(),
+                    PriceMomentum12M().fit(tickers).stack(),
                 ],
                 axis=1,
             )
@@ -181,7 +181,7 @@ class PriceRelVol1M3M(Factor):
     months = 1
     lookback_months = 3
 
-    def compute(self, tickers: Union[str, List, Set, Tuple]) -> pd.DataFrame:
+    def fit(self, tickers: Union[str, List, Set, Tuple]) -> pd.DataFrame:
         prices = data.get_prices(set(tickers))
         pri_return = prices.pct_change()
         short_std = pri_return.rolling(21 * self.months).std()
@@ -192,7 +192,7 @@ class PriceRelVol1M3M(Factor):
 class PriceVolatility(Factor):
     months = 1
 
-    def compute(self, tickers: Union[str, List, Set, Tuple]) -> pd.DataFrame:
+    def fit(self, tickers: Union[str, List, Set, Tuple]) -> pd.DataFrame:
         prices = data.get_prices(set(tickers))
         pri_return = prices.pct_change()
         return pri_return.rolling(21 * self.months).std()
@@ -213,7 +213,7 @@ class PriceVolatility3M(PriceVolatility):
 class VCV(Factor):
     months = 1
 
-    def compute(self, tickers: Union[str, List, Set, Tuple]) -> pd.DataFrame:
+    def fit(self, tickers: Union[str, List, Set, Tuple]) -> pd.DataFrame:
         volume = data.get_volumes(tickers)
         mean = volume.rolling(self.months * 21).mean()
         std = volume.rolling(self.months * 21).std()
@@ -241,7 +241,7 @@ class MACD1(Factor):
     slow: int = 26
     signal: int = 9
 
-    def compute(self, tickers: Union[str, List, Set, Tuple]) -> pd.DataFrame:
+    def fit(self, tickers: Union[str, List, Set, Tuple]) -> pd.DataFrame:
         prices = data.get_prices(set(tickers))
         MACD = (
             +prices.ewm(span=self.fast, min_periods=self.fast).mean()
@@ -261,7 +261,7 @@ class Osc(Factor):
     fast = 32
     slow = 96
 
-    def compute(self, tickers: Union[str, List, Set, Tuple]) -> pd.DataFrame:
+    def fit(self, tickers: Union[str, List, Set, Tuple]) -> pd.DataFrame:
         prices = data.get_prices(set(tickers))
         f, g = 1 - 1 / self.fast, 1 - 1 / self.slow
         osc = (

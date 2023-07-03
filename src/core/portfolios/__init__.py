@@ -1,6 +1,6 @@
 """ROBERT"""
 import sys
-from .base import Optimizer
+from .base import Portfolio
 from .ext import *
 
 __all__ = [
@@ -16,7 +16,7 @@ __all__ = [
 ]
 
 
-def get(optimizer: str) -> "Optimizer":
+def get(optimizer: str) -> "Portfolio":
     # Use getattr() to get the attribute value
     try:
         return getattr(sys.modules[__name__], optimizer)()

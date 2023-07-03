@@ -2,9 +2,9 @@
 import os
 import json
 from pathlib import Path
-from typing import Optional, Tuple, List, Dict, Any, Union, Type
+from typing import Optional, Tuple, List, Dict, Any
 import pandas as pd
-from src.core import portfolios, factors, universes, benchmarks
+from src.core import portfolios, factors, universes
 from .base import Strategy, Book, Rebalancer
 
 
@@ -20,9 +20,9 @@ class MultiStrategy(dict):
                     signature = json.load(file)
                 universe = universes.get(signature.pop("universe"))
                 # benchmark = benchmarks.get(signature.pop("benchmark"))
-                optimizer = portfolios.get(signature.pop("optimizer"))
-                factor = signature.pop("factors", ())
-                optimizer_constraints = signature.pop("optimizer_constraints")
+                optimizer = portfolios.get(signature.pop("portfolio"))
+                factor = factors.MultiFactor(*signature.pop("factors", ()))
+                portfolio_constraints = signature.pop("portfolio_constraints")
                 specific_constraints = signature.pop("specific_constraints")
                 commission = signature.pop("commission")
                 frequency = signature.pop("frequency")
@@ -32,9 +32,9 @@ class MultiStrategy(dict):
                 book = Book(**signature.pop("book"))
                 self.add_strategy(
                     name=filename.replace(".json", ""),
-                    optimizer=optimizer,
+                    portfolio=optimizer,
                     factor=factor,
-                    optimizer_constraints=optimizer_constraints,
+                    portfolio_constraints=portfolio_constraints,
                     specific_constraints=specific_constraints,
                     universe=universe,
                     # benchmark=benchmark,
@@ -51,11 +51,10 @@ class MultiStrategy(dict):
     def add_strategy(
         self,
         universe: universes.Universe,
-        # benchmark: benchmarks.Benchmark,
         name: Optional[str] = None,
-        optimizer: portfolios.Optimizer = portfolios.EqualWeight(),
-        factor: tuple[Union[str, factors.Factor, Type[factors.Factor]], ...] = tuple(),
-        optimizer_constraints: Optional[Dict[str, float]] = None,
+        portfolio: portfolios.Portfolio = portfolios.EqualWeight(),
+        factor: factors.MultiFactor = factors.MultiFactor(),
+        portfolio_constraints: Optional[Dict[str, float]] = None,
         specific_constraints: Optional[List[Dict[str, Any]]] = None,
         inception: Optional[str] = None,
         frequency: str = "M",
@@ -71,22 +70,20 @@ class MultiStrategy(dict):
         if name in self:
             raise NameError(f"{name} already found in the mult-strategy.")
 
-        # benchmark.inception = inception
 
         strategy = Strategy(
             rebalancer=Rebalancer(),
             universe=universe,
-            # benchmark=benchmark,
             frequency=frequency,
             inception=inception,
             min_window=min_window,
             initial_investment=initial_investment,
             allow_fractional_shares=allow_fractional_shares,
             commission=commission,
-            optimizer=optimizer,
-            optimizer_constraints=optimizer_constraints,
+            portoflio=portfolio,
+            portfolio_constraints=portfolio_constraints,
             specific_constraints=specific_constraints,
-            factor=factors.MultiFactor(*factor),
+            factor=factor,
         )
         if book is not None:
             strategy.book = book
