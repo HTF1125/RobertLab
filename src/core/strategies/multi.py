@@ -30,7 +30,11 @@ class MultiStrategy(dict):
                 allow_fractional_shares = signature.pop("allow_fractional_shares")
                 min_window = signature.pop("min_window")
                 inception = signature.pop("inception")
-                book = Book(**signature.pop("book"))
+                book = signature.pop("book", {})
+                if not book:
+                    book = Book(date=pd.Timestamp(inception))
+                else:
+                    book = Book(**book)
                 self.add_strategy(
                     name=filename.replace(".json", ""),
                     portfolio=portfolio,
@@ -46,7 +50,7 @@ class MultiStrategy(dict):
                     inception=inception,
                     book=book,
                 )
-
+                self[filename.replace(".json", "")].save(filename.replace(".json", ""), override=True)
         return self
 
     def add_strategy(
@@ -72,7 +76,6 @@ class MultiStrategy(dict):
             name = f"Strategy({self.num_strategy})"
         if name in self:
             raise NameError(f"{name} already found in the mult-strategy.")
-
 
         strategy = Strategy(
             rebalancer=Rebalancer(),

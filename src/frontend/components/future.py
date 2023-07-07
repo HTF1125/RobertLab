@@ -7,13 +7,15 @@ from src.core import strategies, portfolios, factors, universes, regimes
 
 
 def get_strategy(load_files: bool = True) -> strategies.MultiStrategy:
-    if "strategy" not in st.session_state:
-        multistrategy = strategies.MultiStrategy()
-        if load_files:
-            multistrategy.load_files()
-        st.session_state["strategy"] = multistrategy
-        return multistrategy
-    return st.session_state["strategy"]
+    with st.spinner(text="Load strategies from files..."):
+        if "strategy" not in st.session_state:
+            multistrategy = strategies.MultiStrategy()
+            if load_files:
+                multistrategy.load_files()
+            st.session_state["strategy"] = multistrategy
+            return multistrategy
+        return st.session_state["strategy"]
+
 
 
 def get_universe() -> universes.Universe:
@@ -186,6 +188,7 @@ class StrategyConstraint:
         self,
         prefix: str = "",
         universe: universes.Universe = universes.Universe(),
+        leverage: int = 0,
         min_weight: Optional[int] = None,
         max_weight: Optional[int] = None,
         min_return: Optional[int] = None,
@@ -196,6 +199,7 @@ class StrategyConstraint:
         max_active_weight: Optional[int] = None,
     ) -> None:
         self.prefix = prefix
+        self.leverage = leverage
         self.universe = universe
         self.min_weight = min_weight
         self.max_weight = max_weight
@@ -207,9 +211,21 @@ class StrategyConstraint:
         self.max_active_weight = max_active_weight
         self.fit()
 
+    def get_leverage(self) -> None:
+        leverage = st.select_slider(
+            label="Leverage",
+            options=np.arange(-100, 300 + 10, 10),
+            value=self.leverage,
+            key=f"{self.prefix}_leverage",
+        )
+
+        if leverage is not None:
+            self.leverage = leverage
+
     def fit(self) -> None:
         layout = "h"
         funcs = [
+            self.get_leverage,
             self.get_weight_bound,
             self.get_return_bound,
             self.get_volatility_bound,
@@ -322,7 +338,9 @@ class StrategyConstraint:
             )
 
         if len(universe) <= 5:
-            for col, asset in zip(st.columns(len(universe)), universe.to_dict("records")):
+            for col, asset in zip(
+                st.columns(len(universe)), universe.to_dict("records")
+            ):
                 with col:
                     minimum, maximum = self.get_bounds(
                         label=f"{asset['ticker']}",
@@ -337,9 +355,7 @@ class StrategyConstraint:
                     continue
                 constraints.append(
                     {
-                        "assets": list(
-                            asset
-                        ),
+                        "assets": list(asset),
                         "bounds": (
                             minimum / 100 if minimum else None,
                             maximum / 100 if maximum else None,
@@ -347,13 +363,12 @@ class StrategyConstraint:
                     }
                 )
 
-
-
-
         return constraints
 
     def dict(self) -> Dict:
         out = {}
+        if self.leverage:
+            out["leverage"] = self.leverage / 100
         if self.min_weight:
             out["min_weight"] = self.min_weight / 100
         if self.max_weight:

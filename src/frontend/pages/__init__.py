@@ -10,10 +10,10 @@ from .futures import Futures
 
 __all__ = [
     "Dashboard",
-    "MultiStrategy",
     "GlobalMacro",
     "EfficientFrontier",
     "AlphaFactors",
+    "MultiStrategy",
     "AboutMe",
     "Glossary",
     "Futures",

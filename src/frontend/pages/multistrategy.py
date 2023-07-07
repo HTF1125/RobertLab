@@ -18,6 +18,8 @@ class MultiStrategy(BasePage):
         self.get_strategy().clear()
 
     def load_page(self):
+
+        multistrategy = strategies.MultiStrategy()
         universe = components.get_universe()
         regime = components.get_regime()
 
@@ -43,16 +45,15 @@ class MultiStrategy(BasePage):
 
             if submitted:
                 with st.spinner(text="Backtesting in progress..."):
-                    components.get_strategy().add_strategy(
+                    multistrategy.add_strategy(
                         universe=universe,
                         regime=regime,
                         **params,
                     )
 
-        multistrategy = components.get_strategy()
 
         if multistrategy:
-            st.button(label="Clear Strategies", on_click=self.clear_strategies)
+            st.button(label="Clear Strategies", on_click=multistrategy.clear)
 
             fig = go.Figure()
 

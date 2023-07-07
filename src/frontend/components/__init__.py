@@ -209,28 +209,28 @@ def save_strategy(multistrategy: MultiStrategy, name: str, new_name: str):
 def plot_multistrategy(multistrategy: MultiStrategy, allow_save: bool = True) -> None:
     for name, strategy in multistrategy.items():
         with st.expander(label=name, expanded=False):
-            with st.form(f"{name}"):
-                new_name = st.text_input(
-                    label="Customize the strategy name",
-                    key=f"custom name strategy {name}",
-                    value=name,
-                )
-                action = st.radio(
-                    label="Action",
-                    options=["Save", "Delete"],
-                    horizontal=True,
-                    label_visibility="collapsed",
-                )
-                submitted = st.form_submit_button(label="submit")
-                if submitted:
-                    if action == "Save":
-                        save_strategy(multistrategy, name, new_name)
-                    elif action == "Delete":
-                        delete_strategy(multistrategy, name)
+            # with st.form(f"{name}"):
+            #     new_name = st.text_input(
+            #         label="Customize the strategy name",
+            #         key=f"custom name strategy {name}",
+            #         value=name,
+            #     )
+            #     action = st.radio(
+            #         label="Action",
+            #         options=["Save", "Delete"],
+            #         horizontal=True,
+            #         label_visibility="collapsed",
+            #     )
+            #     submitted = st.form_submit_button(label="submit")
+            #     if submitted:
+            #         if action == "Save":
+            #             save_strategy(multistrategy, name, new_name)
+            #         elif action == "Delete":
+            #             delete_strategy(multistrategy, name)
 
-            signature = strategy.get_signature()
-            del signature["book"]
-            st.json(signature, expanded=False)
+            # signature = strategy.get_signature()
+            # del signature["book"]
+            # st.json(signature, expanded=False)
 
             (
                 performance_tab,
