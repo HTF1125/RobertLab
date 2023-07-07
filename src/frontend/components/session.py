@@ -1,7 +1,7 @@
 
 import pandas as pd
 import streamlit as st
-from src.core import universes, portfolios, factors, states
+from src.core import universes, portfolios, factors, regimes
 
 
 class Session:
@@ -38,5 +38,5 @@ class Session:
 
 
     @staticmethod
-    def get_state() -> states.State:
-        return states.FixedTwoState()
+    def get_regime() -> regimes.Regime:
+        return regimes.get(st.session_state["regime"])

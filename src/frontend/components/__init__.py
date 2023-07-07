@@ -6,21 +6,14 @@ import pandas as pd
 import streamlit as st
 import plotly.graph_objects as go
 from src.core.strategies.multi import MultiStrategy
-from src.core import universes, benchmarks, portfolios, factors, states
+from src.core import universes, benchmarks, portfolios, factors, regimes
 from .session import Session
+from .constraint_set import PortfolioModelSet
 
-def get_states() -> None:
-    universe = str(
-        st.selectbox(
-            label="State",
-            options=states.__all__,
-            index=states.__all__.index(
-                st.session_state.get("state", states.__all__[0])
-            ),
-            help="Select investment universe.",
-        )
-    )
-    st.session_state["state"] = universe
+from ..components.future import StrategyParameters, StrategyConstraint, get_universe, get_regime, get_strategy
+
+
+
 
 
 def get_factor() -> None:
@@ -40,9 +33,9 @@ def get_allow_fractional_shares() -> bool:
     )
 
 
-def get_frequency() -> None:
+def get_frequency() -> str:
     options = ["D", "M", "Q", "Y"]
-    frequency = str(
+    return str(
         st.selectbox(
             label="Freq",
             options=options,
@@ -52,11 +45,10 @@ def get_frequency() -> None:
             help="Select strategy's rebalancing frequency.",
         )
     )
-    st.session_state["frequency"] = frequency
 
 
-def get_inception() -> None:
-    st.session_state["inception"] = pd.Timestamp(
+def get_inception() -> pd.Timestamp:
+    return pd.Timestamp(
         str(
             st.date_input(
                 label="Incep",
@@ -66,8 +58,8 @@ def get_inception() -> None:
     )
 
 
-def get_commission() -> None:
-    st.session_state["commission"] = int(
+def get_commission() -> int:
+    return int(
         st.number_input(
             label="Comm",
             min_value=0,
@@ -79,8 +71,8 @@ def get_commission() -> None:
     )
 
 
-def get_min_window() -> None:
-    st.session_state["min_window"] = int(
+def get_min_window() -> int:
+    return int(
         st.number_input(
             label="Win",
             min_value=2,
@@ -93,40 +85,16 @@ def get_min_window() -> None:
 
 
 def get_portfolio():
-    portfolio = str(
-        st.selectbox(
-            label="Port",
-            options=portfolios.__all__,
-            help="Select strategy's rebalancing frequency.",
+    return portfolios.get(
+        str(
+            st.selectbox(
+                label="Port",
+                options=portfolios.__all__,
+                help="Select strategy's rebalancing frequency.",
+            )
         )
     )
-    st.session_state["portfolio"] = portfolio
 
-
-def get_benchmark() -> benchmarks.Benchmark:
-    benchmark = str(
-        st.selectbox(
-            label="BM",
-            options=benchmarks.__all__,
-            help="Select strategy's rebalancing frequency.",
-        )
-    )
-    return benchmarks.get(benchmark)
-
-
-def get_universe():
-    universe = str(
-        st.selectbox(
-            label="Universe",
-            options=universes.__all__,
-            index=universes.__all__.index(
-                st.session_state.get("universe", universes.__all__[0])
-            ),
-            help="Select investment universe.",
-        )
-    )
-    st.session_state["universe"] = universe
-    return universe
 
 
 def get_dates(

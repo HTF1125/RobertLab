@@ -3,7 +3,6 @@ import warnings
 from typing import Optional
 import numpy as np
 from .objectives import Objectives
-from scipy.stats import percentileofscore
 
 
 class Constraints(Objectives):
@@ -12,15 +11,15 @@ class Constraints(Objectives):
         self.constraints = {}
 
     @property
-    def sum_weight(self) -> float:
-        return self._sum_weight
+    def leverage(self) -> float:
+        return self._leverage
 
-    @sum_weight.setter
-    def sum_weight(self, sum_weight: float) -> None:
-        self._sum_weight = sum_weight
+    @leverage.setter
+    def leverage(self, leverage: float) -> None:
+        self._leverage = leverage
         self.constraints["sum_weight"] = {
             "type": "eq",
-            "fun": lambda w: np.sum(w) - sum_weight,
+            "fun": lambda w: np.sum(w) - leverage - 1.0,
         }
 
     @property
@@ -287,31 +286,3 @@ class Constraints(Objectives):
             ),
         }
 
-    @property
-    def min_factor_percentile(self) -> Optional[float]:
-        return self._min_factor_percentile
-
-    @min_factor_percentile.setter
-    def min_factor_percentile(self, min_factor_percentile: Optional[float]) -> None:
-        if min_factor_percentile is None:
-            return
-        self._min_factor_percentile = min_factor_percentile
-        if self.factors is not None:
-            if self.weights_bm is not None:
-                factor = np.dot(self.weights_bm, np.array(self.factors))
-                score = percentileofscore(self.factors, score=factor)
-                try:
-                    lbound = self.factors.quantile(
-                        min(score / 100 + self.min_factor_percentile, 1.0)
-                    )
-                except:
-                    print(self.factors, self.weights_bm, self.assets)
-                    raise
-            else:
-                lbound = self.factors.quantile(0.5 + min_factor_percentile)
-            self.constraints["min_factor_percentile"] = {
-                "type": "ineq",
-                "fun": lambda w: np.dot(w, np.array(self.factors)) - lbound,
-            }
-
-            self._min_factor_percentile = min_factor_percentile

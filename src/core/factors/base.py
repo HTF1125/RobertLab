@@ -11,11 +11,11 @@ class Factor(object):
     def __init__(self) -> None:
         self.factor = pd.DataFrame()
 
-    def __repr__(self) -> str:
-        return "Base Factors"
+    # def __repr__(self) -> str:
+    #     return "Base Factors"
 
-    def __str__(self) -> str:
-        return "Base Factors"
+    # def __str__(self) -> str:
+    #     return "Base Factors"
 
     def get_factor(
         self, tickers: Union[str, List, Set, Tuple], method: str = "standard_scaler"

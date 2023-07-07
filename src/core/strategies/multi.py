@@ -4,7 +4,7 @@ import json
 from pathlib import Path
 from typing import Optional, Tuple, List, Dict, Any
 import pandas as pd
-from src.core import portfolios, factors, universes
+from src.core import portfolios, factors, universes, regimes
 from .base import Strategy, Book, Rebalancer
 
 
@@ -19,9 +19,10 @@ class MultiStrategy(dict):
                 with open(file=file_path, mode="r", encoding="utf-8") as file:
                     signature = json.load(file)
                 universe = universes.get(signature.pop("universe"))
-                # benchmark = benchmarks.get(signature.pop("benchmark"))
-                optimizer = portfolios.get(signature.pop("portfolio"))
+                portfolio = portfolios.get(signature.pop("portfolio"))
                 factor = factors.MultiFactor(*signature.pop("factors", ()))
+                regime = regimes.get(signature.pop("regime"))
+                regime.constraint = signature.pop("constraint")
                 portfolio_constraints = signature.pop("portfolio_constraints")
                 specific_constraints = signature.pop("specific_constraints")
                 commission = signature.pop("commission")
@@ -32,12 +33,12 @@ class MultiStrategy(dict):
                 book = Book(**signature.pop("book"))
                 self.add_strategy(
                     name=filename.replace(".json", ""),
-                    portfolio=optimizer,
+                    portfolio=portfolio,
                     factor=factor,
-                    portfolio_constraints=portfolio_constraints,
+                    regime=regime,
+                    portfolio_constraint=portfolio_constraints,
                     specific_constraints=specific_constraints,
                     universe=universe,
-                    # benchmark=benchmark,
                     commission=commission,
                     frequency=frequency,
                     allow_fractional_shares=allow_fractional_shares,
@@ -53,9 +54,11 @@ class MultiStrategy(dict):
         universe: universes.Universe,
         name: Optional[str] = None,
         portfolio: portfolios.Portfolio = portfolios.EqualWeight(),
+        leverage: float = 1.0,
         factor: factors.MultiFactor = factors.MultiFactor(),
-        portfolio_constraints: Optional[Dict[str, float]] = None,
+        portfolio_constraint: Optional[Dict[str, float]] = None,
         specific_constraints: Optional[List[Dict[str, Any]]] = None,
+        regime: regimes.Regime = regimes.OneRegime(),
         inception: Optional[str] = None,
         frequency: str = "M",
         commission: int = 10,
@@ -81,9 +84,11 @@ class MultiStrategy(dict):
             allow_fractional_shares=allow_fractional_shares,
             commission=commission,
             portoflio=portfolio,
-            portfolio_constraints=portfolio_constraints,
+            portfolio_constraint=portfolio_constraint,
             specific_constraints=specific_constraints,
             factor=factor,
+            leverage=leverage,
+            regime=regime,
         )
         if book is not None:
             strategy.book = book
@@ -124,12 +129,6 @@ class MultiStrategy(dict):
         if name in self:
             return self[name].get_signature()
         raise KeyError()
-
-    @property
-    def performance_alpha(self) -> pd.DataFrame:
-        return pd.DataFrame(
-            {name: strategy.performance_alpha for name, strategy in self.items()}
-        )
 
     def delete(self, name: str) -> bool:
         if name not in self:

@@ -16,7 +16,7 @@ class BaseProperty:
             return None
 
     @expected_returns.setter
-    def expected_returns(self, expected_returns: pd.Series) -> None:
+    def expected_returns(self, expected_returns: Optional[pd.Series]) -> None:
         """Set expected returns."""
         if expected_returns is None:
             return
@@ -32,7 +32,7 @@ class BaseProperty:
             return None
 
     @covariance_matrix.setter
-    def covariance_matrix(self, covariance_matrix: pd.DataFrame) -> None:
+    def covariance_matrix(self, covariance_matrix: Optional[pd.DataFrame]) -> None:
         """Set covariance matrix."""
         if covariance_matrix is not None:
             self._covariance_matrix = covariance_matrix
@@ -48,7 +48,7 @@ class BaseProperty:
             return None
 
     @correlation_matrix.setter
-    def correlation_matrix(self, correlation_matrix: pd.DataFrame) -> None:
+    def correlation_matrix(self, correlation_matrix: Optional[pd.DataFrame]) -> None:
         """Set correlation matrix."""
         if correlation_matrix is not None:
             self._correlation_matrix = correlation_matrix
@@ -64,7 +64,7 @@ class BaseProperty:
             return None
 
     @prices.setter
-    def prices(self, prices: pd.DataFrame) -> None:
+    def prices(self, prices: Optional[pd.DataFrame]) -> None:
         """Set asset prices."""
         if prices is None:
             return
@@ -97,7 +97,7 @@ class BaseProperty:
             return None
 
     @factors.setter
-    def factors(self, factors: pd.Series) -> None:
+    def factors(self, factors: Optional[pd.Series]) -> None:
         if factors is None or not isinstance(factors, pd.Series):
             return
         self._factors = factors.reindex(index=self.assets, fill_value=0).fillna(0)
@@ -110,7 +110,7 @@ class BaseProperty:
             return None
 
     @weights_bm.setter
-    def weights_bm(self, weights_bm: pd.Series) -> None:
+    def weights_bm(self, weights_bm: Optional[pd.Series]) -> None:
         if weights_bm is not None:
             weights_bm = weights_bm.reindex(self.assets, fill_value=0.0).fillna(0)
             self._weights_bm = weights_bm

@@ -4,7 +4,7 @@ import logging
 from pathlib import Path
 from typing import Optional
 import pandas as pd
-from src.core import universes, benchmarks, metrics
+from src.core import universes, metrics, regimes
 
 """ROBERT"""
 from typing import Optional, List, Dict, Any
@@ -29,17 +29,16 @@ class Rebalancer:
         factors = strategy.factor.get_factor_by_date(
             tickers=list(prices.columns), date=strategy.date
         )
+        if len(factors) == 0:
+            factors = None
+        constraint = strategy.regime.get_portfolio_constraint(date=strategy.date)
+
         opt = strategy.portfolio.from_prices(
-            prices=prices,
-            span=None,
+            prices=prices, span=None,
             factors=factors,
-            # weights_bm=pd.Series(0, index=prices.columns),
-            # prices_bm=strategy.benchmark.get_performance(strategy.date),
-            # weights_bm=strategy.benchmark.get_weights(strategy.date),
-            # sum_weight=0.0, min_weight = -1, max_weight = 1,
-            weights_bm=pd.Series(1 / len(prices.columns), index=prices.columns),
-            **strategy.portfolio_constraints,
-        ).set_specific_constraints(strategy.specific_constraints)
+            **constraint["portfolio_constraint"],
+            specific_constraints=constraint["asset_constraint"],
+        )
         return opt.solve()
 
 
@@ -83,8 +82,8 @@ class Book:
     def __init__(
         self,
         date: pd.Timestamp,
-        value: float = 0.,
-        cash: float = 0.,
+        value: float = 0.0,
+        cash: float = 0.0,
         shares=pd.Series(dtype=float),
         capitals=pd.Series(dtype=float),
         allocations=pd.Series(dtype=float),
@@ -126,6 +125,7 @@ class Strategy:
         self,
         rebalancer: Rebalancer,
         universe: universes.Universe,
+        leverage: float = 0.0,
         inception: Optional[str] = None,
         frequency: str = "M",
         initial_investment: int = 10_000,
@@ -134,11 +134,14 @@ class Strategy:
         min_window: int = 1,
         portoflio: portfolios.Portfolio = portfolios.EqualWeight(),
         factor: MultiFactor = MultiFactor(),
-        portfolio_constraints: Optional[Dict[str, float]] = None,
+        regime: regimes.Regime = regimes.OneRegime(),
+        portfolio_constraint: Optional[Dict[str, float]] = None,
         specific_constraints: Optional[List[Dict[str, Any]]] = None,
     ) -> None:
         self.rebalancer = rebalancer
         self.universe = universe
+        self.leverage = leverage
+        self.regime = regime
         self.inception = inception or self.universe.inception
         self.frequency = frequency
         self.min_window = min_window
@@ -147,7 +150,7 @@ class Strategy:
         self.allow_fractional_shares = allow_fractional_shares
         self.portfolio = portoflio
         self.factor = factor
-        self.portfolio_constraints = portfolio_constraints or {}
+        self.portfolio_constraint = portfolio_constraint or {}
         self.specific_constraints = specific_constraints or []
         self.book = Book(
             date=pd.Timestamp(self.inception),
@@ -197,13 +200,19 @@ class Strategy:
                         )
                         trade_shares = trade_shares[trade_shares != 0]
                         # Store allocations & trades.
-                        self.book.records["trades"][str(self.date)] = trade_shares.to_dict()
+                        self.book.records["trades"][
+                            str(self.date)
+                        ] = trade_shares.to_dict()
                         trade_capitals = trade_shares.multiply(prices_now)
-                        trade_cost = trade_capitals.abs().sum() * (self.commission / 10_000)
+                        trade_cost = trade_capitals.abs().sum() * (
+                            self.commission / 10_000
+                        )
                         self.book.cash -= trade_capitals.sum()
                         self.book.cash -= trade_cost
                         self.book.shares = target_shares
-                        self.book.capitals = self.book.shares.multiply(prices_now).dropna()
+                        self.book.capitals = self.book.shares.multiply(
+                            prices_now
+                        ).dropna()
                         self.book.value = sum(self.book.capitals) + self.book.cash
                         self.book.allocations = pd.Series(dtype=float)
                 self.book.records["value"][str(self.date)] = self.book.value
@@ -279,9 +288,11 @@ class Strategy:
             "frequency": self.frequency,
             "commission": self.commission,
             "allow_fractional_shares": self.allow_fractional_shares,
-            "portfolio_constraints": self.portfolio_constraints,
+            "portfolio_constraints": self.portfolio_constraint,
             "specific_constraints": self.specific_constraints,
             "factor": tuple(self.factor.keys()),
+            "regime": self.regime.__class__.__name__,
+            "constraint": self.regime.constraint,
             "book": self.book.dict(),
         }
 

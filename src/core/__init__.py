@@ -8,6 +8,6 @@ from . import portfolios
 from . import benchmarks
 from . import universes
 from . import metrics
-from . import states
+from . import regimes
 from .factors import MultiFactor
 from .strategies import MultiStrategy

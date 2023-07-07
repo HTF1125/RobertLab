@@ -25,7 +25,7 @@ def get(factor: Union[str, Factor, Type[Factor]]) -> "Factor":
         raise ValueError(f"Invalid factor: {factor}") from exc
 
 
-class PriceMomentum(Factor):
+class PxMom(Factor):
     months = 1
     skip_months = 1
     absolute = False
@@ -39,103 +39,103 @@ class PriceMomentum(Factor):
         )
 
 
-class PriceMomentum1M(PriceMomentum):
+class PxMom1M(PxMom):
     months = 1
 
 
-class PriceMomentum2M(PriceMomentum):
+class PxMom2M(PxMom):
     months = 2
 
 
-class PriceMomentum3M(PriceMomentum):
+class PxMom3M(PxMom):
     months = 3
 
 
-class PriceMomentum6M(PriceMomentum):
+class PxMom6M(PxMom):
     months = 6
 
 
-class PriceMomentum9M(PriceMomentum):
+class PxMom9M(PxMom):
     months = 9
 
 
-class PriceMomentum12M(PriceMomentum):
+class PxMom12M(PxMom):
     months = 12
 
 
-class PriceMomentum18M(PriceMomentum):
+class PxMom18M(PxMom):
     months = 18
 
 
-class PriceMomentum24M(PriceMomentum):
+class PxMom24M(PxMom):
     months = 24
 
 
-class PriceMomentum36M(PriceMomentum):
+class PxMom36M(PxMom):
     months = 36
 
 
-class PriceMomentum6M1M(PriceMomentum):
+class PxMom6M1M(PxMom):
     months = 6
     skip_months = 1
 
 
-class PriceMomentum6M2M(PriceMomentum):
+class PxMom6M2M(PxMom):
     months = 6
     skip_months = 2
 
 
-class PriceMomentum9M1M(PriceMomentum):
+class PxMom9M1M(PxMom):
     months = 9
     skip_months = 1
 
 
-class PriceMomentum9M2M(PriceMomentum):
+class PxMom9M2M(PxMom):
     months = 9
     skip_months = 2
 
 
-class PriceMomentum12M1M(PriceMomentum):
+class PxMom12M1M(PxMom):
     months = 12
     skip_months = 1
 
 
-class PriceMomentum12M2M(PriceMomentum):
+class PriceMomentum12M2M(PxMom):
     months = 12
     skip_months = 2
 
 
-class PriceMomentum18M1M(PriceMomentum):
+class PriceMomentum18M1M(PxMom):
     months = 18
     skip_months = 1
 
 
-class PriceMomentum18M2M(PriceMomentum):
+class PriceMomentum18M2M(PxMom):
     months = 18
     skip_months = 2
 
 
-class PriceMomentum24M1M(PriceMomentum):
+class PriceMomentum24M1M(PxMom):
     months = 24
     skip_months = 1
 
 
-class PriceMomentum24M2M(PriceMomentum):
+class PriceMomentum24M2M(PxMom):
     months = 24
     skip_months = 2
 
 
-class PriceMomentum36M1M(PriceMomentum):
+class PriceMomentum36M1M(PxMom):
     months = 36
     skip_months = 1
 
 
-class PriceMomentum36M2M(PriceMomentum):
+class PriceMomentum36M2M(PxMom):
     months = 36
     skip_months = 2
 
 
-class PriceMomentumAbs12M(PriceMomentum):
+class PriceMomentumAbs12M(PxMom):
     months = 12
     absolute = True
 
@@ -153,12 +153,12 @@ class PriceMomentumDiffusion(Factor):
         return (
             pd.concat(
                 objs=[
-                    PriceMomentum1M().fit(tickers).stack(),
-                    PriceMomentum2M().fit(tickers).stack(),
-                    PriceMomentum3M().fit(tickers).stack(),
-                    PriceMomentum6M().fit(tickers).stack(),
-                    PriceMomentum9M().fit(tickers).stack(),
-                    PriceMomentum12M().fit(tickers).stack(),
+                    PxMom1M().fit(tickers).stack(),
+                    PxMom2M().fit(tickers).stack(),
+                    PxMom3M().fit(tickers).stack(),
+                    PxMom6M().fit(tickers).stack(),
+                    PxMom9M().fit(tickers).stack(),
+                    PxMom12M().fit(tickers).stack(),
                 ],
                 axis=1,
             )

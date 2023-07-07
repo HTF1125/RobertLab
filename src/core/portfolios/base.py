@@ -1,7 +1,9 @@
 """ROBERT"""
+import sys
 from abc import abstractmethod
-from typing import Optional, Callable, Dict, List, Tuple, Any
+from typing import Optional, Callable, Dict, List, Tuple, Any, Type, Union
 from scipy.optimize import minimize
+from scipy.stats import percentileofscore
 import numpy as np
 import pandas as pd
 from src.core import metrics
@@ -15,10 +17,8 @@ class Portfolio(Constraints):
         super().__init__()
         self.min_weight = 0.0
         self.max_weight = 1.0
-        self.sum_weight = 1.0
+        self.leverage = 0.0
         self.risk_free = 0.0
-        self.min_factor_percentile = 0.2
-
 
     @classmethod
     def from_prices(
@@ -39,6 +39,7 @@ class Portfolio(Constraints):
         expected_returns: Optional[pd.Series] = None,
         covariance_matrix: Optional[pd.DataFrame] = None,
         correlation_matrix: Optional[pd.DataFrame] = None,
+        leverage: float = 0.0,
         prices: Optional[pd.DataFrame] = None,
         factors: Optional[pd.Series] = None,
         risk_free: float = 0.0,
@@ -46,7 +47,6 @@ class Portfolio(Constraints):
         weights_bm: Optional[pd.Series] = None,
         min_weight: float = 0.0,
         max_weight: float = 1.0,
-        sum_weight: float = 1.0,
         min_active_weight: Optional[float] = None,
         max_active_weight: Optional[float] = None,
         min_return: Optional[float] = None,
@@ -57,6 +57,7 @@ class Portfolio(Constraints):
         max_exante_tracking_error: Optional[float] = None,
         min_expost_tracking_error: Optional[float] = None,
         max_expost_tracking_error: Optional[float] = None,
+        specific_constraints: Optional[List[Dict[str, Any]]] = None,
         min_factor_percentile: float = 0.2,
     ) -> "Portfolio":
         self.expected_returns = expected_returns
@@ -66,8 +67,7 @@ class Portfolio(Constraints):
         self.risk_free = risk_free
         self.prices_bm = prices_bm
         self.weights_bm = weights_bm
-        self.factors = factors
-        self.sum_weight = sum_weight
+        self.leverage = leverage
         self.min_weight = min_weight
         self.max_weight = max_weight
         self.min_active_weight = min_active_weight
@@ -81,6 +81,10 @@ class Portfolio(Constraints):
         self.min_expost_tracking_error = min_expost_tracking_error
         self.max_expost_tracking_error = max_expost_tracking_error
         self.min_factor_percentile = min_factor_percentile
+        self.factors = factors
+        if specific_constraints is not None:
+            self.set_specific_constraints(specific_constraints)
+        self.min_factor_percentile = 0.2
         return self
 
     def set_specific_constraints(
@@ -133,10 +137,9 @@ class Portfolio(Constraints):
             weights = pd.Series(data=weights, index=self.assets, name="weights").round(
                 6
             )
-            weights = weights[weights != 0.0]
             return weights
 
-        if self.min_factor_percentile is not None:
+        if self.factors is not None and self.min_factor_percentile is not None:
             self.min_factor_percentile -= 0.05
             if self.min_factor_percentile < 0.0:
                 raise ValueError(
@@ -146,6 +149,10 @@ class Portfolio(Constraints):
                 objective=objective, extra_constraints=extra_constraints
             )
 
+        print(self.constraints)
+        print(dir(self))
+
+
         raise ValueError("Portfolio Optimization Failed.")
 
     @abstractmethod
@@ -153,3 +160,26 @@ class Portfolio(Constraints):
         raise NotImplementedError(
             "Must implement `solve` method for subclasses of Optimizer."
         )
+
+    @property
+    def min_factor_percentile(self) -> Optional[float]:
+        return self._min_factor_percentile
+
+    @min_factor_percentile.setter
+    def min_factor_percentile(self, min_factor_percentile: Optional[float]) -> None:
+        if min_factor_percentile is None:
+            return
+        self._min_factor_percentile = min_factor_percentile
+
+        if self.factors is not None:
+            if self.weights_bm is not None:
+                w = self.weights_bm.copy()
+            else:
+                w = self.solve()
+
+            factor = np.dot(w, np.array(self.factors))
+            self.constraints["min_factor_percentile"] = {
+                "type": "ineq",
+                "fun": lambda w: np.dot(w, np.array(self.factors))
+                - (factor + self.min_factor_percentile),
+            }
