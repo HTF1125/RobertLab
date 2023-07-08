@@ -3,7 +3,7 @@ from typing import Type, Union
 from .base import Regime
 from .ext import *
 
-__all__ = ["OneRegime", "VolatilityState", "UsLeadingIndicator", "InflationRegime"]
+__all__ = ["OneRegime", "VolatilityRegime", "UsLeiRegime"]
 
 
 def get(regime: Union[str, Regime, Type[Regime]]) -> Regime:

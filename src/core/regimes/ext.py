@@ -1,56 +1,62 @@
+from typing import Union
 import pandas as pd
 from src.backend import data
 from .base import Regime
 
 
 class OneRegime(Regime):
-    states = ("AllState",)
+    __states__ = ("AllState",)
 
-    def get_state(self, date=None) -> str:
+    def get_state_by_date(self, date: Union[str, pd.Timestamp]) -> str:
         return "AllState"
 
 
-class VolatilityState(Regime):
-    states = ("NormalVol", "ExtremeVol")
-
-    def fit(self):
-        self.data = data.get_prices("^VIX")
-
-    def get_state(self, date=None):
-        if self.data.empty:
-            self.fit()
-
-        if date is not None:
-            d = self.data.loc[:date]
-        else:
-            d = self.data
-        d = d.iloc[-252 * 10 :]
-        score = (d.iloc[-1] - d.mean()) / d.std()
-        score = score.iloc[0]
-        if score >= 0.8 or score <= -0.8:
-            return "ExtremeVol"
-        return "NormalVol"
 
 
-class UsLeadingIndicator(Regime):
-    states = ("UpRoC", "DownRoC")
+class VolatilityRegime(Regime):
+    __states__ = ("NormalVol", "ExtremeVol")
 
-    def fit(self):
-        self.data = data.get_macro("USALOLITONOSTSAM").resample("M").last().iloc[:, 0]
-        self.data.index = self.data.index + pd.DateOffset(months=1)
+    @property
+    def states(self) -> pd.Series:
+        if self._states.empty:
+            d = data.get_price("^VIX")
 
-    def get_state(self, date=None):
-        if self.data.empty:
-            self.fit()
+            roll = d.rolling(252 * 10)
+            score = (d - roll.mean()) / roll.std()
+            score = score.abs()
 
-        if date is not None:
-            d = self.data.loc[:date]
-        else:
-            d = self.data
-        rate_of_change = d.diff().diff().iloc[-1]
+            self._states = (
+                score.map(
+                    lambda x: self.__states__[0] if x < 0.6 else self.__states__[1]
+                )
+                .resample("D")
+                .last()
+                .ffill()
+                .dropna()
+            )
+            self._states.index.name = "Date"
+            self._states.name = "State"
+        return self._states
 
-        if rate_of_change > 0:
-            return "UpRoC"
-        return "DownRoC"
 
+class UsLeiRegime(Regime):
+    __states__ = ("Recovery", "Contraction")
 
+    @property
+    def states(self) -> pd.Series:
+        if self._states.empty:
+            d = data.get_macro("USALOLITONOSTSAM").resample("M").last().iloc[:, 0]
+            d.index = d.index + pd.DateOffset(months=1)
+            rate_of_change = d.diff().diff()
+            self._states = (
+                rate_of_change.map(
+                    lambda x: self.__states__[0] if x > 0 else self.__states__[1]
+                )
+                .resample("D")
+                .last()
+                .ffill()
+                .dropna()
+            )
+            self._states.index.name = "Date"
+            self._states.name = "State"
+        return self._states

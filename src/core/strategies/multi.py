@@ -22,9 +22,7 @@ class MultiStrategy(dict):
                 portfolio = portfolios.get(signature.pop("portfolio"))
                 factor = factors.MultiFactor(*signature.pop("factors", ()))
                 regime = regimes.get(signature.pop("regime"))
-                regime.constraint = signature.pop("constraint")
-                portfolio_constraints = signature.pop("portfolio_constraints")
-                specific_constraints = signature.pop("specific_constraints")
+                constraint = signature.pop("constraint")
                 commission = signature.pop("commission")
                 frequency = signature.pop("frequency")
                 allow_fractional_shares = signature.pop("allow_fractional_shares")
@@ -40,8 +38,7 @@ class MultiStrategy(dict):
                     portfolio=portfolio,
                     factor=factor,
                     regime=regime,
-                    portfolio_constraint=portfolio_constraints,
-                    specific_constraints=specific_constraints,
+                    constraint=constraint,
                     universe=universe,
                     commission=commission,
                     frequency=frequency,
@@ -60,9 +57,8 @@ class MultiStrategy(dict):
         portfolio: portfolios.Portfolio = portfolios.EqualWeight(),
         leverage: float = 1.0,
         factor: factors.MultiFactor = factors.MultiFactor(),
-        portfolio_constraint: Optional[Dict[str, float]] = None,
-        specific_constraints: Optional[List[Dict[str, Any]]] = None,
         regime: regimes.Regime = regimes.OneRegime(),
+        constraint: Optional[Dict] = None,
         inception: Optional[str] = None,
         frequency: str = "M",
         commission: int = 10,
@@ -87,8 +83,7 @@ class MultiStrategy(dict):
             allow_fractional_shares=allow_fractional_shares,
             commission=commission,
             portoflio=portfolio,
-            portfolio_constraint=portfolio_constraint,
-            specific_constraints=specific_constraints,
+            constraint=constraint,
             factor=factor,
             leverage=leverage,
             regime=regime,

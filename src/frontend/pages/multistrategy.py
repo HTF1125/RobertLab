@@ -10,34 +10,41 @@ from .. import components
 
 
 class MultiStrategy(BasePage):
+    def load_states(self) -> None:
+        if not "local_multistrategy" in st.session_state:
+            st.session_state["local_multistrategy"] = strategies.MultiStrategy()
+
     @staticmethod
     def get_strategy() -> strategies.MultiStrategy:
-        return st.session_state["strategy"]
+        return st.session_state["local_multistrategy"]
 
     def clear_strategies(self):
         self.get_strategy().clear()
 
     def load_page(self):
-
-        multistrategy = strategies.MultiStrategy()
+        multistrategy = self.get_strategy()
         universe = components.get_universe()
         regime = components.get_regime()
 
         # with st.expander(label="Custom Constraints:", expanded=False):
-        if regime.states:
-            for col, state in zip(st.columns(len(regime.states)), regime.states):
+        constraint = {}
+        if regime.__states__:
+            for col, state in zip(
+                st.columns(len(regime.__states__)), regime.__states__
+            ):
                 with col:
                     with st.expander(state, expanded=True):
                         state_constraint = {}
-                        constraint = components.StrategyConstraint(prefix=state)
-                        state_constraint["portfolio_constraint"] = constraint.dict()
+                        constraintSet = components.StrategyConstraint(prefix=state)
+                        state_constraint["portfolio_constraint"] = constraintSet.dict()
 
                         state_constraint[
                             "asset_constraint"
-                        ] = constraint.get_asset_constraints(
+                        ] = constraintSet.get_asset_constraints(
                             universe=pd.DataFrame(universe.ASSETS)
                         )
-                        regime.set_state_constraint(state, state_constraint)
+                        constraint[state] = state_constraint
+
         with st.form("AssetAllocationForm"):
             params = components.StrategyParameters().dict()
 
@@ -48,9 +55,9 @@ class MultiStrategy(BasePage):
                     multistrategy.add_strategy(
                         universe=universe,
                         regime=regime,
+                        constraint=constraint,
                         **params,
                     )
-
 
         if multistrategy:
             st.button(label="Clear Strategies", on_click=multistrategy.clear)
@@ -71,7 +78,9 @@ class MultiStrategy(BasePage):
                 )
 
             fig.update_layout(
-                title="Performance", legend_orientation="h", hovermode="x unified",
+                title="Performance",
+                legend_orientation="h",
+                hovermode="x unified",
                 yaxis_tickformat=".0%",
             )
             st.plotly_chart(

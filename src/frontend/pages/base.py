@@ -272,12 +272,12 @@ class BasePage:
     def plotly(self, fig: go.Figure, height: int =300) -> None:
 
         fig.update_layout(
-                plot_bgcolor='rgba(0,0,0,0)',  # Set plot background color as transparent
-                paper_bgcolor='rgba(0,0,0,0)',  # Set paper background color as transparent
-                showlegend=False,  # Hide the legend for a cleaner border look
+                # plot_bgcolor='rgba(0,0,0,0)',  # Set plot background color as transparent
+                # paper_bgcolor='rgba(0,0,0,0)',  # Set paper background color as transparent
+                # showlegend=False,  # Hide the legend for a cleaner border look
                 xaxis=dict(showgrid=False),  # Hide the x-axis gridlines
                 yaxis=dict(showgrid=False),  # Hide the y-axis gridlines
-                autosize=False,  # Disable autosizing to maintain border consistency
+                # autosize=False,  # Disable autosizing to maintain border consistency
                 # width=600,  # Set the width of the chart
                 height=height,  # Set the height of the chart
                 margin=dict(l=20, r=20, t=20, b=20),  # Adjust the margins as needed

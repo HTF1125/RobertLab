@@ -14,19 +14,25 @@ class Dashboard(BasePage):
 
         multistrategy = get_strategy()
 
+        self.subheader("Strategy Metrics")
+        self.divider()
+        st.table(multistrategy.analytics.T)
+
+
         if multistrategy:
             fig = go.Figure()
 
             for name, strategy in multistrategy.items():
                 performance = strategy.performance / strategy.initial_investment - 1
                 num_points = len(performance)
-                indices = np.linspace(0, num_points - 1, 50, dtype=int)
+                indices = np.linspace(0, num_points - 1, 100, dtype=int)
                 performance = performance.iloc[indices]
                 fig.add_trace(
                     go.Scatter(
                         x=performance.index,
                         y=performance.values,
                         name=name,
+                        showlegend=True,
                     )
                 )
 
@@ -36,10 +42,10 @@ class Dashboard(BasePage):
                 yaxis_tickformat=".0%",
             )
 
-            self.subheader("Strategy Metrics")
-            self.divider()
-            st.table(multistrategy.analytics.T)
+
             self.subheader("Strategy Performance")
             self.divider()
             self.plotly(fig)
-            plot_multistrategy(multistrategy, allow_save=False)
+
+
+            # plot_multistrategy(multistrategy, allow_save=False)

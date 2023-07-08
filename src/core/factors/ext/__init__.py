@@ -100,47 +100,47 @@ class PxMom12M1M(PxMom):
     skip_months = 1
 
 
-class PriceMomentum12M2M(PxMom):
+class PxMom12M2M(PxMom):
     months = 12
     skip_months = 2
 
 
-class PriceMomentum18M1M(PxMom):
+class PxMom18M1M(PxMom):
     months = 18
     skip_months = 1
 
 
-class PriceMomentum18M2M(PxMom):
+class PxMom18M2M(PxMom):
     months = 18
     skip_months = 2
 
 
-class PriceMomentum24M1M(PxMom):
+class PxMom24M1M(PxMom):
     months = 24
     skip_months = 1
 
 
-class PriceMomentum24M2M(PxMom):
+class PxMom24M2M(PxMom):
     months = 24
     skip_months = 2
 
 
-class PriceMomentum36M1M(PxMom):
+class PxMom36M1M(PxMom):
     months = 36
     skip_months = 1
 
 
-class PriceMomentum36M2M(PxMom):
+class PxMom36M2M(PxMom):
     months = 36
     skip_months = 2
 
 
-class PriceMomentumAbs12M(PxMom):
+class PxMomAbs12M(PxMom):
     months = 12
     absolute = True
 
 
-class PriceMomentumDiffusion(Factor):
+class PxMomDiffusion(Factor):
     """
     Momentum Diffusion summarizes the net price momentum at different frequencies
     and is constructed to fluctuate between +1 and -1.

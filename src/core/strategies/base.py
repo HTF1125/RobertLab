@@ -31,10 +31,11 @@ class Rebalancer:
         )
         if len(factors) == 0:
             factors = None
-        constraint = strategy.regime.get_portfolio_constraint(date=strategy.date)
-
+        state = strategy.regime.get_state_by_date(date=strategy.date)
+        constraint = strategy.constraint[state]
         opt = strategy.portfolio.from_prices(
-            prices=prices, span=None,
+            prices=prices,
+            span=None,
             factors=factors,
             **constraint["portfolio_constraint"],
             specific_constraints=constraint["asset_constraint"],
@@ -135,8 +136,7 @@ class Strategy:
         portoflio: portfolios.Portfolio = portfolios.EqualWeight(),
         factor: MultiFactor = MultiFactor(),
         regime: regimes.Regime = regimes.OneRegime(),
-        portfolio_constraint: Optional[Dict[str, float]] = None,
-        specific_constraints: Optional[List[Dict[str, Any]]] = None,
+        constraint: Optional[Dict] = None,
     ) -> None:
         self.rebalancer = rebalancer
         self.universe = universe
@@ -150,8 +150,7 @@ class Strategy:
         self.allow_fractional_shares = allow_fractional_shares
         self.portfolio = portoflio
         self.factor = factor
-        self.portfolio_constraint = portfolio_constraint or {}
-        self.specific_constraints = specific_constraints or []
+        self.constraint = constraint or {}
         self.book = Book(
             date=pd.Timestamp(self.inception),
         )
@@ -288,11 +287,9 @@ class Strategy:
             "frequency": self.frequency,
             "commission": self.commission,
             "allow_fractional_shares": self.allow_fractional_shares,
-            "portfolio_constraints": self.portfolio_constraint,
-            "specific_constraints": self.specific_constraints,
             "factor": tuple(self.factor.keys()),
             "regime": self.regime.__class__.__name__,
-            "constraint": self.regime.constraint,
+            "constraint": self.constraint,
             "book": self.book.dict(),
         }
 

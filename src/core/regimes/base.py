@@ -1,23 +1,21 @@
-from typing import Dict
+"""ROBERT"""
+from typing import Union
 import pandas as pd
 
+
 class Regime:
-    states = ()
+    __states__ = ()
 
     def __init__(self) -> None:
-        self.data = pd.DataFrame({})
-        self.constraint = {}
+        self._states = pd.Series(dtype="str")
 
-    def get_data(self) -> None:
-        # self.data = data.get_prices("^VIX")
-        pass
+    def get_state_by_date(self, date: Union[str, pd.Timestamp]) -> str:
+        if not isinstance(date, pd.Timestamp):
+            date = pd.Timestamp(date)
+        return str(self.states.loc[:date].iloc[-1])
 
-    def set_state_constraint(self, state: str, constraint: Dict) -> None:
-        self.constraint[state] = constraint
-
-    def get_state(self, date=None) -> str:
-        return ""
-
-    def get_portfolio_constraint(self, date=None) -> Dict:
-        state = self.get_state(date)
-        return self.constraint.get(state, {})
+    @property
+    def states(self) -> pd.Series:
+        self._states.index.name = "Date"
+        self._states.name = "State"
+        return self._states
