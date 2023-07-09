@@ -1,3 +1,3 @@
 """ROBERT"""
-from .strategy import Strategy
-from .multistrategy import MultiStrategy
+from .base import Strategy
+from .multi import MultiStrategy

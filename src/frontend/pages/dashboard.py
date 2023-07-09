@@ -1,10 +1,10 @@
 """ROBERT"""
-
+import numpy as np
 import streamlit as st
 import plotly.graph_objects as go
-from src.core import MultiStrategy
 from .base import BasePage
-from ..components import plot_multistrategy
+from ..components import get_strategy, plot_multistrategy
+
 
 class Dashboard(BasePage):
     """Dashboard"""
@@ -12,32 +12,40 @@ class Dashboard(BasePage):
     def load_page(self):
         st.info("Welcome to Robert's Dashboard.")
 
+        multistrategy = get_strategy()
 
-        multistrategy = MultiStrategy()
-        fig = go.Figure()
+        self.subheader("Strategy Metrics")
+        self.divider()
+        st.table(multistrategy.analytics.T)
 
-        with st.spinner("load strategies..."):
-            multistrategy.from_files()
 
-        for name, strategy in multistrategy.items():
-            performance = strategy.performance.resample("M").last()
-            fig.add_trace(
-                go.Scatter(
-                    x=performance.index,
-                    y=performance.values,
-                    name=name,
+        if multistrategy:
+            fig = go.Figure()
+
+            for name, strategy in multistrategy.items():
+                performance = strategy.performance / strategy.initial_investment - 1
+                num_points = len(performance)
+                indices = np.linspace(0, num_points - 1, 100, dtype=int)
+                performance = performance.iloc[indices]
+                fig.add_trace(
+                    go.Scatter(
+                        x=performance.index,
+                        y=performance.values,
+                        name=name,
+                        showlegend=True,
+                    )
                 )
+
+            fig.update_layout(
+                legend_orientation="h",
+                hovermode="x unified",
+                yaxis_tickformat=".0%",
             )
 
-        fig.update_layout(
-            title="Performance", legend_orientation="h", hovermode="x unified"
-        )
 
-        st.write(multistrategy.analytics.T)
+            self.subheader("Strategy Performance")
+            self.divider()
+            self.plotly(fig)
 
-        st.plotly_chart(
-            fig,
-            use_container_width=True,
-        )
 
-        plot_multistrategy(multistrategy)
+            # plot_multistrategy(multistrategy, allow_save=False)

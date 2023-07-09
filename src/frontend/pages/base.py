@@ -268,3 +268,25 @@ class BasePage:
             raise ValueError("something wrong with the universe.")
         prices = get_prices(universe_instance.get_tickers())
         return prices
+
+    def plotly(self, fig: go.Figure, height: int =300) -> None:
+
+        fig.update_layout(
+                # plot_bgcolor='rgba(0,0,0,0)',  # Set plot background color as transparent
+                # paper_bgcolor='rgba(0,0,0,0)',  # Set paper background color as transparent
+                # showlegend=False,  # Hide the legend for a cleaner border look
+                xaxis=dict(showgrid=False),  # Hide the x-axis gridlines
+                yaxis=dict(showgrid=False),  # Hide the y-axis gridlines
+                # autosize=False,  # Disable autosizing to maintain border consistency
+                # width=600,  # Set the width of the chart
+                height=height,  # Set the height of the chart
+                margin=dict(l=20, r=20, t=20, b=20),  # Adjust the margins as needed
+                # paper_bordercolor='black',  # Set the border color
+                # paper_borderwidth=1  # Set the border width
+            )
+        st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
+
+    def subheader(self, text: str = "") -> None:
+        st.markdown(
+            f"<h3 style='font-size: 1.2em;'>{text}</h3>", unsafe_allow_html=True
+        )

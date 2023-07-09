@@ -14,12 +14,18 @@ class Futures(BasePage):
             """
             Development Plan:
 
-            `Benchmarks`:
-            1. Build class. (Done)
-            2. Incorporate with portfolio optimizer.
+            <General>:
+            1. Improve Code Efficiency.
+            2. Add `__doc__` to classes.
+            3. Remove data call in the frontend. (move all to backend data.)
 
-            `Strategies`:
-            1. Build Plot class. (Failed Attempt)
+            <Benchmarks>:
+            1. Build class. (Done)
+            2. Incorporate with portfolio optimizer. (Done)
+
+            <Strategies>:
+            1. Build Plot class. (Drop)
+
 
             """
         )

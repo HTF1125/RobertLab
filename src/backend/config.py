@@ -19,4 +19,4 @@ class _Settings:
     load_dotenv(dotenv_path=ENV_FILE)
     PLATFORM: str = "NOTSET"
 
-settings = _Settings()
+Settings = _Settings()

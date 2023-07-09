@@ -695,7 +695,6 @@ def to_correlation_matrix(
 ) -> pd.DataFrame:
     if span:
         return to_exponential_correlation_matrix(prices=prices, span=span)
-
     return to_pri_return(prices=prices).corr()
 
 
@@ -1139,7 +1138,6 @@ def to_macd(
     )
     signal = MACD.ewm(span=signal_window, min_periods=slow_window).mean()
     return signal
-
 
 
 def to_information_coefficient(

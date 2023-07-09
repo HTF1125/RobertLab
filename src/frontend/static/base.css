@@ -13,6 +13,56 @@ footer {
   visibility: visible;
 }
 
+
+.appview-container .main .block-container {
+  padding-top: 2rem;
+  padding-bottom: 2rem;
+}
+
+
+/* .label-select-container {
+  display: flex;
+  align-items: center;
+}
+
+.label-select-container label {
+  margin-right: 0.5rem;
+}
+
+.label-select-container select {
+  flex: 1;
+} */
+
+
+/*
+div[data-baseweb="select"] input,
+div[data-baseweb="select"] .css-1g6z4ht-Control {
+    height: 5px;
+} */
+
+
+
+/* Form */
+.css-1h109da {
+  border: none;
+  padding: 0px;
+  margin: 0px;
+  margin-bottom: 3px;
+}
+
+/* [data-testid="stSidebar"][aria-expanded="true"] > div:first-child {
+  width: 500px;
+}
+[data-testid="stSidebar"][aria-expanded="false"] > div:first-child {
+  width: 500px;
+  margin-left: -500px;
+} */
+
+
+
+
+
+
 .StatusWidget-enter-done {
   visibility: visible;
 }
@@ -41,19 +91,19 @@ footer {
   visibility: visible;
 }
 
-.stStatusWidget > div {
+.stStatusWidget>div {
   visibility: visible;
 }
 
-.stStatusWidget > div > img {
+.stStatusWidget>div>img {
   visibility: visible;
 }
 
-.stStatusWidget > div > label {
+.stStatusWidget>div>label {
   visibility: visible;
 }
 
-.stStatusWidget > div > span {
+.stStatusWidget>div>span {
   visibility: visible;
 }
 
@@ -107,36 +157,50 @@ footer {
   }
 }
 
-/*
+
 .stSlider>div>div>div:first-child {
-    height: 0.5rem;
+  height: 0.2rem;
 }
 
-.stSlider>div>div>div {
-    font-weight: bold;
-}
-
-.stSlider>div>div>div>div>div {
-    font-weight: bold;
-}
 
 .stSlider {
-    padding-left: 0.9rem;
-    padding-right: 0.9rem;
-    border-radius: 8px;
+  padding-left: 1rem;
+  padding-right: 1rem;
+  padding-top: 0;
+  padding-bottom: 0;
+  border-radius: 8px;
 }
 
 .stSlider>div>div>div>div {
-    background-color: white;
+  background-color: lightgrey;
 }
 
 .stSlider>label {
-    position: absolute;
-    bottom: -10%;
-    left: 50%;
-    width: 100%;
-    z-index: 1;
-} */
+  position: absolute;
+  bottom: -10%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100%;
+  z-index: 1;
+  display: flex;
+  justify-content: center;
+  align-items: flex-end;
+}
+
+div.stSlider>div[data-baseweb="slider"]>div>div {
+  border-radius: 8px;
+  outline: none;
+  transition: background 450ms ease-in;
+  color: transparent;
+}
+
+div.stSlider>div[data-baseweb="slider"]>div>div>div>div>div {
+  font-size: 0;
+  /* Set the font size to 0 to hide the number visually */
+}
+
+
+
 
 /* MENU && FOOTER */
 #MainMenu {
@@ -158,6 +222,7 @@ footer {
 /* StreamLit for teams */
 #bui-2>div>ul>li:nth-child(13)
 
-/* About */ {
+/* About */
+  {
   visibility: visible;
 }

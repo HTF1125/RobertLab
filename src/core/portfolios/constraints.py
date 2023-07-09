@@ -6,18 +6,20 @@ from .objectives import Objectives
 
 
 class Constraints(Objectives):
-    constraints = {}
+
+    def __init__(self) -> None:
+        self.constraints = {}
 
     @property
-    def sum_weight(self) -> float:
-        return self._sum_weight
+    def leverage(self) -> float:
+        return self._leverage
 
-    @sum_weight.setter
-    def sum_weight(self, sum_weight: float) -> None:
-        self._sum_weight = sum_weight
+    @leverage.setter
+    def leverage(self, leverage: float) -> None:
+        self._leverage = leverage
         self.constraints["sum_weight"] = {
             "type": "eq",
-            "fun": lambda w: np.sum(w) - sum_weight,
+            "fun": lambda w: np.sum(w) - leverage - 1.0,
         }
 
     @property
@@ -52,12 +54,14 @@ class Constraints(Objectives):
 
     @min_return.setter
     def min_return(self, min_return: Optional[float]) -> None:
+
         if min_return is None:
             return
         if self.expected_returns is None:
             warnings.warn("unable to set minimum return constraint.")
             warnings.warn("expected returns is null.")
             return
+        print(f"setting minimum return for opt {min_return}")
         minimum = self.expected_returns.min()
         maximum = self.expected_returns.max()
         min_return = min(maximum, max(min_return, minimum))
@@ -282,29 +286,3 @@ class Constraints(Objectives):
             ),
         }
 
-    @property
-    def min_factor_percentile(self) -> Optional[float]:
-        return self._min_factor_percentile
-
-    @min_factor_percentile.setter
-    def min_factor_percentile(self, min_factor_percentile: Optional[float]) -> None:
-        if min_factor_percentile is None:
-            return
-        self._min_factor_percentile = min_factor_percentile
-        if self.factors is not None:
-            if self.weights_bm is not None:
-                from scipy.stats import percentileofscore
-
-                factor = np.dot(self.weights_bm, np.array(self.factors))
-                score = percentileofscore(self.factors, score=factor)
-                lbound = self.factors.quantile(
-                    min(score / 100 + self.min_factor_percentile, 1.0)
-                )
-            else:
-                lbound = self.factors.quantile(0.5 + min_factor_percentile)
-            self.constraints["min_factor_percentile"] = {
-                "type": "ineq",
-                "fun": lambda w: np.dot(w, np.array(self.factors)) - lbound,
-            }
-
-            self._min_factor_percentile = min_factor_percentile

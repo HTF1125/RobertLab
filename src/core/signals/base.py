@@ -2,6 +2,40 @@
 import numpy as np
 import pandas as pd
 from statsmodels.api import tsa
+from src.backend import data
+
+
+class BaseState:
+
+    states = {
+        "extreme" : lambda x: x >= 0.8 or x <= -0.8,
+        "normal" : lambda x: -0.8 < x < 0.8
+    }
+
+    def __init__(self) -> None:
+        self.data = pd.DataFrame()
+
+
+    def fit(self) -> None:
+        self.data = data.get_prices("^VIX")
+
+    def get_state(self, idx = None) -> str:
+
+        if self.data.empty:
+            self.fit()
+
+        if idx is not None:
+            sliced = self.data.loc[:idx]
+        else:
+            sliced = self.data
+
+        sliced = sliced.iloc[-252 * 10:]
+
+        # for state, condition in self.states.items():
+
+
+
+
 
 
 class Signal:
@@ -134,3 +168,39 @@ class VIX(Signal):
 
     def process(self) -> None:
         pass
+
+
+
+
+class VolState:
+    def __init__(self) -> None:
+        self.data = pd.DataFrame()
+
+    def fit(self):
+        self.data = data.get_prices("^VIX")
+
+    def get_state(self, date=None):
+        if self.data.empty:
+            self.fit()
+
+        if date is not None:
+            d = self.data.loc[:date]
+        else:
+            d = self.data
+        d = d.iloc[-252 * 10 :]
+        score = (d.iloc[-1] - d.mean()) / d.std()
+        score = score.iloc[0]
+        if score >= 0.8 or score <= -0.8:
+            return "extreme"
+        return "med"
+
+    def get_portfolio_constraints_by_date(self, date=None):
+        state = self.get_state(date)
+
+        if state == "extreme":
+            return {
+                "sum_weight": 1.5,
+            }
+        return {
+            "sum_weight": 1.0,
+        }

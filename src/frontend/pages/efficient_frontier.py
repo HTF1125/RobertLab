@@ -4,7 +4,9 @@ import pandas as pd
 import streamlit as st
 import plotly.graph_objects as go
 from src.core import metrics, portfolios
+from ..components import get_dates, get_specific_constraints
 from .base import BasePage
+from .. import components
 
 class EfficientFrontier(BasePage):
     """
@@ -12,13 +14,18 @@ class EfficientFrontier(BasePage):
     """
 
     def load_page(self):
+        components.get_universe()
+        universe = components.Session.get_universe()
+        prices = universe.get_prices()
+        start, end = get_dates(start=str(prices.index[0]), end=str(prices.index[-1]))
+        prices = prices.loc[start:end].dropna(how="all", axis=1)
+
+
         with st.form("Efficient Frontier"):
-            universe = self.get_universe()
-            start, end = self.get_dates()
+            specific_constraints = get_specific_constraints(universe)
             submitted = st.form_submit_button("Run")
 
             if submitted:
-                prices = self.get_universe_prices(universe).loc[start:end].dropna(axis=1)
                 with st.spinner(text="Loading Efficient Frontier for assets ..."):
                     ann_return = metrics.to_ann_return(prices=prices)
                     ann_volatility = metrics.to_ann_volatility(prices=prices)
@@ -30,13 +37,15 @@ class EfficientFrontier(BasePage):
                     ):
                         opt = portfolios.MinVolatility.from_prices(
                             prices=prices, min_return=ret, max_return=ret
-                        )
+                        ).set_specific_constraints(specific_constraints)
                         try:
                             opt.solve()
                             ef.append(
                                 {
-                                    "expected_return": opt.exp["expected_return"],
-                                    "expected_volatility": opt.exp[
+                                    "expected_return": opt.optimizer_metrics[
+                                        "expected_return"
+                                    ],
+                                    "expected_volatility": opt.optimizer_metrics[
                                         "expected_volatility"
                                     ],
                                 }
@@ -92,63 +101,38 @@ class EfficientFrontier(BasePage):
                             hovertemplate="Ann.Return: %{y}, Ann.Volatility: %{x}",
                         )
                     )
-                    ef_points = [
-                        dict(
-                            optimizer=portfolios.MaxSharpe,
-                            marker=dict(symbol="star", size=10),
-                        ),
-                        dict(
-                            optimizer=portfolios.MinVolatility,
-                            marker=dict(symbol="square", size=10),
-                        ),
-                        dict(
-                            optimizer=portfolios.MinCorrelation,
-                            marker=dict(symbol="diamond", size=10),
-                        ),
-                        dict(
-                            optimizer=portfolios.RiskParity,
-                            marker=dict(symbol="cross", size=10),
-                        ),
-                        dict(
-                            optimizer=portfolios.HRP,
-                            marker=dict(symbol="pentagon", size=10),
-                        ),
-                        dict(
-                            optimizer=portfolios.HERC,
-                            marker=dict(symbol="hexagon", size=10),
-                        ),
-                        dict(
-                            optimizer=portfolios.MaxReturn,
-                            marker=dict(symbol="hourglass", size=10),
-                        ),
-                        dict(
-                            optimizer=portfolios.EqualWeight,
-                            marker=dict(symbol="star-square", size=10),
-                        ),
-                        dict(
-                            optimizer=portfolios.InverseVariance,
-                            marker=dict(symbol="star-square", size=10),
-                        ),
-                    ]
-
                     weights = {}
 
-                    for ef_point in ef_points:
-                        optimizer = ef_point["optimizer"]
-                        marker = ef_point["marker"]
-                        opt = optimizer.from_prices(prices=prices)
-                        name = opt.__class__.__name__
-                        weights[name] = opt.solve()
+                    markers = [
+                        "star",
+                        "square",
+                        "diamond",
+                        "cross",
+                        "pentagon",
+                        "hexagon",
+                        "hourglass",
+                        "star-square",
+                        "star-square",
+                    ]
+
+                    for idx, optimizer_name in enumerate(portfolios.__all__):
+                        optimizer = (
+                            portfolios.get(optimizer_name)
+                            .from_prices(prices=prices)
+                            .set_specific_constraints(specific_constraints)
+                        )
+                        weights[optimizer_name] = optimizer.solve()
+
                         fig.add_trace(
                             go.Scatter(
-                                x=[opt.exp["expected_volatility"]],
-                                y=[opt.exp["expected_return"]],
-                                name=name,
-                                text=name,
+                                x=[optimizer.optimizer_metrics["expected_volatility"]],
+                                y=[optimizer.optimizer_metrics["expected_return"]],
+                                name=optimizer_name,
+                                text=optimizer_name,
                                 mode="markers+text",
                                 textposition="top center",
                                 hovertemplate="Ann.Return: %{y}, Ann.Volatility: %{x}",
-                                marker=marker,
+                                marker={"symbol": markers[idx], "size": 10},
                             )
                         )
 

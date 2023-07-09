@@ -6,7 +6,7 @@ import streamlit as st
 from src.backend.core import metrics
 from src.backend.misc import charts
 from src.backend.web import data
-from ..components import get_universe
+from ..components import get_unive
 
 
 def get_investment_horizon():
@@ -57,7 +57,7 @@ def get_multi_parameters(parameter_funcs: Dict[str, Callable]):
 
 
 def main():
-    universe = get_universe()
+    universe = get_unive()
 
     st.write(universe)
 

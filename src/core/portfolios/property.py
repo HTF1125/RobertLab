@@ -6,76 +6,69 @@ import pandas as pd
 logger = logging.getLogger(__name__)
 
 
-class OptimizerMetrics:
-    def __init__(self) -> None:
-        self.prices: Optional[pd.DataFrame] = None
-        self.expected_returns: Optional[pd.Series] = None
-        self.covariance_matrix: Optional[pd.DataFrame] = None
-        self.correlation_matrix: Optional[pd.DataFrame] = None
-        self.assets: Optional[pd.Index] = None
-        self.risk_free: float = 0.0
-        self.factors: Optional[pd.Series] = None
-        self.prices_bm: Optional[pd.Series] = None
-        self.weights_bm: Optional[pd.Series] = None
-
-
 class BaseProperty:
-    def __init__(self) -> None:
-        self.data = OptimizerMetrics()
-
     @property
     def expected_returns(self) -> Optional[pd.Series]:
         """Get expected returns."""
-        return self.data.expected_returns
+        try:
+            return self._expected_returns
+        except AttributeError:
+            return None
 
     @expected_returns.setter
-    def expected_returns(self, expected_returns: Optional[pd.Series] = None) -> None:
+    def expected_returns(self, expected_returns: Optional[pd.Series]) -> None:
         """Set expected returns."""
-        if expected_returns is not None:
-            self.data.expected_returns = expected_returns
-            self.assets = expected_returns.index
+        if expected_returns is None:
+            return
+        self._expected_returns = expected_returns
+        self.assets = expected_returns.index
 
     @property
     def covariance_matrix(self) -> Optional[pd.DataFrame]:
         """Get covariance matrix."""
-        return self.data.covariance_matrix
+        try:
+            return self._covariance_matrix
+        except AttributeError:
+            return None
 
     @covariance_matrix.setter
-    def covariance_matrix(
-        self, covariance_matrix: Optional[pd.DataFrame] = None
-    ) -> None:
+    def covariance_matrix(self, covariance_matrix: Optional[pd.DataFrame]) -> None:
         """Set covariance matrix."""
         if covariance_matrix is not None:
-            self.data.covariance_matrix = covariance_matrix
+            self._covariance_matrix = covariance_matrix
             self.assets = covariance_matrix.index
             self.assets = covariance_matrix.columns
 
     @property
     def correlation_matrix(self) -> Optional[pd.DataFrame]:
         """Get correlation matrix."""
-        return self.data.correlation_matrix
+        try:
+            return self._correlation_matrix
+        except AttributeError:
+            return None
 
     @correlation_matrix.setter
-    def correlation_matrix(
-        self, correlation_matrix: Optional[pd.DataFrame] = None
-    ) -> None:
+    def correlation_matrix(self, correlation_matrix: Optional[pd.DataFrame]) -> None:
         """Set correlation matrix."""
         if correlation_matrix is not None:
-            self.data.correlation_matrix = correlation_matrix
+            self._correlation_matrix = correlation_matrix
             self.assets = correlation_matrix.index
             self.assets = correlation_matrix.columns
 
     @property
     def prices(self) -> Optional[pd.DataFrame]:
         """Get asset prices."""
-        return self.data.prices
+        try:
+            return self._prices
+        except AttributeError:
+            return None
 
     @prices.setter
-    def prices(self, prices: Optional[pd.DataFrame] = None) -> None:
+    def prices(self, prices: Optional[pd.DataFrame]) -> None:
         """Set asset prices."""
         if prices is None:
             return
-        self.data.prices = prices
+        self._prices = prices
 
     @property
     def num_assets(self) -> int:
@@ -85,40 +78,52 @@ class BaseProperty:
         return len(self.assets)
 
     @property
-    def risk_free(self) -> float:
-        return self.data.risk_free
+    def risk_free(self) -> Optional[float]:
+        try:
+            return self._risk_free
+        except AttributeError:
+            return None
 
     @risk_free.setter
     def risk_free(self, risk_free: float) -> None:
-        self.data.risk_free = risk_free
+        self._risk_free = risk_free
 
     @property
     def factors(self) -> Optional[pd.Series]:
         """Get asset prices."""
-        return self.data.factors
+        try:
+            return self._factors
+        except AttributeError:
+            return None
 
     @factors.setter
     def factors(self, factors: Optional[pd.Series]) -> None:
         if factors is None or not isinstance(factors, pd.Series):
             return
-        self.data.factors = factors.reindex(index=self.assets, fill_value=0)
+        self._factors = factors.reindex(index=self.assets, fill_value=0).fillna(0)
 
     @property
     def weights_bm(self) -> Optional[pd.Series]:
-        return self.data.weights_bm
+        try:
+            return self._weights_bm
+        except AttributeError:
+            return None
 
     @weights_bm.setter
-    def weights_bm(self, weights_bm: Optional[pd.Series] = None) -> None:
+    def weights_bm(self, weights_bm: Optional[pd.Series]) -> None:
         if weights_bm is not None:
             weights_bm = weights_bm.reindex(self.assets, fill_value=0.0).fillna(0)
-            self.data.weights_bm = weights_bm
+            self._weights_bm = weights_bm
 
     @property
     def prices_bm(self) -> Optional[pd.Series]:
-        return self.data.prices_bm
+        try:
+            return self._prices_bm
+        except AttributeError:
+            return None
 
     @prices_bm.setter
     def prices_bm(self, prices_bm: Optional[pd.Series]) -> None:
         if prices_bm is not None and self.prices is not None:
             prices_bm = prices_bm.reindex(self.prices.index).ffill()
-            self.data.prices_bm = prices_bm
+            self._prices_bm = prices_bm

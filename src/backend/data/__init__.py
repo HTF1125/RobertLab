@@ -7,12 +7,7 @@ from functools import lru_cache
 import pandas as pd
 import yfinance as yf
 import pandas_datareader as pdr
-
-
-def get_universe() -> Dict:
-    file = os.path.join(os.path.dirname(__file__), "universe.json")
-    with open(file=file, mode="r", encoding="utf-8") as json_file:
-        return json.load(json_file)
+from src.backend.config import Settings
 
 
 @lru_cache()
@@ -20,6 +15,38 @@ def get_price(ticker: str) -> pd.Series:
     p = yf.download(ticker, progress=False)["Adj Close"]
     p.name = ticker
     return p
+
+
+@lru_cache()
+def get_volume(ticker: str) -> pd.Series:
+    p = yf.download(ticker, progress=False)["Volume"]
+    p.name = ticker
+    return p
+
+
+def get_volumes(tickers: Union[str, List, Set, Tuple]) -> pd.DataFrame:
+    # create ticker list
+    tickers = (
+        tickers
+        if isinstance(tickers, (list, set, tuple))
+        else tickers.replace(",", " ").split()
+    )
+    out = []
+
+    for ticker in tickers:
+        if Settings.PLATFORM == "Streamlit":
+            import streamlit as st
+
+            @st.cache_data(ttl="1d")
+            def get_volume_st(ticker: str) -> pd.Series:
+                return get_volume(ticker)
+
+            price = get_volume_st(ticker)
+        else:
+            price = get_volume(ticker)
+        if price is not None:
+            out.append(price)
+    return pd.concat(out, axis=1).sort_index()
 
 
 def get_prices(tickers: Union[str, List, Set, Tuple]) -> pd.DataFrame:
@@ -31,15 +58,14 @@ def get_prices(tickers: Union[str, List, Set, Tuple]) -> pd.DataFrame:
     )
     out = []
 
-    from ..config import settings
-
     for ticker in tickers:
-        if settings.PLATFORM == "Streamlit":
+        if Settings.PLATFORM == "Streamlit":
             import streamlit as st
 
             @st.cache_data(ttl="1d")
             def get_price_st(ticker: str) -> pd.Series:
                 return get_price(ticker)
+
             price = get_price_st(ticker)
         else:
             price = get_price(ticker)
@@ -79,32 +105,3 @@ def get_oecd_us_leading_indicator() -> pd.DataFrame:
 
 def get_vix_index() -> pd.DataFrame:
     return get_prices(tickers="^VIX")
-
-
-# class Data:
-#     @classmethod
-#     def instance(cls, tickers: Union[str, List, Set, Tuple]) -> "Data":
-#         return cls(tickers=tickers)
-
-#     def __init__(self, tickers: Union[str, List, Set, Tuple]) -> None:
-#         # create ticker list
-#         self.tickers = (
-#             tickers
-#             if isinstance(tickers, (list, set, tuple))
-#             else tickers.replace(",", " ").split()
-#         )
-#         self.store = DataStore()
-
-#     def prices(self) -> pd.DataFrame:
-#         if "prices" in self.store:
-#             return self.store["prices"]
-
-#         out = []
-#         for ticker in self.tickers:
-#             price = get_price(ticker)
-#             if price is not None:
-#                 out.append(price)
-#         return pd.concat(out, axis=1).sort_index()
-
-#     def PriceMomentum1M(self) -> pd.DataFrame:
-#         return self.prices().pct_change(21)

@@ -7,13 +7,15 @@ from .multistrategy import MultiStrategy
 from .efficient_frontier import EfficientFrontier
 from .glossary import Glossary
 from .futures import Futures
+from .regime import Regime
 
 __all__ = [
     "Dashboard",
     "GlobalMacro",
+    "Regime",
     "EfficientFrontier",
-    "MultiStrategy",
     "AlphaFactors",
+    "MultiStrategy",
     "AboutMe",
     "Glossary",
     "Futures",
