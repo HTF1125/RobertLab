@@ -28,7 +28,7 @@ def getPreStrategy(
 
 
 def getNewStrategy(
-    load_files: bool = True, key: str = "new-strategy"
+    load_files: bool = False, key: str = "new-strategy"
 ) -> strategies.MultiStrategy:
     if key not in st.session_state:
         multistrategy = strategies.MultiStrategy()

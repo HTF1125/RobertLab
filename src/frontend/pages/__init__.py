@@ -8,23 +8,14 @@ from .multistrategy import MultiStrategy
 from .capital_market import CapitalMarket
 from .glossary import Glossary
 from .futures import Futures
-<<<<<<< HEAD
 from .market_regime import MarketRegime
 from .base import BasePage
-=======
-from .regime import Regime
->>>>>>> 33e7afd09be2eaae3279fd2181eea2bb79a48b85
 
 __all__ = [
     "Dashboard",
     "GlobalMacro",
-<<<<<<< HEAD
     "MarketRegime",
     "CapitalMarket",
-=======
-    "Regime",
-    "EfficientFrontier",
->>>>>>> 33e7afd09be2eaae3279fd2181eea2bb79a48b85
     "AlphaFactors",
     "MultiStrategy",
     "AboutMe",
