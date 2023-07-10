@@ -26,15 +26,19 @@ class MultiStrategy(dict):
                 commission = signature.pop("commission")
                 frequency = signature.pop("frequency")
                 allow_fractional_shares = signature.pop("allow_fractional_shares")
-                min_window = signature.pop("min_window")
+                min_periods = signature.pop("min_periods")
                 inception = signature.pop("inception")
+                principal = signature.pop("principal")
                 book = signature.pop("book", {})
                 if not book:
                     book = Book(date=pd.Timestamp(inception))
                 else:
                     book = Book(**book)
+
+
+                name = filename.replace(".json", "")
                 self.add_strategy(
-                    name=filename.replace(".json", ""),
+                    name=name,
                     portfolio=portfolio,
                     factor=factor,
                     regime=regime,
@@ -43,11 +47,12 @@ class MultiStrategy(dict):
                     commission=commission,
                     frequency=frequency,
                     allow_fractional_shares=allow_fractional_shares,
-                    min_window=min_window,
+                    min_periods=min_periods,
                     inception=inception,
+                    principal=principal,
                     book=book,
                 )
-                self[filename.replace(".json", "")].save(filename.replace(".json", ""), override=True)
+                self[name].save(name, override=True)
         return self
 
     def add_strategy(
@@ -55,16 +60,15 @@ class MultiStrategy(dict):
         universe: universes.Universe,
         name: Optional[str] = None,
         portfolio: portfolios.Portfolio = portfolios.EqualWeight(),
-        leverage: float = 1.0,
         factor: factors.MultiFactor = factors.MultiFactor(),
         regime: regimes.Regime = regimes.OneRegime(),
         constraint: Optional[Dict] = None,
         inception: Optional[str] = None,
         frequency: str = "M",
         commission: int = 10,
-        min_window: int = 2,
+        min_periods: int = 2,
         allow_fractional_shares: bool = False,
-        initial_investment: int = 10_000,
+        principal: int = 10_000,
         book: Optional[Book] = None,
     ) -> "MultiStrategy":
         # check strategy name
@@ -78,14 +82,13 @@ class MultiStrategy(dict):
             universe=universe,
             frequency=frequency,
             inception=inception,
-            min_window=min_window,
-            initial_investment=initial_investment,
+            min_periods=min_periods,
+            principal=principal,
             allow_fractional_shares=allow_fractional_shares,
             commission=commission,
             portoflio=portfolio,
             constraint=constraint,
             factor=factor,
-            leverage=leverage,
             regime=regime,
         )
         if book is not None:

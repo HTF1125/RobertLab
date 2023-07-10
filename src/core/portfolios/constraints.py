@@ -6,20 +6,35 @@ from .objectives import Objectives
 
 
 class Constraints(Objectives):
-
     def __init__(self) -> None:
         self.constraints = {}
 
     @property
-    def leverage(self) -> float:
-        return self._leverage
+    def min_leverage(self) -> float:
+        return self._min_leverage
 
-    @leverage.setter
-    def leverage(self, leverage: float) -> None:
-        self._leverage = leverage
-        self.constraints["sum_weight"] = {
-            "type": "eq",
-            "fun": lambda w: np.sum(w) - leverage - 1.0,
+    @min_leverage.setter
+    def min_leverage(self, min_leverage: float) -> None:
+        self._min_leverage = min_leverage
+        self.constraints["min_leverage"] = {
+            "type": "ineq",
+            "fun": lambda w: np.sum(w) - (min_leverage + 1.0),
+        }
+
+    @property
+    def max_leverage(self) -> float:
+        return self._max_leverage
+
+    @max_leverage.setter
+    def max_leverage(self, max_leverage: float) -> None:
+        self._max_leverage = max_leverage
+
+        # if self.min_leverage == max_leverage:
+        #     self.constraints[""]
+
+        self.constraints["max_leverage"] = {
+            "type": "ineq",
+            "fun": lambda w: (max_leverage + 1.0) - np.sum(w),
         }
 
     @property
@@ -54,7 +69,6 @@ class Constraints(Objectives):
 
     @min_return.setter
     def min_return(self, min_return: Optional[float]) -> None:
-
         if min_return is None:
             return
         if self.expected_returns is None:
@@ -285,4 +299,3 @@ class Constraints(Objectives):
                 pri_returns_bm=np.array(prices_bm.pct_change().fillna(0)),
             ),
         }
-

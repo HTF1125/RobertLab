@@ -82,47 +82,62 @@ def to_end(prices: Union[pd.DataFrame, pd.Series]) -> Union[pd.Series, pd.Timest
 
 
 @overload
-def to_pri_return(prices: pd.Series) -> pd.Series:
+def to_pri_return(
+    prices: pd.Series,
+    periods: int = 1,
+    forward: bool = False,
+) -> pd.Series:
     ...
 
 
 @overload
-def to_pri_return(prices: pd.DataFrame) -> pd.DataFrame:
+def to_pri_return(
+    prices: pd.DataFrame,
+    periods: int = 1,
+    forward: bool = False,
+) -> pd.DataFrame:
     ...
 
 
 def to_pri_return(
-    prices: Union[pd.DataFrame, pd.Series]
+    prices: Union[pd.DataFrame, pd.Series],
+    periods: int = 1,
+    forward: bool = False,
 ) -> Union[pd.DataFrame, pd.Series]:
     if isinstance(prices, pd.DataFrame):
-        return prices.apply(to_pri_return)
-
-    pri_return = prices.dropna().pct_change().iloc[1:]
-    return pri_return
-
-
-@overload
-def to_log_return(prices: pd.Series) -> pd.Series:
-    ...
+        return prices.apply(to_pri_return, periods=periods, forward=forward)
+    pri_return = prices.dropna().pct_change(periods).iloc[periods - 1 :].fillna(0)
+    if forward:
+        pri_return = pri_return.shift(-periods)
+    return pri_return.dropna()
 
 
 @overload
-def to_log_return(prices: pd.DataFrame) -> pd.DataFrame:
+def to_log_return(
+    prices: pd.Series,
+    periods: int = 1,
+    forward: bool = False,
+) -> pd.Series:
     ...
 
 
 @overload
 def to_log_return(
-    prices: Union[pd.DataFrame, pd.Series]
-) -> Union[pd.DataFrame, pd.Series]:
+    prices: pd.DataFrame,
+    periods: int = 1,
+    forward: bool = False,
+) -> pd.DataFrame:
     ...
 
 
 def to_log_return(
-    prices: Union[pd.DataFrame, pd.Series]
+    prices: Union[pd.DataFrame, pd.Series],
+    periods: int = 1,
+    forward: bool = False,
 ) -> Union[pd.DataFrame, pd.Series]:
     """calculate prices return series"""
-    return to_pri_return(prices=prices).apply(np.log1p)
+    pri_return = to_pri_return(prices=prices, periods=periods, forward=forward)
+    return pri_return.apply(np.log1p)
 
 
 @overload
@@ -161,7 +176,11 @@ def to_ann_return(
     prices: Union[pd.DataFrame, pd.Series],
     ann_factor: Union[int, float] = AnnFactor.daily,
 ) -> Union[pd.Series, float]:
-    return (np.exp(to_log_return(prices=prices).mean()) - 1) * ann_factor
+    if isinstance(prices, pd.DataFrame):
+        base_return = to_log_return(prices).mean().apply(np.exp).subtract(1)
+    elif isinstance(prices, pd.Series):
+        base_return = np.exp(to_log_return(prices).mean()) - 1
+    return base_return * ann_factor
 
 
 @overload
@@ -929,32 +948,31 @@ def to_hurst_exponent(prices: pd.Series, lags: int = 20) -> float:
 
 
 def to_hurst_exponent(
-    prices: Union[pd.DataFrame, pd.Series], lags: int = 20
+    prices: Union[pd.DataFrame, pd.Series], lags: int = 21
 ) -> Union[pd.Series, float]:
     """
     Calculates the Hurst exponent for a given set of prices.
 
-    The Hurst exponent is a measure of the long-term memory of a time series. It quantifies
+    The Hurst exponent is a measure of the long-term memory of a time series, quantifying
     the degree of persistence or trendiness in the data. A value between 0.5 and 1 indicates
-    positive autocorrelation and a trend that is likely to persist, while a value between 0 and
-    0.5 indicates negative autocorrelation and a trend that is likely to reverse.
+    positive autocorrelation and a trend likely to persist, while a value between 0 and 0.5
+    indicates negative autocorrelation and a trend likely to reverse.
 
     Args:
         prices (Union[pd.DataFrame, pd.Series]): The price data used to calculate the Hurst exponent.
             It can be either a DataFrame with multiple price series or a single Series.
-        lags (Optional[int], optional): The number of lags used to calculate the Hurst exponent.
-            If not specified, the maximum number of lags possible will be used. Default is None.
+        lags (int, optional): The number of lags used to calculate the Hurst exponent.
+            If not specified, the maximum number of lags possible will be used. Default is 21.
 
     Returns:
         Union[pd.Series, float]: The Hurst exponent as a single value or a Series of Hurst exponents
         if multiple price series are provided.
 
     References:
-        - Hurst, H. E. (1951). Long-term storage capacity of reservoirs.
+        - Hurst, H. E. (1951). "Long-term storage capacity of reservoirs."
           Transactions of the American Society of Civil Engineers, 116, 770-799.
-        - Lo, A. W. (1991). Long-term memory in stock market prices.
+        - Lo, A. W. (1991). "Long-term memory in stock market prices."
           Econometrica: Journal of the Econometric Society, 1279-1313.
-
     """
     if isinstance(prices, pd.DataFrame):
         return prices.aggregate(to_hurst_exponent, lags=lags)
@@ -1014,6 +1032,7 @@ def to_standard_scaler(factors: pd.Series) -> pd.Series:
 
 def to_standard_percentile(factors: pd.Series) -> pd.Series:
     return to_standard_scaler(factors=factors).aggregate(norm.cdf)
+
 
 def to_min_max_scaler(factors: pd.Series) -> pd.Series:
     min_val = factors.min()
@@ -1144,7 +1163,6 @@ def to_information_coefficient(
     prices: pd.DataFrame,
     allocations: pd.DataFrame,
 ) -> float:
-
     chg = allocations - allocations.mean()
     fwd = prices.loc[allocations.index].pct_change().shift(-1)
     joined = pd.concat([chg.stack(), fwd.stack()], axis=1).dropna()

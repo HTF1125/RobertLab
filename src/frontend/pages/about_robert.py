@@ -2,7 +2,6 @@ import streamlit as st
 from .base import BasePage
 
 class AboutMe(BasePage):
-    NAME = "Robert Han"
     DESCRIPTION = """
         Results-driven quantitative strategy and financial model developer
         with a strong background in buy-side equity investing.
@@ -14,34 +13,32 @@ class AboutMe(BasePage):
     EMAIL = "hantianfeng@outlook.com"
 
     def load_page(self):
-        st.title(self.NAME)
-        self.divider()
 
         st.write(self.DESCRIPTION)
         st.write("📫", self.EMAIL)
 
         # --- EXPERIENCE & QUALIFICATIONS ---
         st.write("\n")
-        st.subheader("Experience & Qualifications")
+        self.h3("Experience & Qualifications")
         self.divider()
 
-        st.markdown("#### Quantitative Strategy Development")
-        st.markdown("- 📈 6 years of experience in developing quantitative strategies.")
-        st.markdown("- 🖥️ Extensive expertise in Python and Excel for strategy development.")
+
+        self.h4("Quantitative Strategy")
+        st.markdown("- 📈 6 years of experience in developing quant strategies.")
+        st.markdown("- 🖥️ Extensive expertise in Python and Excel for .")
         st.markdown("- 📊 Proficient in implementing financial and statistical principles in real-world applications.")
 
-        st.markdown("#### Team Collaboration and Initiative")
+        self.h4("Team Collaboration")
         st.markdown("- 🤝 Excellent team player, fostering collaboration and communication.")
         st.markdown("- 🚀 Strong sense of initiative, taking ownership of tasks and driving them to completion.")
+        st.markdown("- 🎯 Goal-oriented mindset, working towards achieving team objectives.")
 
-        st.markdown("#### Hard Skills")
+        self.h4("Hard Skills")
         st.markdown("- 💻 Programming: Python, SQL, VBA")
-        st.markdown("- 📊 Data Visualization: Power BI, MS Excel, Plotly")
         st.markdown("- 📚 Modeling: Portfolio Optimization, Factor & Risk Premia")
-        st.markdown("- 🗄️ Databases: Postgres, MySQL")
         st.markdown("- 🌍 Languages: Chinese, English, Korean, Japanese (Beginner)")
 
-        st.markdown("#### Additional Skills")
+        self.h4("Additional Skills")
         st.markdown("- 🔍 Advanced knowledge of data analysis and visualization tools.")
         st.markdown("- 🏆 Proven track record of delivering high-quality results within deadlines.")
         st.markdown("- 📖 Continuously learning and keeping up with the latest trends and technologies.")
@@ -49,12 +46,12 @@ class AboutMe(BasePage):
 
         # --- WORK HISTORY ---
         st.write("\n")
-        st.subheader("Work History")
+        self.h3("Work History")
         self.divider()
 
         # --- JOB 1 ---
-        st.write("🚧", "**Quantitative Strategist | Dneuro Inc.**")
-        st.write("05/2021 - 05/2023")
+        self.h4("🚧 Quantitative Strategist | Dneuro Inc.")
+        st.markdown("05/2021 - 05/2023")
         st.write(
             """
             -► Spearheaded the development of a comprehensive Robo-Advisor project,
@@ -78,8 +75,8 @@ class AboutMe(BasePage):
         self.divider()
 
         # --- JOB 2 ---
-        st.write("🚧", "**Global Solutions Specialist | Woori Asset Management Corp.**")
-        st.write("03/2017 - 05/2021")
+        self.h4("🚧 Global Solutions Specialist | Woori Asset Management Corp.")
+        st.markdown("03/2017 - 05/2021")
         st.write(
             """
             -► Contributed to quantitative research and played a key role in

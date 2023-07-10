@@ -269,3 +269,12 @@ class Osc(Factor):
             - prices.ewm(span=2 * self.slow - 1).mean()
         ) / np.sqrt(1.0 / (1 - f * f) - 2.0 / (1 - f * g) + 1.0 / (1 - g * g))
         return osc
+
+
+class HurstTrend1M(Factor):
+    def fit(self, tickers: Union[str, List, Set, Tuple]) -> pd.DataFrame:
+        prices = data.get_prices(set(tickers))
+        pri_return = metrics.to_pri_return(prices, periods=21)
+        hurst_exponent = metrics.to_hurst_exponent(prices=prices, lags=42)
+        factor = pri_return * hurst_exponent.subtract(0.5)
+        return factor
