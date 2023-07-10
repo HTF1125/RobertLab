@@ -26,17 +26,16 @@ class Rebalancer:
             pd.Series: portfolio allocation weights.
         """
         prices = strategy.reb_prices
-        factors = strategy.factor.get_factor_by_date(
+        factor = strategy.factor.get_factor_by_date(
             tickers=list(prices.columns), date=strategy.date
         )
-        if len(factors) == 0:
-            factors = None
+
         state = strategy.regime.get_state_by_date(date=strategy.date)
         constraint = strategy.constraint[state]
         opt = strategy.portfolio.from_prices(
             prices=prices,
             span=None,
-            factors=factors,
+            factor=factor,
             **constraint["portfolio_constraint"],
             specific_constraints=constraint["asset_constraint"],
         )
@@ -129,10 +128,10 @@ class Strategy:
         leverage: float = 0.0,
         inception: Optional[str] = None,
         frequency: str = "M",
-        initial_investment: int = 10_000,
+        principal: int = 10_000,
         commission: int = 10,
         allow_fractional_shares: bool = False,
-        min_window: int = 1,
+        min_periods: int = 1,
         portoflio: portfolios.Portfolio = portfolios.EqualWeight(),
         factor: MultiFactor = MultiFactor(),
         regime: regimes.Regime = regimes.OneRegime(),
@@ -144,9 +143,9 @@ class Strategy:
         self.regime = regime
         self.inception = inception or self.universe.inception
         self.frequency = frequency
-        self.min_window = min_window
+        self.min_periods = min_periods
         self.commission = commission
-        self.initial_investment = initial_investment
+        self.principal = principal
         self.allow_fractional_shares = allow_fractional_shares
         self.portfolio = portoflio
         self.factor = factor
@@ -165,7 +164,7 @@ class Strategy:
         Returns:
             pd.DataFrame: Price data.
         """
-        return self.prices.loc[: self.book.date].dropna(thresh=self.min_window, axis=1)
+        return self.prices.loc[: self.book.date].dropna(thresh=self.min_periods, axis=1)
 
     @property
     def date(self) -> pd.Timestamp:
@@ -181,7 +180,7 @@ class Strategy:
         for self.book.date in pd.date_range(start=start, end=end):
             if self.book.date in self.prices.index:
                 if self.book.value == 0.0:
-                    self.book.value = self.book.cash = self.initial_investment
+                    self.book.value = self.book.cash = self.principal
                 else:
                     # update book here
                     prices_now = self.prices.loc[self.book.date]
@@ -282,7 +281,7 @@ class Strategy:
         return {
             "universe": self.universe.__class__.__name__,
             "portfolio": self.portfolio.__class__.__name__,
-            "min_window": self.min_window,
+            "min_periods": self.min_periods,
             "inception": self.inception,
             "frequency": self.frequency,
             "commission": self.commission,
@@ -290,6 +289,7 @@ class Strategy:
             "factor": tuple(self.factor.keys()),
             "regime": self.regime.__class__.__name__,
             "constraint": self.constraint,
+            "principal" : self.principal,
             "book": self.book.dict(),
         }
 

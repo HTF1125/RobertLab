@@ -1,6 +1,6 @@
 {
     // Window Editor
-    "editor.rulers": [80],
+    "editor.rulers": [100],
     "editor.cursorStyle": "line-thin",
     "editor.fontFamily":"JetBrains Mono",
     "editor.fontSize":15,

@@ -17,6 +17,15 @@ def get_strategy(load_files: bool = True) -> strategies.MultiStrategy:
         return st.session_state["strategy"]
 
 
+class UniRegimeSelector():
+
+    def __init__(self) -> None:
+        cols = st.columns(2)
+        with cols[0]:
+            self.universe = get_universe()
+        with cols[1]:
+            self.regime = get_regime()
+
 
 def get_universe() -> universes.Universe:
     universe = st.selectbox(
@@ -195,8 +204,6 @@ class StrategyConstraint:
         max_return: Optional[int] = None,
         min_volatility: Optional[int] = None,
         max_volatility: Optional[int] = None,
-        min_active_weight: Optional[int] = None,
-        max_active_weight: Optional[int] = None,
     ) -> None:
         self.prefix = prefix
         self.leverage = leverage
@@ -207,8 +214,6 @@ class StrategyConstraint:
         self.max_return = max_return
         self.min_volatility = min_volatility
         self.max_volatility = max_volatility
-        self.min_active_weight = min_active_weight
-        self.max_active_weight = max_active_weight
         self.fit()
 
     def get_leverage(self) -> None:
@@ -229,7 +234,6 @@ class StrategyConstraint:
             self.get_weight_bound,
             self.get_return_bound,
             self.get_volatility_bound,
-            self.get_active_weight_bound,
         ]
         if layout == "h":
             funcss = [
@@ -275,7 +279,7 @@ class StrategyConstraint:
 
     def get_active_weight_bound(self) -> None:
         self.min_active_weight, self.max_active_weight = self.get_bounds(
-            label="Act.Weight",
+            label="A. Weight",
             min_value=0,
             max_value=200,
             step=1,
@@ -319,7 +323,7 @@ class StrategyConstraint:
                     min_value=0,
                     max_value=100,
                     step=1,
-                    value=(self.min_weight or 0, self.max_weight or 100),
+                    value=(self.min_weight or 0, 100),
                     key=f"{self.prefix}_{assetclass}",
                 )
 
@@ -381,8 +385,4 @@ class StrategyConstraint:
             out["min_volatility"] = self.min_volatility / 100
         if self.max_volatility:
             out["max_volatility"] = self.max_volatility / 100
-        if self.min_active_weight:
-            out["min_active_weight"] = self.min_active_weight / 100
-        if self.max_active_weight:
-            out["max_active_weight"] = self.max_active_weight / 100
         return out

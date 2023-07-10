@@ -53,14 +53,14 @@ class MultiFactor(dict):
     def get_factor_by_date(
         self,
         tickers: Union[str, List, Set, Tuple],
-        date: Optional[Union[str, pd.Timestamp]],
-    ) -> pd.Series:
+        date: Union[str, pd.Timestamp],
+    ) -> Optional[pd.Series]:
         factortoconcat = []
         for _, factor in self.items():
-            base_factor = factor.get_factor_by_date(tickers, date=date)
+            base_factor = factor.get_factor_by_date(tickers, date=str(date))
             factortoconcat.append(base_factor)
         if not factortoconcat:
-            return pd.Series(dtype=float)
+            return None
         return metrics.to_standard_scaler(
             pd.concat(objs=factortoconcat, axis=1).mean(axis=1)
         )

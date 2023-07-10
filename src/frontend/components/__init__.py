@@ -6,14 +6,34 @@ import pandas as pd
 import streamlit as st
 import plotly.graph_objects as go
 from src.core.strategies.multi import MultiStrategy
-from src.core import universes, benchmarks, portfolios, factors, regimes
+from src.core import universes, portfolios, factors, regimes
 from .session import Session
 from .constraint_set import PortfolioModelSet
 
-from ..components.future import StrategyParameters, StrategyConstraint, get_universe, get_regime, get_strategy
+from ..components.future import (
+    StrategyParameters,
+    UniRegimeSelector,
+    StrategyConstraint,
+    get_universe,
+    get_regime,
+    get_strategy,
+)
+
+from . import single
+from . import repeatable
 
 
+def get_page() -> str:
+    if "page" not in st.session_state:
+        st.session_state["page"] = "Dashboard"
+    return st.session_state["page"]
 
+
+def set_page(page: str = "Dashboard", rerun: bool = True):
+    if st.session_state["page"] != page:
+        st.session_state["page"] = page
+        if rerun:
+            st.experimental_rerun()
 
 
 def get_factor() -> None:
@@ -94,7 +114,6 @@ def get_portfolio():
             )
         )
     )
-
 
 
 def get_dates(

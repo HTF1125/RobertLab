@@ -2,6 +2,8 @@
 import streamlit as st
 import plotly.graph_objects as go
 from .base import BasePage
+from .. import components
+from ..components.strategy_button import strategy_button
 
 
 class Futures(BasePage):
@@ -33,9 +35,8 @@ class Futures(BasePage):
         self.chart_thought()
 
     def chart_thought(self):
-
-        universe = self.get_universe()
-        prices = self.get_universe_prices(universe)
+        universe = components.single.get_universe()
+        prices = universe.get_prices()
         minimum = prices / prices.rolling(252).min()
         maximum = prices / prices.rolling(252).max()
         fig = go.Figure()
@@ -56,11 +57,31 @@ class Futures(BasePage):
             )
 
         fig.update_layout(
-            title="From 52W High (y), Low (x)",
-            hovermode="x unified",
             xaxis_tickformat=".1%",
             yaxis_tickformat=".1%",
-            legend_orientation="h",
         )
 
-        st.plotly_chart(fig, use_container_width=True)
+        self.plotly(
+            fig,
+            title="From 52W High (y), Low (x)",
+        )
+
+        constraint = components.repeatable.Repeatable(prefix="g").fit()
+        st.write(constraint)
+
+        def run_component():
+            value = strategy_button(
+                key="strategy_button",
+                buttons={
+                    "create": False,
+                    "delete": False,
+                    "Save": False,
+                },
+            )
+            return value
+
+        def handle_event(value):
+            st.write(value)
+
+
+        handle_event(run_component())

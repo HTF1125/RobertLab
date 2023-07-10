@@ -17,7 +17,8 @@ class Portfolio(Constraints):
         super().__init__()
         self.min_weight = 0.0
         self.max_weight = 1.0
-        self.leverage = 0.0
+        self.min_leverage = 0.0
+        self.max_leverage = 1.0
         self.risk_free = 0.0
 
     @classmethod
@@ -39,9 +40,10 @@ class Portfolio(Constraints):
         expected_returns: Optional[pd.Series] = None,
         covariance_matrix: Optional[pd.DataFrame] = None,
         correlation_matrix: Optional[pd.DataFrame] = None,
-        leverage: float = 0.0,
+        min_leverage: float = 0.0,
+        max_leverage: float = 0.0,
         prices: Optional[pd.DataFrame] = None,
-        factors: Optional[pd.Series] = None,
+        factor: Optional[pd.Series] = None,
         risk_free: float = 0.0,
         prices_bm: Optional[pd.Series] = None,
         weights_bm: Optional[pd.Series] = None,
@@ -67,7 +69,8 @@ class Portfolio(Constraints):
         self.risk_free = risk_free
         self.prices_bm = prices_bm
         self.weights_bm = weights_bm
-        self.leverage = leverage
+        self.min_leverage = min_leverage
+        self.max_leverage = max_leverage
         self.min_weight = min_weight
         self.max_weight = max_weight
         self.min_active_weight = min_active_weight
@@ -81,7 +84,7 @@ class Portfolio(Constraints):
         self.min_expost_tracking_error = min_expost_tracking_error
         self.max_expost_tracking_error = max_expost_tracking_error
         self.min_factor_percentile = min_factor_percentile
-        self.factors = factors
+        self.factor = factor
         if specific_constraints is not None:
             self.set_specific_constraints(specific_constraints)
         self.min_factor_percentile = 0.2
@@ -139,7 +142,7 @@ class Portfolio(Constraints):
             )
             return weights
 
-        if self.factors is not None and self.min_factor_percentile is not None:
+        if self.factor is not None and self.min_factor_percentile is not None:
             self.min_factor_percentile -= 0.05
             if self.min_factor_percentile < 0.0:
                 raise ValueError(
@@ -171,15 +174,15 @@ class Portfolio(Constraints):
             return
         self._min_factor_percentile = min_factor_percentile
 
-        if self.factors is not None:
+        if self.factor is not None:
             if self.weights_bm is not None:
                 w = self.weights_bm.copy()
             else:
                 w = self.solve()
 
-            factor = np.dot(w, np.array(self.factors))
+            factor = np.dot(w, np.array(self.factor))
             self.constraints["min_factor_percentile"] = {
                 "type": "ineq",
-                "fun": lambda w: np.dot(w, np.array(self.factors))
+                "fun": lambda w: np.dot(w, np.array(self.factor))
                 - (factor + self.min_factor_percentile),
             }

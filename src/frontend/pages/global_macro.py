@@ -131,6 +131,13 @@ def get_vix_regime():
 
 
 class GlobalMacro(BasePage):
+
+    """
+    In <GlobalMacro> Section, you will find macro charts that are relevant to
+    your market analysis.\n
+    Will work on adding more charts & more explainations in the future.
+    """
+
     def load_page(self):
         plot_spy_yoy_10yr_ma()
         plot_dollar_yoy_index()

@@ -36,4 +36,5 @@ __all__ = [
     "MACD1",
     "MACD2",
     "Osc",
+    "HurstTrend1M"
 ]

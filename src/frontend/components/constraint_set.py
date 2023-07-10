@@ -74,84 +74,11 @@ class PortfolioModelSet:
         if isinstance(new_portfolio, self.portfolio.__class__):
             del new_portfolio
 
-    def get_min_weight(self) -> None:
-        self.min_weight = st.number_input(
-            label="Min.W",
-            min_value=-100,
-            max_value=100,
-            value=self.min_weight,
-            key=f"{self.prefix}_min_weight",
-        )
-
-    def get_max_weight(self) -> None:
-        self.max_weight = st.number_input(
-            label="Max.W",
-            min_value=0,
-            max_value=300,
-            value=self.max_weight,
-            key=f"{self.prefix}_max_weight",
-        )
-
-    def get_min_return(self) -> None:
-        self.min_return = st.number_input(
-            label="Min.R",
-            min_value=0,
-            max_value=30,
-            value=self.min_return,
-            key=f"{self.prefix}_min_return",
-        )
-
-    def get_max_return(self) -> None:
-        self.max_return = st.number_input(
-            label="Max.R",
-            min_value=0,
-            max_value=30,
-            value=self.max_return,
-            key=f"{self.prefix}_max_return",
-        )
-
-    def get_min_volatility(self) -> None:
-        self.min_volatility = st.number_input(
-            label="Min.V",
-            min_value=0,
-            max_value=30,
-            value=self.min_volatility,
-            key=f"{self.prefix}_min_volatility",
-        )
-
-    def get_max_volatility(self) -> None:
-        self.max_volatility = st.number_input(
-            label="Max.V",
-            min_value=0,
-            max_value=30,
-            value=self.max_volatility,
-            key=f"{self.prefix}_max_volatility",
-        )
-
-    def get_min_active_weight(self) -> None:
-        self.min_active_weight = st.number_input(
-            label="Min.AW",
-            min_value=0,
-            max_value=100,
-            value=self.min_active_weight,
-            key=f"{self.prefix}_min_active_weight",
-        )
-
-    def get_max_active_weight(self) -> None:
-        self.max_active_weight = st.number_input(
-            label="Max.AW",
-            min_value=0,
-            max_value=200,
-            value=self.max_active_weight,
-            key=f"{self.prefix}_max_active_weight",
-        )
-
     def get_constraint(self, layout: str = "v") -> Dict:
         funcs = [
             self.get_weight_bound,
             self.get_return_bound,
             self.get_volatility_bound,
-
         ]
         if layout == "h":
             funcss = [
@@ -192,7 +119,7 @@ class PortfolioModelSet:
                     min_value=0,
                     max_value=100,
                     step=1,
-                    value=(self.min_weight or 0, self.max_weight or 100),
+                    value=(self.min_weight or 0, 100),
                     key=f"{self.prefix}_{assetclass}",
                 )
 

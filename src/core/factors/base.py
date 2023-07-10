@@ -25,7 +25,7 @@ class Factor(object):
 
     def standard_scaler(self, tickers: Union[str, List, Set, Tuple]) -> pd.DataFrame:
         if self.factor.empty:
-            self.fit(tickers)
+            self.factor=self.fit(tickers)
         return self.factor.apply(metrics.to_standard_scaler, axis=1)
 
     def fit(self, tickers: Union[str, List, Set, Tuple]) -> pd.DataFrame:
