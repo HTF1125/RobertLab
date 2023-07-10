@@ -1,6 +1,7 @@
 """ROBERT"""
 import uuid
 import numpy as np
+import pandas as pd
 import streamlit as st
 import plotly.graph_objects as go
 from src.core import universes
@@ -10,6 +11,7 @@ from .. import session
 
 
 class ConstraintSetter:
+    cons = ["leverage", "weight", "return", "volatility"]
     def __init__(self, universe: universes.Universe, prefix: str = "") -> None:
         self.universe = universe
         self.prefix = prefix
@@ -184,7 +186,6 @@ class MultiStrategy(BasePage):
                     with col:
                         self.h4(state)
                         constraint[state] = ConstraintSetter(universe=universe, prefix=state).fit()
-
         with st.form("AssetAllocationForm"):
             strategy_params = components.single.get_strategy_parameters()
 
